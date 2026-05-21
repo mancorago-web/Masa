@@ -103,6 +103,7 @@ export default function Inventario() {
   });
   const inventoryRef = useRef(inventory);
   inventoryRef.current = inventory;
+  const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('stock');
   const [expandedCategories, setExpandedCategories] = useState<string[]>(['BASE', 'GUARNICIONES', 'VERDURAS', 'LACTEOS', 'EXTRAS', 'DELIVERY']);
   const [expandedRecipeCategories, setExpandedRecipeCategories] = useState<string[]>([]);
@@ -232,9 +233,13 @@ export default function Inventario() {
     let unsub: (() => void) | undefined;
     (async () => {
       const docRef = await getDataDoc();
-      if (!docRef) return;
+      if (!docRef) {
+        setLoading(false);
+        return;
+      }
       unsub = docRef.onSnapshot((snap) => {
         if (!snap.exists) return;
+        setLoading(false);
         const data = snap.data();
         if (data.inventory) {
           const parsed = data.inventory;
@@ -246,12 +251,28 @@ export default function Inventario() {
             else if (!baseIds.has(item.id)) { base.push(item); baseIds.add(item.id); }
           }
           setInventory(base);
+        } else {
+          const saved = localStorage.getItem('masa-inventory');
+          if (saved) {
+            try {
+              const parsed = JSON.parse(saved);
+              const base = [...initialInventory];
+              const baseIds = new Set(base.map(i => i.id));
+              for (const item of parsed) {
+                const idx = base.findIndex(i => i.id === item.id);
+                if (idx >= 0) base[idx] = item;
+                else if (!baseIds.has(item.id)) { base.push(item); baseIds.add(item.id); }
+              }
+              setInventory(base);
+            } catch {}
+          }
         }
         if (data) {
           recetasFromFirestoreData(data);
         }
       }, (err) => {
         console.error('Firestore snapshot error:', err);
+        setLoading(false);
         const saved = localStorage.getItem('masa-inventory');
         if (saved) {
           try {
@@ -756,6 +777,15 @@ export default function Inventario() {
 
   return (
     <main className="min-h-screen bg-gray-100 p-4">
+      {loading && (
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500 mx-auto mb-4"></div>
+            <p className="text-gray-600">Cargando datos...</p>
+          </div>
+        </div>
+      )}
+      {!loading && (
       <div className="container mx-auto">
         <div className="bg-green-50 p-6 rounded-lg shadow-md mb-6">
           <Link href="/menu" className="text-blue-600 hover:underline mb-4 inline-block">
@@ -1270,6 +1300,7 @@ export default function Inventario() {
           </div>
         )}
       </div>
+      )}
     </main>
   );
 }

@@ -83,7 +83,26 @@ const initialInventory: InventoryItem[] = [
 
 export default function Inventario() {
   const router = useRouter();
-  const [inventory, setInventory] = useState<InventoryItem[]>(initialInventory);
+  const [inventory, setInventory] = useState<InventoryItem[]>(() => {
+    if (typeof window === 'undefined') return initialInventory;
+    try {
+      const saved = localStorage.getItem('masa-inventory');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        const base = [...initialInventory];
+        const baseIds = new Set(base.map(i => i.id));
+        for (const item of parsed) {
+          const idx = base.findIndex(i => i.id === item.id);
+          if (idx >= 0) base[idx] = item;
+          else if (!baseIds.has(item.id)) { base.push(item); baseIds.add(item.id); }
+        }
+        return base;
+      }
+    } catch {}
+    return initialInventory;
+  });
+  const inventoryRef = useRef(inventory);
+  inventoryRef.current = inventory;
   const [activeTab, setActiveTab] = useState('stock');
   const [expandedCategories, setExpandedCategories] = useState<string[]>(['BASE', 'GUARNICIONES', 'VERDURAS', 'LACTEOS', 'EXTRAS', 'DELIVERY']);
   const [expandedRecipeCategories, setExpandedRecipeCategories] = useState<string[]>([]);
@@ -209,43 +228,47 @@ export default function Inventario() {
   };
 
   useEffect(() => {
-    const loadInventoryFromFirestore = async () => {
-      try {
-        const docRef = await getDataDoc();
-        if (docRef) {
-          const snap = await docRef.get();
-          if (snap.exists && snap.data().inventory) {
-            const parsed = snap.data().inventory;
+    let unsub: (() => void) | undefined;
+    (async () => {
+      const docRef = await getDataDoc();
+      if (!docRef) return;
+      unsub = docRef.onSnapshot((snap) => {
+        if (!snap.exists) return;
+        const data = snap.data();
+        if (data.inventory) {
+          const parsed = data.inventory;
+          const base = [...initialInventory];
+          const baseIds = new Set(base.map(i => i.id));
+          for (const item of parsed) {
+            const idx = base.findIndex(i => i.id === item.id);
+            if (idx >= 0) base[idx] = item;
+            else if (!baseIds.has(item.id)) { base.push(item); baseIds.add(item.id); }
+          }
+          setInventory(base);
+        }
+        if (data) {
+          recetasFromFirestoreData(data);
+        }
+      }, (err) => {
+        console.error('Firestore snapshot error:', err);
+        const saved = localStorage.getItem('masa-inventory');
+        if (saved) {
+          try {
+            const parsed = JSON.parse(saved);
             const base = [...initialInventory];
             const baseIds = new Set(base.map(i => i.id));
             for (const item of parsed) {
               const idx = base.findIndex(i => i.id === item.id);
               if (idx >= 0) base[idx] = item;
-              else if (!baseIds.has(item.id)) base.push(item);
+              else if (!baseIds.has(item.id)) { base.push(item); baseIds.add(item.id); }
             }
             setInventory(base);
-            return;
-          }
+          } catch {}
         }
-      } catch (e) {
-        console.error('Error loading inventory from Firestore:', e);
-      }
-      const saved = localStorage.getItem('masa-inventory');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        const base = [...initialInventory];
-        const baseIds = new Set(base.map(i => i.id));
-        for (const item of parsed) {
-          const idx = base.findIndex(i => i.id === item.id);
-          if (idx >= 0) base[idx] = item;
-          else if (!baseIds.has(item.id)) base.push(item);
-        }
-        setInventory(base);
-      } else {
-        setInventory(initialInventory);
-      }
-    };
-    loadInventoryFromFirestore();
+        loadRecetasFromLocalStorage();
+      });
+    })();
+    return () => { if (unsub) unsub(); };
   }, []);
 
   const saveInventory = () => {
@@ -450,25 +473,6 @@ export default function Inventario() {
     }
   };
 
-  const loadRecetasFromFirestore = async () => {
-    try {
-      const docRef = await getDataDoc();
-      if (docRef) {
-        const snap = await docRef.get();
-        if (snap.exists && snap.data()) {
-          recetasFromFirestoreData(snap.data());
-          return;
-        }
-      }
-    } catch (e) {
-      console.error('Error loading recetas from Firestore:', e);
-    }
-    loadRecetasFromLocalStorage();
-  };
-
-  useEffect(() => {
-    loadRecetasFromFirestore();
-  }, []);
 
   const categories = useMemo(() => {
     const cats = Array.from(new Set(inventory.map(item => item.category)));

@@ -112,6 +112,7 @@ export default function Inventario() {
   const [editingSubRecipeId, setEditingSubRecipeId] = useState<string | null>(null);
   const [showSaved, setShowSaved] = useState(false);
   const [showRecetasSaved, setShowRecetasSaved] = useState(false);
+  const [showDatosSaved, setShowDatosSaved] = useState(false);
   const [expandedSubRecipeDetails, setExpandedSubRecipeDetails] = useState<string[]>([]);
   const defaultSubRecipes: SubRecipe[] = [
     { id: 's1', parentId: '19', name: 'Americana 8 Pzas.' },
@@ -281,10 +282,6 @@ export default function Inventario() {
   const saveRecetas = () => {
     try {
       localStorage.setItem('masa-recipes', JSON.stringify(recipesRef.current));
-      localStorage.setItem('masa-recipeIngredients', JSON.stringify(recipeIngredientsRef.current));
-      localStorage.setItem('masa-subRecipes', JSON.stringify(subRecipes));
-      localStorage.setItem('masa-subIngredients', JSON.stringify(subRecipeIngredients));
-      localStorage.setItem('masa-nextRecipeId', String(nextRecipeId.current));
       syncToFirestore({
         recipes: recipesRef.current,
         recipeIngredients: recipeIngredientsRef.current,
@@ -299,6 +296,13 @@ export default function Inventario() {
       console.error('Error saving recetas:', e);
       return false;
     }
+  };
+
+  const saveDatos = () => {
+    localStorage.setItem('masa-inventory', JSON.stringify(inventory));
+    syncToFirestore({ inventory });
+    setShowDatosSaved(true);
+    setTimeout(() => setShowDatosSaved(false), 2000);
   };
 
   const forceSubRecipes = () => {
@@ -1192,10 +1196,14 @@ export default function Inventario() {
           <div>
             <div className="flex justify-end items-center mb-4">
               <button
+                onClick={saveDatos}
                 className="bg-green-500 text-white px-6 py-2 rounded-lg hover:bg-green-600 font-bold"
               >
                 GUARDAR
               </button>
+              {showDatosSaved && (
+                <span className="ml-3 text-green-600 font-semibold">✓ Guardado</span>
+              )}
             </div>
             <div className="space-y-4">
               {categories.map((category) => (

@@ -3,8 +3,7 @@
 import { useState, useMemo, useEffect, Fragment, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { db } from "@/lib/firebase";
-import { doc, setDoc, getDoc } from "@firebase/firestore";
+import { getDb } from "@/lib/firebase";
 
 interface InventoryItem {
   id: string;
@@ -84,9 +83,9 @@ const initialInventory: InventoryItem[] = [
 
 export default function Inventario() {
   const router = useRouter();
-  const [inventory, setInventory] = useState<InventoryItem[]>([]);
+  const [inventory, setInventory] = useState<InventoryItem[]>(initialInventory);
   const [activeTab, setActiveTab] = useState('stock');
-  const [expandedCategories, setExpandedCategories] = useState<string[]>([]);
+  const [expandedCategories, setExpandedCategories] = useState<string[]>(['BASE', 'GUARNICIONES', 'VERDURAS', 'LACTEOS', 'EXTRAS', 'DELIVERY']);
   const [expandedRecipeCategories, setExpandedRecipeCategories] = useState<string[]>([]);
   const [expandedDatosCategories, setExpandedDatosCategories] = useState<string[]>([]);
   const [expandedRecipeDetails, setExpandedRecipeDetails] = useState<string[]>([]);
@@ -194,11 +193,16 @@ export default function Inventario() {
   const [subRecipeIngredients, setSubRecipeIngredients] = useState<Record<string, RecipeIngredient[]>>(defaultSubIngredients);
   const nextRecipeId = useRef<number>(26);
 
-  const DATA_DOC = doc(db, 'masa', 'data');
+  const getDataDoc = async () => {
+    const db = getDb();
+    if (!db) return null;
+    return db.collection('masa').doc('data');
+  };
 
   const syncToFirestore = async (data: Record<string, unknown>) => {
     try {
-      await setDoc(DATA_DOC, data, { merge: true });
+      const docRef = await getDataDoc();
+      if (docRef) await docRef.set(data, { merge: true });
     } catch (e) {
       console.error('Error syncing to Firestore:', e);
     }
@@ -207,18 +211,21 @@ export default function Inventario() {
   useEffect(() => {
     const loadInventoryFromFirestore = async () => {
       try {
-        const snap = await getDoc(DATA_DOC);
-        if (snap.exists() && snap.data().inventory) {
-          const parsed = snap.data().inventory;
-          const base = [...initialInventory];
-          const baseIds = new Set(base.map(i => i.id));
-          for (const item of parsed) {
-            const idx = base.findIndex(i => i.id === item.id);
-            if (idx >= 0) base[idx] = item;
-            else if (!baseIds.has(item.id)) base.push(item);
+        const docRef = await getDataDoc();
+        if (docRef) {
+          const snap = await docRef.get();
+          if (snap.exists && snap.data().inventory) {
+            const parsed = snap.data().inventory;
+            const base = [...initialInventory];
+            const baseIds = new Set(base.map(i => i.id));
+            for (const item of parsed) {
+              const idx = base.findIndex(i => i.id === item.id);
+              if (idx >= 0) base[idx] = item;
+              else if (!baseIds.has(item.id)) base.push(item);
+            }
+            setInventory(base);
+            return;
           }
-          setInventory(base);
-          return;
         }
       } catch (e) {
         console.error('Error loading inventory from Firestore:', e);
@@ -445,10 +452,13 @@ export default function Inventario() {
 
   const loadRecetasFromFirestore = async () => {
     try {
-      const snap = await getDoc(DATA_DOC);
-      if (snap.exists() && snap.data()) {
-        recetasFromFirestoreData(snap.data());
-        return;
+      const docRef = await getDataDoc();
+      if (docRef) {
+        const snap = await docRef.get();
+        if (snap.exists && snap.data()) {
+          recetasFromFirestoreData(snap.data());
+          return;
+        }
       }
     } catch (e) {
       console.error('Error loading recetas from Firestore:', e);

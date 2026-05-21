@@ -38,6 +38,8 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-title" content="MASA" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="theme-color" content="#16a34a" />
+        <script src="https://www.gstatic.com/firebasejs/12.13.0/firebase-app-compat.js"></script>
+        <script src="https://www.gstatic.com/firebasejs/12.13.0/firebase-firestore-compat.js"></script>
       </head>
       <body className={inter.className}>
         <ServiceWorkerRegistration />

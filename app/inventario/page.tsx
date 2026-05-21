@@ -369,6 +369,7 @@ export default function Inventario() {
   const [subRecipes, setSubRecipes] = useState<SubRecipe[]>(defaultSubRecipes);
   const [subRecipeIngredients, setSubRecipeIngredients] = useState<Record<string, RecipeIngredient[]>>(defaultSubIngredients);
   const nextRecipeId = useRef<number>(30);
+  const deletedRecipeIds = useRef<Set<string>>(new Set());
 
   const getDataDoc = async () => {
     const db = getDb();
@@ -465,6 +466,7 @@ export default function Inventario() {
         subRecipes,
         subIngredients: subRecipeIngredients,
         nextRecipeId: nextRecipeId.current,
+        deletedRecipes: Array.from(deletedRecipeIds.current),
       });
       setShowRecetasSaved(true);
       setTimeout(() => setShowRecetasSaved(false), 2000);
@@ -722,8 +724,16 @@ export default function Inventario() {
       if (savedRecipes) {
         const parsed = JSON.parse(savedRecipes);
         if (Array.isArray(parsed)) {
-          setRecipes(parsed);
-          recipesRef.current = parsed;
+          const savedById = new Map(parsed.map((r: any) => [r.id, r]));
+          const merged = defaultRecipes
+            .filter(def => !deletedRecipeIds.current.has(def.id))
+            .map(def => savedById.has(def.id) ? { ...def } : def);
+          const mergedIds = new Set(merged.map((r: any) => r.id));
+          for (const item of parsed) {
+            if (!mergedIds.has(item.id)) { merged.push(item); mergedIds.add(item.id); }
+          }
+          setRecipes(merged);
+          recipesRef.current = merged;
         }
       }
     } catch (e) { console.error('Error loading recipes:', e); }
@@ -767,9 +777,20 @@ export default function Inventario() {
   };
 
   const recetasFromFirestoreData = (data: Record<string, unknown>) => {
+    if (data.deletedRecipes && Array.isArray(data.deletedRecipes)) {
+      (data.deletedRecipes as string[]).forEach(id => deletedRecipeIds.current.add(id));
+    }
     if (data.recipes && Array.isArray(data.recipes)) {
-      setRecipes(data.recipes as { id: string; category: string; name: string }[]);
-      recipesRef.current = data.recipes as { id: string; category: string; name: string }[];
+      const savedById = new Map((data.recipes as { id: string }[]).map(r => [r.id, r]));
+      const merged = defaultRecipes
+        .filter(def => !deletedRecipeIds.current.has(def.id))
+        .map(def => savedById.has(def.id) ? { ...def } : def);
+      const mergedIds = new Set(merged.map(r => r.id));
+      for (const item of data.recipes as { id: string }[]) {
+        if (!mergedIds.has(item.id)) { merged.push(item); mergedIds.add(item.id); }
+      }
+      setRecipes(merged);
+      recipesRef.current = merged;
     }
     if (data.recipeIngredients && typeof data.recipeIngredients === 'object') {
       const merged = { ...defaultRecipeIngredients, ...data.recipeIngredients as Record<string, RecipeIngredient[]> };
@@ -991,6 +1012,7 @@ export default function Inventario() {
       });
       return prev.filter(s => s.parentId !== recipeId);
     });
+    deletedRecipeIds.current.add(recipeId);
     saveRecetas();
   };
 

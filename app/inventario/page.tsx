@@ -327,17 +327,18 @@ export default function Inventario() {
   };
 
   const forceSubRecipes = () => {
+    const currentRecipes = recipesRef.current;
     setSubRecipes(prev => {
-      const missing19 = !prev.some(s => s.parentId === '19');
-      const missing23 = !prev.some(s => s.parentId === '23');
-      const missing24 = !prev.some(s => s.parentId === '24');
-      const missing25 = !prev.some(s => s.parentId === '25');
-      if (!missing19 && !missing23 && !missing24 && !missing25) return prev;
+      const needs19 = currentRecipes.some(r => r.id === '19') && !prev.some(s => s.parentId === '19');
+      const needs23 = currentRecipes.some(r => r.id === '23') && !prev.some(s => s.parentId === '23');
+      const needs24 = currentRecipes.some(r => r.id === '24') && !prev.some(s => s.parentId === '24');
+      const needs25 = currentRecipes.some(r => r.id === '25') && !prev.some(s => s.parentId === '25');
+      if (!needs19 && !needs23 && !needs24 && !needs25) return prev;
       const result = [...prev];
-      if (missing19) result.push({ id: 's1', parentId: '19', name: 'Americana 8 Pzas.' }, { id: 's2', parentId: '19', name: 'Americana 12 Pzas.' }, { id: 's3', parentId: '19', name: 'Americana 16 Pzas.' });
-      if (missing23) result.push({ id: 's4', parentId: '23', name: 'Pepperoni 8 Pzas.' }, { id: 's5', parentId: '23', name: 'Pepperoni 12 Pzas.' }, { id: 's6', parentId: '23', name: 'Pepperoni 16 Pzas.' });
-      if (missing24) result.push({ id: 's7', parentId: '24', name: 'Hawaiana 8 Pzas.' }, { id: 's8', parentId: '24', name: 'Hawaiana 12 Pzas.' }, { id: 's9', parentId: '24', name: 'Hawaiana 16 Pzas.' });
-      if (missing25) result.push({ id: 's10', parentId: '25', name: 'Jamón y Champiñones 8 Pzas.' }, { id: 's11', parentId: '25', name: 'Jamón y Champiñones 12 Pzas.' }, { id: 's12', parentId: '25', name: 'Jamón y Champiñones 16 Pzas.' });
+      if (needs19) result.push({ id: 's1', parentId: '19', name: 'Americana 8 Pzas.' }, { id: 's2', parentId: '19', name: 'Americana 12 Pzas.' }, { id: 's3', parentId: '19', name: 'Americana 16 Pzas.' });
+      if (needs23) result.push({ id: 's4', parentId: '23', name: 'Pepperoni 8 Pzas.' }, { id: 's5', parentId: '23', name: 'Pepperoni 12 Pzas.' }, { id: 's6', parentId: '23', name: 'Pepperoni 16 Pzas.' });
+      if (needs24) result.push({ id: 's7', parentId: '24', name: 'Hawaiana 8 Pzas.' }, { id: 's8', parentId: '24', name: 'Hawaiana 12 Pzas.' }, { id: 's9', parentId: '24', name: 'Hawaiana 16 Pzas.' });
+      if (needs25) result.push({ id: 's10', parentId: '25', name: 'Jamón y Champiñones 8 Pzas.' }, { id: 's11', parentId: '25', name: 'Jamón y Champiñones 12 Pzas.' }, { id: 's12', parentId: '25', name: 'Jamón y Champiñones 16 Pzas.' });
       return result;
     });
   };
@@ -403,15 +404,8 @@ export default function Inventario() {
       if (savedRecipes) {
         const parsed = JSON.parse(savedRecipes);
         if (Array.isArray(parsed)) {
-          const base = [...defaultRecipes];
-          const baseIds = new Set(base.map(r => r.id));
-          for (const item of parsed) {
-            const idx = base.findIndex(r => r.id === item.id);
-            if (idx >= 0) base[idx] = item;
-            else if (!baseIds.has(item.id)) { base.push(item); baseIds.add(item.id); }
-          }
-          setRecipes(base);
-          recipesRef.current = base;
+          setRecipes(parsed);
+          recipesRef.current = parsed;
         }
       }
     } catch (e) { console.error('Error loading recipes:', e); }
@@ -431,14 +425,7 @@ export default function Inventario() {
       if (savedSubs) {
         const parsed = JSON.parse(savedSubs);
         if (Array.isArray(parsed)) {
-          const base = [...defaultSubRecipes];
-          const baseIds = new Set(base.map(r => r.id));
-          for (const item of parsed) {
-            const idx = base.findIndex(r => r.id === item.id);
-            if (idx >= 0) base[idx] = item;
-            else if (!baseIds.has(item.id)) { base.push(item); baseIds.add(item.id); }
-          }
-          setSubRecipes(base);
+          setSubRecipes(parsed);
         }
       }
     } catch (e) { console.error('Error loading subRecipes:', e); }
@@ -463,15 +450,8 @@ export default function Inventario() {
 
   const recetasFromFirestoreData = (data: Record<string, unknown>) => {
     if (data.recipes && Array.isArray(data.recipes)) {
-      const base = [...defaultRecipes];
-      const baseIds = new Set(base.map(r => r.id));
-      for (const item of data.recipes) {
-        const idx = base.findIndex((r: { id: string }) => r.id === (item as { id: string }).id);
-        if (idx >= 0) base[idx] = item as { id: string; category: string; name: string };
-        else if (!baseIds.has((item as { id: string }).id)) { base.push(item as { id: string; category: string; name: string }); baseIds.add((item as { id: string }).id); }
-      }
-      setRecipes(base);
-      recipesRef.current = base;
+      setRecipes(data.recipes as { id: string; category: string; name: string }[]);
+      recipesRef.current = data.recipes as { id: string; category: string; name: string }[];
     }
     if (data.recipeIngredients && typeof data.recipeIngredients === 'object') {
       const merged = { ...defaultRecipeIngredients, ...data.recipeIngredients as Record<string, RecipeIngredient[]> };
@@ -479,14 +459,7 @@ export default function Inventario() {
       recipeIngredientsRef.current = merged;
     }
     if (data.subRecipes && Array.isArray(data.subRecipes)) {
-      const base = [...defaultSubRecipes];
-      const baseIds = new Set(base.map(r => r.id));
-      for (const item of data.subRecipes) {
-        const idx = base.findIndex((r: { id: string }) => r.id === (item as { id: string }).id);
-        if (idx >= 0) base[idx] = item as { id: string; parentId: string; name: string };
-        else if (!baseIds.has((item as { id: string }).id)) { base.push(item as { id: string; parentId: string; name: string }); baseIds.add((item as { id: string }).id); }
-      }
-      setSubRecipes(base);
+      setSubRecipes(data.subRecipes as SubRecipe[]);
     }
     forceSubRecipes();
     if (data.subIngredients && typeof data.subIngredients === 'object') {

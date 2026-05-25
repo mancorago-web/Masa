@@ -12,6 +12,9 @@ interface InventoryItem {
   currentStock: number;
   unit: string;
   minStock: number;
+  supplier?: string;
+  supplierPhone?: string;
+  unitCost?: number;
 }
 
 interface SubRecipe {
@@ -114,6 +117,7 @@ export default function Inventario() {
   const [showSaved, setShowSaved] = useState(false);
   const [showRecetasSaved, setShowRecetasSaved] = useState(false);
   const [showDatosSaved, setShowDatosSaved] = useState(false);
+  const [isEditingDatos, setIsEditingDatos] = useState(false);
   const [expandedSubRecipeDetails, setExpandedSubRecipeDetails] = useState<string[]>([]);
   const defaultSubRecipes: SubRecipe[] = [
     { id: 's1', parentId: '19', name: 'Americana 8 Pzas.' },
@@ -481,6 +485,7 @@ export default function Inventario() {
     localStorage.setItem('masa-inventory', JSON.stringify(inventory));
     syncToFirestore({ inventory });
     setShowDatosSaved(true);
+    setIsEditingDatos(false);
     setTimeout(() => setShowDatosSaved(false), 2000);
   };
 
@@ -1541,7 +1546,13 @@ export default function Inventario() {
 
         {activeTab === 'datos' && (
           <div>
-            <div className="flex justify-end items-center mb-4">
+            <div className="flex justify-end items-center mb-4 gap-2">
+              <button
+                onClick={() => setIsEditingDatos(!isEditingDatos)}
+                className={`px-6 py-2 rounded-lg font-bold ${isEditingDatos ? 'bg-gray-500 text-white hover:bg-gray-600' : 'bg-blue-500 text-white hover:bg-blue-600'}`}
+              >
+                {isEditingDatos ? 'CANCELAR' : 'EDITAR'}
+              </button>
               <button
                 onClick={saveDatos}
                 className="bg-green-500 text-white px-6 py-2 rounded-lg hover:bg-green-600 font-bold"
@@ -1549,7 +1560,7 @@ export default function Inventario() {
                 GUARDAR
               </button>
               {showDatosSaved && (
-                <span className="ml-3 text-green-600 font-semibold">✓ Guardado</span>
+                <span className="ml-2 text-green-600 font-semibold">✓ Guardado</span>
               )}
             </div>
             <div className="space-y-4">
@@ -1578,21 +1589,35 @@ export default function Inventario() {
                           </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
-                          {getItemsByCategory(category).map((item) => (
+                          {getItemsByCategory(category).map((item, idx) => (
                             <tr key={item.id} className="hover:bg-gray-50">
                               <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{item.name}</td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                 <input
                                   type="text"
                                   placeholder="Proveedor"
-                                  className="w-32 px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-green-500"
+                                  value={item.supplier || ''}
+                                  onChange={(e) => {
+                                    const newInv = [...inventory];
+                                    const i = newInv.findIndex(x => x.id === item.id);
+                                    if (i >= 0) { newInv[i] = { ...newInv[i], supplier: e.target.value }; setInventory(newInv); }
+                                  }}
+                                  disabled={!isEditingDatos}
+                                  className={`w-32 px-2 py-1 border rounded focus:outline-none focus:ring-2 focus:ring-green-500 ${isEditingDatos ? 'border-gray-300' : 'border-transparent bg-transparent'}`}
                                 />
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                 <input
                                   type="text"
                                   placeholder="Número"
-                                  className="w-32 px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-green-500"
+                                  value={item.supplierPhone || ''}
+                                  onChange={(e) => {
+                                    const newInv = [...inventory];
+                                    const i = newInv.findIndex(x => x.id === item.id);
+                                    if (i >= 0) { newInv[i] = { ...newInv[i], supplierPhone: e.target.value }; setInventory(newInv); }
+                                  }}
+                                  disabled={!isEditingDatos}
+                                  className={`w-32 px-2 py-1 border rounded focus:outline-none focus:ring-2 focus:ring-green-500 ${isEditingDatos ? 'border-gray-300' : 'border-transparent bg-transparent'}`}
                                 />
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{item.unit}</td>
@@ -1601,7 +1626,14 @@ export default function Inventario() {
                                 <input
                                   type="number"
                                   placeholder="0.00"
-                                  className="w-20 px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-green-500"
+                                  value={item.unitCost ?? ''}
+                                  onChange={(e) => {
+                                    const newInv = [...inventory];
+                                    const i = newInv.findIndex(x => x.id === item.id);
+                                    if (i >= 0) { newInv[i] = { ...newInv[i], unitCost: parseFloat(e.target.value) || 0 }; setInventory(newInv); }
+                                  }}
+                                  disabled={!isEditingDatos}
+                                  className={`w-20 px-2 py-1 border rounded focus:outline-none focus:ring-2 focus:ring-green-500 ${isEditingDatos ? 'border-gray-300' : 'border-transparent bg-transparent'}`}
                                   step="0.01"
                                 />
                               </td>

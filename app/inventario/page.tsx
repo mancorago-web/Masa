@@ -1548,7 +1548,7 @@ export default function Inventario() {
                                                 </tr>
                                               ))}
                                               <tr className="bg-green-50">
-                                                <td colSpan={4} className="px-4 py-2 text-sm font-bold text-right">TOTAL</td>
+                                                <td colSpan={4} className="px-4 py-2 text-sm font-bold text-right text-green-900">TOTAL</td>
                                                 <td className="px-4 py-2 text-sm font-bold text-green-900">
                                                   {(() => {
                                                     const total = recipeIngredients[recipe.id].reduce((sum, ing) => {

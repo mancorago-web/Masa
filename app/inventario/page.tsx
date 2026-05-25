@@ -1620,8 +1620,35 @@ export default function Inventario() {
                                   className={`w-32 px-2 py-1 border rounded focus:outline-none focus:ring-2 focus:ring-green-500 ${isEditingDatos ? 'border-gray-300' : 'border-transparent bg-transparent'}`}
                                 />
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{item.unit}</td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{item.minStock}</td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                {isEditingDatos ? (
+                                  <input
+                                    type="text"
+                                    value={item.unit}
+                                    onChange={(e) => {
+                                      const newInv = [...inventory];
+                                      const i = newInv.findIndex(x => x.id === item.id);
+                                      if (i >= 0) { newInv[i] = { ...newInv[i], unit: e.target.value }; setInventory(newInv); }
+                                    }}
+                                    className="w-20 px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-green-500"
+                                  />
+                                ) : item.unit}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                {isEditingDatos ? (
+                                  <input
+                                    type="number"
+                                    value={item.minStock}
+                                    onChange={(e) => {
+                                      const newInv = [...inventory];
+                                      const i = newInv.findIndex(x => x.id === item.id);
+                                      if (i >= 0) { newInv[i] = { ...newInv[i], minStock: parseFloat(e.target.value) || 0 }; setInventory(newInv); }
+                                    }}
+                                    className="w-20 px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-green-500"
+                                    step="0.01"
+                                  />
+                                ) : item.minStock}
+                              </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                 <input
                                   type="number"

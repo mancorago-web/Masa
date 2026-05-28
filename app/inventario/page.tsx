@@ -1224,9 +1224,22 @@ export default function Inventario() {
                                 -1
                               </button>
                             </td>
-                          </tr>
-                        ))}
-                      </tbody>
+                                                         </tr>
+                                                       ))}
+                                                       <tr className="bg-green-50">
+                                                         <td colSpan={4} className="px-3 py-2 text-sm font-bold text-right text-green-900">TOTAL</td>
+                                                         <td className="px-3 py-2 text-sm font-bold text-green-900">
+                                                           {(() => {
+                                                             const total = (subRecipeIngredients[sub.id] || []).reduce((sum, ing) => {
+                                                               const datos = getDatosInfo(ing.name, ing.quantity, ing.unit);
+                                                               return sum + (datos ? datos.cost : (ing.quantity * ing.unitPrice));
+                                                             }, 0);
+                                                             return total === 0 ? '-' : `S/ ${total.toFixed(2)}`;
+                                                           })()}
+                                                         </td>
+                                                         {editingSubRecipeId === sub.id && <td></td>}
+                                                       </tr>
+                                                     </tbody>
                     </table>
                   </div>
                 )}

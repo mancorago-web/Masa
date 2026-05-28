@@ -120,26 +120,10 @@ export default function Inventario() {
   const [isEditingDatos, setIsEditingDatos] = useState(false);
   const [expandedSubRecipeDetails, setExpandedSubRecipeDetails] = useState<string[]>([]);
 
-  const normalizeUnit = (u: string): string => {
-    const s = u.toLowerCase().trim();
-    if (['kg', 'kilo', 'kilogramo', 'kilogramos'].includes(s)) return 'kg';
-    if (['g', 'gr', 'gramo', 'gramos'].includes(s)) return 'g';
-    if (['l', 'lt', 'litro', 'litros'].includes(s)) return 'l';
-    if (['ml', 'mililitro', 'mililitros'].includes(s)) return 'ml';
-    return s;
-  };
-
   const getDatosInfo = (name: string, qty: number, recipeUnit: string) => {
     const item = inventory.find(i => i.name.toLowerCase().trim() === name.toLowerCase().trim() && i.unitCost);
     if (!item || !item.unitCost) return null;
-    let effectiveQty = qty;
-    const rNorm = normalizeUnit(recipeUnit);
-    const dNorm = normalizeUnit(item.unit);
-    if (rNorm === 'kg' && dNorm === 'g') effectiveQty = qty * 1000;
-    else if (rNorm === 'g' && dNorm === 'kg') effectiveQty = qty / 1000;
-    else if (rNorm === 'l' && dNorm === 'ml') effectiveQty = qty * 1000;
-    else if (rNorm === 'ml' && dNorm === 'l') effectiveQty = qty / 1000;
-    return { unitCost: item.unitCost, unit: item.unit, cost: effectiveQty * item.unitCost };
+    return { unitCost: item.unitCost, unit: item.unit, cost: qty * item.unitCost };
   };
   const defaultSubRecipes: SubRecipe[] = [
     { id: 's1', parentId: '19', name: 'Americana 8 Pzas.' },

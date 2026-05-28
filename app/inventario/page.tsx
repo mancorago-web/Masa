@@ -405,7 +405,7 @@ export default function Inventario() {
         return;
       }
       unsub = docRef.onSnapshot((snap) => {
-        if (!snap.exists) return;
+        if (!snap.exists) { setLoading(false); return; }
         setLoading(false);
         const data = snap.data();
         if (data.inventory) {
@@ -1223,8 +1223,8 @@ export default function Inventario() {
                               >
                                 -1
                               </button>
-                            </td>
-                                                         </tr>
+                              </td>
+                                                          </tr>
                                                        ))}
                                                        <tr className="bg-green-50">
                                                          <td colSpan={4} className="px-3 py-2 text-sm font-bold text-right text-green-900">TOTAL</td>

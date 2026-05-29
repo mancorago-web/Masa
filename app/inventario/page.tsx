@@ -1361,7 +1361,7 @@ export default function Inventario() {
                                                         + Agregar ingrediente
                                                       </button>
                                                       <button
-                                                        onClick={() => setEditingSubRecipeId(null)}
+                                                        onClick={() => { setEditingSubRecipeId(null); saveRecetas(); }}
                                                         className="text-sm text-gray-600 hover:text-gray-800 font-semibold"
                                                       >
                                                         Hecho

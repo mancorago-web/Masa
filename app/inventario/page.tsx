@@ -108,7 +108,7 @@ export default function Inventario() {
   inventoryRef.current = inventory;
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('stock');
-  const [expandedCategories, setExpandedCategories] = useState<string[]>(['BASE', 'GUARNICIONES', 'VERDURAS', 'LACTEOS', 'EXTRAS', 'DELIVERY']);
+  const [expandedCategories, setExpandedCategories] = useState<string[]>([]);
   const [expandedRecipeCategories, setExpandedRecipeCategories] = useState<string[]>([]);
   const [expandedDatosCategories, setExpandedDatosCategories] = useState<string[]>([]);
   const [expandedRecipeDetails, setExpandedRecipeDetails] = useState<string[]>([]);

@@ -34,6 +34,7 @@ interface RecipeIngredient {
 const initialInventory: InventoryItem[] = [
   { id: '1', category: 'BASE', name: 'Harina', currentStock: 10000, unit: 'Gramos', minStock: 10000 },
   { id: '2', category: 'BASE', name: 'Tomate (salsa)', currentStock: 1, unit: 'Caja', minStock: 1 },
+  { id: '51', category: 'BASE', name: 'Salsa de tomate', currentStock: 1, unit: 'Litro', minStock: 1 },
   { id: '3', category: 'BASE', name: 'Agua', currentStock: 1, unit: 'Bidón', minStock: 1 },
   { id: '4', category: 'BASE', name: 'Sal', currentStock: 500, unit: 'Gramos', minStock: 500 },
   { id: '5', category: 'BASE', name: 'Azúcar', currentStock: 250, unit: 'Gramos', minStock: 250 },

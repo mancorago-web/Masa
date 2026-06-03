@@ -523,6 +523,7 @@ export default function Inventario() {
   const [subRecipeIngredients, setSubRecipeIngredients] = useState<Record<string, RecipeIngredient[]>>(defaultSubIngredients);
   const nextRecipeId = useRef<number>(30);
   const deletedRecipeIds = useRef<Set<string>>(new Set());
+  const initialSubLoadDone = useRef(false);
 
   const getDataDoc = async () => {
     const db = getDb();
@@ -663,7 +664,13 @@ export default function Inventario() {
   };
 
   const forceSubIngredients = () => {
-    setSubRecipeIngredients(defaultSubIngredients);
+    setSubRecipeIngredients(prev => {
+      const result = { ...prev };
+      for (const [id, ingredients] of Object.entries(defaultSubIngredients)) {
+        if (!result[id]) result[id] = ingredients;
+      }
+      return result;
+    });
   };
 
 
@@ -712,11 +719,16 @@ export default function Inventario() {
       if (savedSubIngredients) {
         const parsed = JSON.parse(savedSubIngredients);
         if (typeof parsed === 'object') {
-          setSubRecipeIngredients({ ...parsed, ...defaultSubIngredients });
+          if (!initialSubLoadDone.current) {
+            setSubRecipeIngredients({ ...parsed, ...defaultSubIngredients });
+            initialSubLoadDone.current = true;
+          } else {
+            setSubRecipeIngredients({ ...defaultSubIngredients, ...parsed });
+          }
         }
       }
     } catch (e) { console.error('Error loading subIngredients:', e); }
-    forceSubIngredients();
+    if (!initialSubLoadDone.current) forceSubIngredients();
     try {
       const savedNextId = localStorage.getItem('masa-nextRecipeId');
       if (savedNextId) {
@@ -751,9 +763,14 @@ export default function Inventario() {
     }
     forceSubRecipes();
     if (data.subIngredients && typeof data.subIngredients === 'object') {
-      setSubRecipeIngredients({ ...data.subIngredients as Record<string, RecipeIngredient[]>, ...defaultSubIngredients });
+      const saved = data.subIngredients as Record<string, RecipeIngredient[]>;
+      if (!initialSubLoadDone.current) {
+        setSubRecipeIngredients({ ...saved, ...defaultSubIngredients });
+        initialSubLoadDone.current = true;
+      } else {
+        setSubRecipeIngredients({ ...defaultSubIngredients, ...saved });
+      }
     }
-    forceSubIngredients();
     if (data.nextRecipeId && typeof data.nextRecipeId === 'number') {
       nextRecipeId.current = data.nextRecipeId as number;
     }

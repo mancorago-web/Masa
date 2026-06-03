@@ -665,14 +665,7 @@ export default function Inventario() {
   };
 
   const forceSubIngredients = () => {
-    setSubRecipeIngredients(prev => {
-      const result = { ...prev };
-      for (const [id, ingredients] of Object.entries(defaultSubIngredients)) {
-        const isAutoCreated = !result[id] || result[id].every(ing => ing.unitPrice === 0 && ing.cost === 0);
-        if (isAutoCreated) result[id] = ingredients;
-      }
-      return result;
-    });
+    setSubRecipeIngredients(defaultSubIngredients);
   };
 
 

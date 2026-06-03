@@ -163,6 +163,21 @@ export default function Inventario() {
     { id: 's28', parentId: '29', name: 'Mediterranea 8 Pzas.' },
     { id: 's29', parentId: '29', name: 'Mediterranea 12 Pzas.' },
     { id: 's30', parentId: '29', name: 'Mediterranea 16 Pzas.' },
+    { id: 's31', parentId: '8', name: 'BBQ Chicken 8 Pzas.' },
+    { id: 's32', parentId: '8', name: 'BBQ Chicken 12 Pzas.' },
+    { id: 's33', parentId: '8', name: 'BBQ Chicken 16 Pzas.' },
+    { id: 's34', parentId: '30', name: 'Panorama 8 Pzas.' },
+    { id: 's35', parentId: '30', name: 'Panorama 12 Pzas.' },
+    { id: 's36', parentId: '30', name: 'Panorama 16 Pzas.' },
+    { id: 's37', parentId: '31', name: 'Italiana 8 Pzas.' },
+    { id: 's38', parentId: '31', name: 'Italiana 12 Pzas.' },
+    { id: 's39', parentId: '31', name: 'Italiana 16 Pzas.' },
+    { id: 's40', parentId: '32', name: '4 Quesos 8 Pzas.' },
+    { id: 's41', parentId: '32', name: '4 Quesos 12 Pzas.' },
+    { id: 's42', parentId: '32', name: '4 Quesos 16 Pzas.' },
+    { id: 's43', parentId: '33', name: 'Rústica 8 Pzas.' },
+    { id: 's44', parentId: '33', name: 'Rústica 12 Pzas.' },
+    { id: 's45', parentId: '33', name: 'Rústica 16 Pzas.' },
   ];
   const defaultSubIngredients: Record<string, RecipeIngredient[]> = {
     's1': [
@@ -381,6 +396,114 @@ export default function Inventario() {
       { name: 'Alcachofa', quantity: 55, unit: 'Gramos', unitPrice: 0, cost: 0 },
       { name: 'Orégano', quantity: 10, unit: 'Gramos', unitPrice: 0, cost: 0 },
     ],
+    's31': [
+      { name: 'Masa de Pizza', quantity: 1, unit: 'Unidad', unitPrice: 0, cost: 0 },
+      { name: 'Salsa Clásica', quantity: 80, unit: 'Gramos', unitPrice: 0, cost: 0 },
+      { name: 'Queso (mozarella)', quantity: 100, unit: 'Gramos', unitPrice: 0, cost: 0 },
+      { name: 'Pollo', quantity: 50, unit: 'Gramos', unitPrice: 0, cost: 0 },
+      { name: 'Cebolla blanca', quantity: 30, unit: 'Gramos', unitPrice: 0, cost: 0 },
+    ],
+    's32': [
+      { name: 'Masa de Pizza', quantity: 1, unit: 'Unidad', unitPrice: 0, cost: 0 },
+      { name: 'Salsa Clásica', quantity: 120, unit: 'Gramos', unitPrice: 0, cost: 0 },
+      { name: 'Queso (mozarella)', quantity: 150, unit: 'Gramos', unitPrice: 0, cost: 0 },
+      { name: 'Pollo', quantity: 80, unit: 'Gramos', unitPrice: 0, cost: 0 },
+      { name: 'Cebolla blanca', quantity: 50, unit: 'Gramos', unitPrice: 0, cost: 0 },
+    ],
+    's33': [
+      { name: 'Masa de Pizza', quantity: 1, unit: 'Unidad', unitPrice: 0, cost: 0 },
+      { name: 'Salsa Clásica', quantity: 160, unit: 'Gramos', unitPrice: 0, cost: 0 },
+      { name: 'Queso (mozarella)', quantity: 200, unit: 'Gramos', unitPrice: 0, cost: 0 },
+      { name: 'Pollo', quantity: 110, unit: 'Gramos', unitPrice: 0, cost: 0 },
+      { name: 'Cebolla blanca', quantity: 70, unit: 'Gramos', unitPrice: 0, cost: 0 },
+    ],
+    's34': [
+      { name: 'Masa de Pizza', quantity: 1, unit: 'Unidad', unitPrice: 0, cost: 0 },
+      { name: 'Salsa Clásica', quantity: 80, unit: 'Gramos', unitPrice: 0, cost: 0 },
+      { name: 'Queso (mozarella)', quantity: 100, unit: 'Gramos', unitPrice: 0, cost: 0 },
+      { name: 'Peperoni', quantity: 50, unit: 'Gramos', unitPrice: 0, cost: 0 },
+      { name: 'Pimiento', quantity: 30, unit: 'Gramos', unitPrice: 0, cost: 0 },
+    ],
+    's35': [
+      { name: 'Masa de Pizza', quantity: 1, unit: 'Unidad', unitPrice: 0, cost: 0 },
+      { name: 'Salsa Clásica', quantity: 120, unit: 'Gramos', unitPrice: 0, cost: 0 },
+      { name: 'Queso (mozarella)', quantity: 150, unit: 'Gramos', unitPrice: 0, cost: 0 },
+      { name: 'Peperoni', quantity: 80, unit: 'Gramos', unitPrice: 0, cost: 0 },
+      { name: 'Pimiento', quantity: 50, unit: 'Gramos', unitPrice: 0, cost: 0 },
+    ],
+    's36': [
+      { name: 'Masa de Pizza', quantity: 1, unit: 'Unidad', unitPrice: 0, cost: 0 },
+      { name: 'Salsa Clásica', quantity: 160, unit: 'Gramos', unitPrice: 0, cost: 0 },
+      { name: 'Queso (mozarella)', quantity: 200, unit: 'Gramos', unitPrice: 0, cost: 0 },
+      { name: 'Peperoni', quantity: 110, unit: 'Gramos', unitPrice: 0, cost: 0 },
+      { name: 'Pimiento', quantity: 70, unit: 'Gramos', unitPrice: 0, cost: 0 },
+    ],
+    's37': [
+      { name: 'Masa de Pizza', quantity: 1, unit: 'Unidad', unitPrice: 0, cost: 0 },
+      { name: 'Salsa Clásica', quantity: 80, unit: 'Gramos', unitPrice: 0, cost: 0 },
+      { name: 'Queso (mozarella)', quantity: 100, unit: 'Gramos', unitPrice: 0, cost: 0 },
+      { name: 'Tomate cherry', quantity: 50, unit: 'Gramos', unitPrice: 0, cost: 0 },
+      { name: 'Albahaca', quantity: 5, unit: 'Gramos', unitPrice: 0, cost: 0 },
+    ],
+    's38': [
+      { name: 'Masa de Pizza', quantity: 1, unit: 'Unidad', unitPrice: 0, cost: 0 },
+      { name: 'Salsa Clásica', quantity: 120, unit: 'Gramos', unitPrice: 0, cost: 0 },
+      { name: 'Queso (mozarella)', quantity: 150, unit: 'Gramos', unitPrice: 0, cost: 0 },
+      { name: 'Tomate cherry', quantity: 80, unit: 'Gramos', unitPrice: 0, cost: 0 },
+      { name: 'Albahaca', quantity: 8, unit: 'Gramos', unitPrice: 0, cost: 0 },
+    ],
+    's39': [
+      { name: 'Masa de Pizza', quantity: 1, unit: 'Unidad', unitPrice: 0, cost: 0 },
+      { name: 'Salsa Clásica', quantity: 160, unit: 'Gramos', unitPrice: 0, cost: 0 },
+      { name: 'Queso (mozarella)', quantity: 200, unit: 'Gramos', unitPrice: 0, cost: 0 },
+      { name: 'Tomate cherry', quantity: 110, unit: 'Gramos', unitPrice: 0, cost: 0 },
+      { name: 'Albahaca', quantity: 10, unit: 'Gramos', unitPrice: 0, cost: 0 },
+    ],
+    's40': [
+      { name: 'Masa de Pizza', quantity: 1, unit: 'Unidad', unitPrice: 0, cost: 0 },
+      { name: 'Salsa Clásica', quantity: 80, unit: 'Gramos', unitPrice: 0, cost: 0 },
+      { name: 'Queso (mozarella)', quantity: 100, unit: 'Gramos', unitPrice: 0, cost: 0 },
+      { name: 'Parmesano', quantity: 30, unit: 'Gramos', unitPrice: 0, cost: 0 },
+      { name: 'Queso azul', quantity: 30, unit: 'Gramos', unitPrice: 0, cost: 0 },
+    ],
+    's41': [
+      { name: 'Masa de Pizza', quantity: 1, unit: 'Unidad', unitPrice: 0, cost: 0 },
+      { name: 'Salsa Clásica', quantity: 120, unit: 'Gramos', unitPrice: 0, cost: 0 },
+      { name: 'Queso (mozarella)', quantity: 150, unit: 'Gramos', unitPrice: 0, cost: 0 },
+      { name: 'Parmesano', quantity: 50, unit: 'Gramos', unitPrice: 0, cost: 0 },
+      { name: 'Queso azul', quantity: 50, unit: 'Gramos', unitPrice: 0, cost: 0 },
+    ],
+    's42': [
+      { name: 'Masa de Pizza', quantity: 1, unit: 'Unidad', unitPrice: 0, cost: 0 },
+      { name: 'Salsa Clásica', quantity: 160, unit: 'Gramos', unitPrice: 0, cost: 0 },
+      { name: 'Queso (mozarella)', quantity: 200, unit: 'Gramos', unitPrice: 0, cost: 0 },
+      { name: 'Parmesano', quantity: 70, unit: 'Gramos', unitPrice: 0, cost: 0 },
+      { name: 'Queso azul', quantity: 70, unit: 'Gramos', unitPrice: 0, cost: 0 },
+    ],
+    's43': [
+      { name: 'Masa de Pizza', quantity: 1, unit: 'Unidad', unitPrice: 0, cost: 0 },
+      { name: 'Salsa Clásica', quantity: 80, unit: 'Gramos', unitPrice: 0, cost: 0 },
+      { name: 'Queso (mozarella)', quantity: 100, unit: 'Gramos', unitPrice: 0, cost: 0 },
+      { name: 'Champiñones', quantity: 40, unit: 'Gramos', unitPrice: 0, cost: 0 },
+      { name: 'Aceitunas negras', quantity: 25, unit: 'Gramos', unitPrice: 0, cost: 0 },
+      { name: 'Tomate seco', quantity: 20, unit: 'Gramos', unitPrice: 0, cost: 0 },
+    ],
+    's44': [
+      { name: 'Masa de Pizza', quantity: 1, unit: 'Unidad', unitPrice: 0, cost: 0 },
+      { name: 'Salsa Clásica', quantity: 120, unit: 'Gramos', unitPrice: 0, cost: 0 },
+      { name: 'Queso (mozarella)', quantity: 150, unit: 'Gramos', unitPrice: 0, cost: 0 },
+      { name: 'Champiñones', quantity: 60, unit: 'Gramos', unitPrice: 0, cost: 0 },
+      { name: 'Aceitunas negras', quantity: 40, unit: 'Gramos', unitPrice: 0, cost: 0 },
+      { name: 'Tomate seco', quantity: 35, unit: 'Gramos', unitPrice: 0, cost: 0 },
+    ],
+    's45': [
+      { name: 'Masa de Pizza', quantity: 1, unit: 'Unidad', unitPrice: 0, cost: 0 },
+      { name: 'Salsa Clásica', quantity: 160, unit: 'Gramos', unitPrice: 0, cost: 0 },
+      { name: 'Queso (mozarella)', quantity: 200, unit: 'Gramos', unitPrice: 0, cost: 0 },
+      { name: 'Champiñones', quantity: 80, unit: 'Gramos', unitPrice: 0, cost: 0 },
+      { name: 'Aceitunas negras', quantity: 55, unit: 'Gramos', unitPrice: 0, cost: 0 },
+      { name: 'Tomate seco', quantity: 50, unit: 'Gramos', unitPrice: 0, cost: 0 },
+    ],
   };
 
   const [subRecipes, setSubRecipes] = useState<SubRecipe[]>(defaultSubRecipes);
@@ -504,237 +627,43 @@ export default function Inventario() {
 
   const forceSubRecipes = () => {
     const currentRecipes = recipesRef.current;
+    const pizzaCategories = ['PIZZAS CLÁSICAS', 'PIZZAS VEGETARIANAS', 'PIZZAS ESPECIALES'];
     setSubRecipes(prev => {
-      const needs19 = currentRecipes.some(r => r.id === '19') && !prev.some(s => s.parentId === '19');
-      const needs23 = currentRecipes.some(r => r.id === '23') && !prev.some(s => s.parentId === '23');
-      const needs24 = currentRecipes.some(r => r.id === '24') && !prev.some(s => s.parentId === '24');
-      const needs25 = currentRecipes.some(r => r.id === '25') && !prev.some(s => s.parentId === '25');
-      const needs6 = currentRecipes.some(r => r.id === '6') && !prev.some(s => s.parentId === '6');
-      const needs7 = currentRecipes.some(r => r.id === '7') && !prev.some(s => s.parentId === '7');
-      const needs26 = currentRecipes.some(r => r.id === '26') && !prev.some(s => s.parentId === '26');
-      const needs27 = currentRecipes.some(r => r.id === '27') && !prev.some(s => s.parentId === '27');
-      const needs28 = currentRecipes.some(r => r.id === '28') && !prev.some(s => s.parentId === '28');
-      const needs29 = currentRecipes.some(r => r.id === '29') && !prev.some(s => s.parentId === '29');
-      if (!needs19 && !needs23 && !needs24 && !needs25 && !needs6 && !needs7 && !needs26 && !needs27 && !needs28 && !needs29) return prev;
+      const pizzaRecipes = currentRecipes.filter(r => pizzaCategories.includes(r.category));
+      const needsUpdate = pizzaRecipes.some(r => !prev.some(s => s.parentId === r.id));
+      if (!needsUpdate) return prev;
       const result = [...prev];
-      if (needs19) result.push({ id: 's1', parentId: '19', name: 'Americana 8 Pzas.' }, { id: 's2', parentId: '19', name: 'Americana 12 Pzas.' }, { id: 's3', parentId: '19', name: 'Americana 16 Pzas.' });
-      if (needs23) result.push({ id: 's4', parentId: '23', name: 'Pepperoni 8 Pzas.' }, { id: 's5', parentId: '23', name: 'Pepperoni 12 Pzas.' }, { id: 's6', parentId: '23', name: 'Pepperoni 16 Pzas.' });
-      if (needs24) result.push({ id: 's7', parentId: '24', name: 'Hawaiana 8 Pzas.' }, { id: 's8', parentId: '24', name: 'Hawaiana 12 Pzas.' }, { id: 's9', parentId: '24', name: 'Hawaiana 16 Pzas.' });
-      if (needs25) result.push({ id: 's10', parentId: '25', name: 'Jamón y Champiñones 8 Pzas.' }, { id: 's11', parentId: '25', name: 'Jamón y Champiñones 12 Pzas.' }, { id: 's12', parentId: '25', name: 'Jamón y Champiñones 16 Pzas.' });
-      if (needs6) result.push({ id: 's13', parentId: '6', name: 'Margherita 8 Pzas.' }, { id: 's14', parentId: '6', name: 'Margherita 12 Pzas.' }, { id: 's15', parentId: '6', name: 'Margherita 16 Pzas.' });
-      if (needs7) result.push({ id: 's16', parentId: '7', name: 'Marinara 8 Pzas.' }, { id: 's17', parentId: '7', name: 'Marinara 12 Pzas.' }, { id: 's18', parentId: '7', name: 'Marinara 16 Pzas.' });
-      if (needs26) result.push({ id: 's19', parentId: '26', name: 'Napoli 8 Pzas.' }, { id: 's20', parentId: '26', name: 'Napoli 12 Pzas.' }, { id: 's21', parentId: '26', name: 'Napoli 16 Pzas.' });
-      if (needs27) result.push({ id: 's22', parentId: '27', name: 'Vegetariana 8 Pzas.' }, { id: 's23', parentId: '27', name: 'Vegetariana 12 Pzas.' }, { id: 's24', parentId: '27', name: 'Vegetariana 16 Pzas.' });
-      if (needs28) result.push({ id: 's25', parentId: '28', name: 'Sorrentina 8 Pzas.' }, { id: 's26', parentId: '28', name: 'Sorrentina 12 Pzas.' }, { id: 's27', parentId: '28', name: 'Sorrentina 16 Pzas.' });
-      if (needs29) result.push({ id: 's28', parentId: '29', name: 'Mediterranea 8 Pzas.' }, { id: 's29', parentId: '29', name: 'Mediterranea 12 Pzas.' }, { id: 's30', parentId: '29', name: 'Mediterranea 16 Pzas.' });
+      let maxId = result.reduce((max, s) => {
+        const num = parseInt(s.id.replace('s', ''));
+        return num > max ? num : max;
+      }, 0);
+      for (const recipe of pizzaRecipes) {
+        if (!result.some(s => s.parentId === recipe.id)) {
+          result.push(
+            { id: `s${maxId + 1}`, parentId: recipe.id, name: `${recipe.name} 8 Pzas.` },
+            { id: `s${maxId + 2}`, parentId: recipe.id, name: `${recipe.name} 12 Pzas.` },
+            { id: `s${maxId + 3}`, parentId: recipe.id, name: `${recipe.name} 16 Pzas.` }
+          );
+          maxId += 3;
+        }
+      }
       return result;
     });
   };
 
   const forceSubIngredients = () => {
     setSubRecipeIngredients(prev => {
-      if (prev['s7'] && prev['s10'] && prev['s13'] && prev['s16'] && prev['s19'] && prev['s22'] && prev['s25'] && prev['s28']) return prev;
-      return {
-        ...prev,
-        ...(prev['s7'] ? {} : {
-          's7': [
-            { name: 'Masa de Pizza', quantity: 1, unit: 'Unidad', unitPrice: 0, cost: 0 },
-            { name: 'Salsa Clásica', quantity: 80, unit: 'Gramos', unitPrice: 0, cost: 0 },
-            { name: 'Queso (mozarella)', quantity: 100, unit: 'Gramos', unitPrice: 0, cost: 0 },
-            { name: 'Jamón', quantity: 50, unit: 'Gramos', unitPrice: 0, cost: 0 },
-            { name: 'Piña', quantity: 40, unit: 'Gramos', unitPrice: 0, cost: 0 },
-          ],
-          's8': [
-            { name: 'Masa de Pizza', quantity: 1, unit: 'Unidad', unitPrice: 0, cost: 0 },
-            { name: 'Salsa Clásica', quantity: 120, unit: 'Gramos', unitPrice: 0, cost: 0 },
-            { name: 'Queso (mozarella)', quantity: 150, unit: 'Gramos', unitPrice: 0, cost: 0 },
-            { name: 'Jamón', quantity: 80, unit: 'Gramos', unitPrice: 0, cost: 0 },
-            { name: 'Piña', quantity: 60, unit: 'Gramos', unitPrice: 0, cost: 0 },
-          ],
-          's9': [
-            { name: 'Masa de Pizza', quantity: 1, unit: 'Unidad', unitPrice: 0, cost: 0 },
-            { name: 'Salsa Clásica', quantity: 160, unit: 'Gramos', unitPrice: 0, cost: 0 },
-            { name: 'Queso (mozarella)', quantity: 200, unit: 'Gramos', unitPrice: 0, cost: 0 },
-            { name: 'Jamón', quantity: 110, unit: 'Gramos', unitPrice: 0, cost: 0 },
-            { name: 'Piña', quantity: 80, unit: 'Gramos', unitPrice: 0, cost: 0 },
-          ],
-        }),
-        ...(prev['s10'] ? {} : {
-          's10': [
-            { name: 'Masa de Pizza', quantity: 1, unit: 'Unidad', unitPrice: 0, cost: 0 },
-            { name: 'Salsa Clásica', quantity: 80, unit: 'Gramos', unitPrice: 0, cost: 0 },
-            { name: 'Queso (mozarella)', quantity: 100, unit: 'Gramos', unitPrice: 0, cost: 0 },
-            { name: 'Jamón', quantity: 50, unit: 'Gramos', unitPrice: 0, cost: 0 },
-            { name: 'Champiñones', quantity: 40, unit: 'Gramos', unitPrice: 0, cost: 0 },
-          ],
-          's11': [
-            { name: 'Masa de Pizza', quantity: 1, unit: 'Unidad', unitPrice: 0, cost: 0 },
-            { name: 'Salsa Clásica', quantity: 120, unit: 'Gramos', unitPrice: 0, cost: 0 },
-            { name: 'Queso (mozarella)', quantity: 150, unit: 'Gramos', unitPrice: 0, cost: 0 },
-            { name: 'Jamón', quantity: 80, unit: 'Gramos', unitPrice: 0, cost: 0 },
-            { name: 'Champiñones', quantity: 60, unit: 'Gramos', unitPrice: 0, cost: 0 },
-          ],
-          's12': [
-            { name: 'Masa de Pizza', quantity: 1, unit: 'Unidad', unitPrice: 0, cost: 0 },
-            { name: 'Salsa Clásica', quantity: 160, unit: 'Gramos', unitPrice: 0, cost: 0 },
-            { name: 'Queso (mozarella)', quantity: 200, unit: 'Gramos', unitPrice: 0, cost: 0 },
-            { name: 'Jamón', quantity: 110, unit: 'Gramos', unitPrice: 0, cost: 0 },
-            { name: 'Champiñones', quantity: 80, unit: 'Gramos', unitPrice: 0, cost: 0 },
-          ],
-        }),
-        ...(prev['s13'] ? {} : {
-          's13': [
-            { name: 'Masa de Pizza', quantity: 1, unit: 'Unidad', unitPrice: 0, cost: 0 },
-            { name: 'Salsa Clásica', quantity: 80, unit: 'Gramos', unitPrice: 0, cost: 0 },
-            { name: 'Queso (mozarella)', quantity: 100, unit: 'Gramos', unitPrice: 0, cost: 0 },
-            { name: 'Albahaca', quantity: 5, unit: 'Gramos', unitPrice: 0, cost: 0 },
-          ],
-          's14': [
-            { name: 'Masa de Pizza', quantity: 1, unit: 'Unidad', unitPrice: 0, cost: 0 },
-            { name: 'Salsa Clásica', quantity: 120, unit: 'Gramos', unitPrice: 0, cost: 0 },
-            { name: 'Queso (mozarella)', quantity: 150, unit: 'Gramos', unitPrice: 0, cost: 0 },
-            { name: 'Albahaca', quantity: 8, unit: 'Gramos', unitPrice: 0, cost: 0 },
-          ],
-          's15': [
-            { name: 'Masa de Pizza', quantity: 1, unit: 'Unidad', unitPrice: 0, cost: 0 },
-            { name: 'Salsa Clásica', quantity: 160, unit: 'Gramos', unitPrice: 0, cost: 0 },
-            { name: 'Queso (mozarella)', quantity: 200, unit: 'Gramos', unitPrice: 0, cost: 0 },
-            { name: 'Albahaca', quantity: 10, unit: 'Gramos', unitPrice: 0, cost: 0 },
-          ],
-        }),
-        ...(prev['s16'] ? {} : {
-          's16': [
-            { name: 'Masa de Pizza', quantity: 1, unit: 'Unidad', unitPrice: 0, cost: 0 },
-            { name: 'Salsa Clásica', quantity: 80, unit: 'Gramos', unitPrice: 0, cost: 0 },
-            { name: 'Ajo', quantity: 15, unit: 'Gramos', unitPrice: 0, cost: 0 },
-            { name: 'Orégano', quantity: 5, unit: 'Gramos', unitPrice: 0, cost: 0 },
-            { name: 'Aceite de oliva', quantity: 0.02, unit: 'Litro', unitPrice: 0, cost: 0 },
-          ],
-          's17': [
-            { name: 'Masa de Pizza', quantity: 1, unit: 'Unidad', unitPrice: 0, cost: 0 },
-            { name: 'Salsa Clásica', quantity: 120, unit: 'Gramos', unitPrice: 0, cost: 0 },
-            { name: 'Ajo', quantity: 25, unit: 'Gramos', unitPrice: 0, cost: 0 },
-            { name: 'Orégano', quantity: 8, unit: 'Gramos', unitPrice: 0, cost: 0 },
-            { name: 'Aceite de oliva', quantity: 0.03, unit: 'Litro', unitPrice: 0, cost: 0 },
-          ],
-          's18': [
-            { name: 'Masa de Pizza', quantity: 1, unit: 'Unidad', unitPrice: 0, cost: 0 },
-            { name: 'Salsa Clásica', quantity: 160, unit: 'Gramos', unitPrice: 0, cost: 0 },
-            { name: 'Ajo', quantity: 35, unit: 'Gramos', unitPrice: 0, cost: 0 },
-            { name: 'Orégano', quantity: 10, unit: 'Gramos', unitPrice: 0, cost: 0 },
-            { name: 'Aceite de oliva', quantity: 0.04, unit: 'Litro', unitPrice: 0, cost: 0 },
-          ],
-        }),
-        ...(prev['s19'] ? {} : {
-          's19': [
-            { name: 'Masa de Pizza', quantity: 1, unit: 'Unidad', unitPrice: 0, cost: 0 },
-            { name: 'Salsa Clásica', quantity: 80, unit: 'Gramos', unitPrice: 0, cost: 0 },
-            { name: 'Queso (mozarella)', quantity: 100, unit: 'Gramos', unitPrice: 0, cost: 0 },
-            { name: 'Anchoas', quantity: 20, unit: 'Gramos', unitPrice: 0, cost: 0 },
-            { name: 'Alcaparras', quantity: 15, unit: 'Gramos', unitPrice: 0, cost: 0 },
-            { name: 'Orégano', quantity: 5, unit: 'Gramos', unitPrice: 0, cost: 0 },
-          ],
-          's20': [
-            { name: 'Masa de Pizza', quantity: 1, unit: 'Unidad', unitPrice: 0, cost: 0 },
-            { name: 'Salsa Clásica', quantity: 120, unit: 'Gramos', unitPrice: 0, cost: 0 },
-            { name: 'Queso (mozarella)', quantity: 150, unit: 'Gramos', unitPrice: 0, cost: 0 },
-            { name: 'Anchoas', quantity: 35, unit: 'Gramos', unitPrice: 0, cost: 0 },
-            { name: 'Alcaparras', quantity: 25, unit: 'Gramos', unitPrice: 0, cost: 0 },
-            { name: 'Orégano', quantity: 8, unit: 'Gramos', unitPrice: 0, cost: 0 },
-          ],
-          's21': [
-            { name: 'Masa de Pizza', quantity: 1, unit: 'Unidad', unitPrice: 0, cost: 0 },
-            { name: 'Salsa Clásica', quantity: 160, unit: 'Gramos', unitPrice: 0, cost: 0 },
-            { name: 'Queso (mozarella)', quantity: 200, unit: 'Gramos', unitPrice: 0, cost: 0 },
-            { name: 'Anchoas', quantity: 50, unit: 'Gramos', unitPrice: 0, cost: 0 },
-            { name: 'Alcaparras', quantity: 35, unit: 'Gramos', unitPrice: 0, cost: 0 },
-            { name: 'Orégano', quantity: 10, unit: 'Gramos', unitPrice: 0, cost: 0 },
-          ],
-        }),
-        ...(prev['s22'] ? {} : {
-          's22': [
-            { name: 'Masa de Pizza', quantity: 1, unit: 'Unidad', unitPrice: 0, cost: 0 },
-            { name: 'Salsa Clásica', quantity: 80, unit: 'Gramos', unitPrice: 0, cost: 0 },
-            { name: 'Queso (mozarella)', quantity: 100, unit: 'Gramos', unitPrice: 0, cost: 0 },
-            { name: 'Champiñones', quantity: 30, unit: 'Gramos', unitPrice: 0, cost: 0 },
-            { name: 'Pimiento', quantity: 30, unit: 'Gramos', unitPrice: 0, cost: 0 },
-            { name: 'Cebolla', quantity: 30, unit: 'Gramos', unitPrice: 0, cost: 0 },
-            { name: 'Aceitunas', quantity: 20, unit: 'Gramos', unitPrice: 0, cost: 0 },
-          ],
-          's23': [
-            { name: 'Masa de Pizza', quantity: 1, unit: 'Unidad', unitPrice: 0, cost: 0 },
-            { name: 'Salsa Clásica', quantity: 120, unit: 'Gramos', unitPrice: 0, cost: 0 },
-            { name: 'Queso (mozarella)', quantity: 150, unit: 'Gramos', unitPrice: 0, cost: 0 },
-            { name: 'Champiñones', quantity: 50, unit: 'Gramos', unitPrice: 0, cost: 0 },
-            { name: 'Pimiento', quantity: 50, unit: 'Gramos', unitPrice: 0, cost: 0 },
-            { name: 'Cebolla', quantity: 50, unit: 'Gramos', unitPrice: 0, cost: 0 },
-            { name: 'Aceitunas', quantity: 35, unit: 'Gramos', unitPrice: 0, cost: 0 },
-          ],
-          's24': [
-            { name: 'Masa de Pizza', quantity: 1, unit: 'Unidad', unitPrice: 0, cost: 0 },
-            { name: 'Salsa Clásica', quantity: 160, unit: 'Gramos', unitPrice: 0, cost: 0 },
-            { name: 'Queso (mozarella)', quantity: 200, unit: 'Gramos', unitPrice: 0, cost: 0 },
-            { name: 'Champiñones', quantity: 70, unit: 'Gramos', unitPrice: 0, cost: 0 },
-            { name: 'Pimiento', quantity: 70, unit: 'Gramos', unitPrice: 0, cost: 0 },
-            { name: 'Cebolla', quantity: 70, unit: 'Gramos', unitPrice: 0, cost: 0 },
-            { name: 'Aceitunas', quantity: 50, unit: 'Gramos', unitPrice: 0, cost: 0 },
-          ],
-        }),
-        ...(prev['s25'] ? {} : {
-          's25': [
-            { name: 'Masa de Pizza', quantity: 1, unit: 'Unidad', unitPrice: 0, cost: 0 },
-            { name: 'Salsa Clásica', quantity: 80, unit: 'Gramos', unitPrice: 0, cost: 0 },
-            { name: 'Queso (mozarella)', quantity: 100, unit: 'Gramos', unitPrice: 0, cost: 0 },
-            { name: 'Tomate cherry', quantity: 50, unit: 'Gramos', unitPrice: 0, cost: 0 },
-            { name: 'Albahaca', quantity: 5, unit: 'Gramos', unitPrice: 0, cost: 0 },
-          ],
-          's26': [
-            { name: 'Masa de Pizza', quantity: 1, unit: 'Unidad', unitPrice: 0, cost: 0 },
-            { name: 'Salsa Clásica', quantity: 120, unit: 'Gramos', unitPrice: 0, cost: 0 },
-            { name: 'Queso (mozarella)', quantity: 150, unit: 'Gramos', unitPrice: 0, cost: 0 },
-            { name: 'Tomate cherry', quantity: 80, unit: 'Gramos', unitPrice: 0, cost: 0 },
-            { name: 'Albahaca', quantity: 8, unit: 'Gramos', unitPrice: 0, cost: 0 },
-          ],
-          's27': [
-            { name: 'Masa de Pizza', quantity: 1, unit: 'Unidad', unitPrice: 0, cost: 0 },
-            { name: 'Salsa Clásica', quantity: 160, unit: 'Gramos', unitPrice: 0, cost: 0 },
-            { name: 'Queso (mozarella)', quantity: 200, unit: 'Gramos', unitPrice: 0, cost: 0 },
-            { name: 'Tomate cherry', quantity: 110, unit: 'Gramos', unitPrice: 0, cost: 0 },
-            { name: 'Albahaca', quantity: 10, unit: 'Gramos', unitPrice: 0, cost: 0 },
-          ],
-        }),
-        ...(prev['s28'] ? {} : {
-          's28': [
-            { name: 'Masa de Pizza', quantity: 1, unit: 'Unidad', unitPrice: 0, cost: 0 },
-            { name: 'Salsa Clásica', quantity: 80, unit: 'Gramos', unitPrice: 0, cost: 0 },
-            { name: 'Queso (mozarella)', quantity: 100, unit: 'Gramos', unitPrice: 0, cost: 0 },
-            { name: 'Aceitunas negras', quantity: 25, unit: 'Gramos', unitPrice: 0, cost: 0 },
-            { name: 'Tomate seco', quantity: 20, unit: 'Gramos', unitPrice: 0, cost: 0 },
-            { name: 'Alcachofa', quantity: 25, unit: 'Gramos', unitPrice: 0, cost: 0 },
-            { name: 'Orégano', quantity: 5, unit: 'Gramos', unitPrice: 0, cost: 0 },
-          ],
-          's29': [
-            { name: 'Masa de Pizza', quantity: 1, unit: 'Unidad', unitPrice: 0, cost: 0 },
-            { name: 'Salsa Clásica', quantity: 120, unit: 'Gramos', unitPrice: 0, cost: 0 },
-            { name: 'Queso (mozarella)', quantity: 150, unit: 'Gramos', unitPrice: 0, cost: 0 },
-            { name: 'Aceitunas negras', quantity: 40, unit: 'Gramos', unitPrice: 0, cost: 0 },
-            { name: 'Tomate seco', quantity: 35, unit: 'Gramos', unitPrice: 0, cost: 0 },
-            { name: 'Alcachofa', quantity: 40, unit: 'Gramos', unitPrice: 0, cost: 0 },
-            { name: 'Orégano', quantity: 8, unit: 'Gramos', unitPrice: 0, cost: 0 },
-          ],
-          's30': [
-            { name: 'Masa de Pizza', quantity: 1, unit: 'Unidad', unitPrice: 0, cost: 0 },
-            { name: 'Salsa Clásica', quantity: 160, unit: 'Gramos', unitPrice: 0, cost: 0 },
-            { name: 'Queso (mozarella)', quantity: 200, unit: 'Gramos', unitPrice: 0, cost: 0 },
-            { name: 'Aceitunas negras', quantity: 55, unit: 'Gramos', unitPrice: 0, cost: 0 },
-            { name: 'Tomate seco', quantity: 50, unit: 'Gramos', unitPrice: 0, cost: 0 },
-            { name: 'Alcachofa', quantity: 55, unit: 'Gramos', unitPrice: 0, cost: 0 },
-            { name: 'Orégano', quantity: 10, unit: 'Gramos', unitPrice: 0, cost: 0 },
-          ],
-        }),
-      };
+      const needed = Object.keys(defaultSubIngredients);
+      const allExist = needed.every(id => prev[id]);
+      if (allExist) return prev;
+      const result = { ...prev };
+      for (const [id, ingredients] of Object.entries(defaultSubIngredients)) {
+        if (!result[id]) result[id] = ingredients;
+      }
+      return result;
     });
   };
+
 
   const loadRecetasFromLocalStorage = () => {
     try {
@@ -908,6 +837,10 @@ export default function Inventario() {
     { id: '28', category: 'PIZZAS VEGETARIANAS', name: 'Sorrentina' },
     { id: '29', category: 'PIZZAS VEGETARIANAS', name: 'Mediterranea' },
     { id: '8', category: 'PIZZAS ESPECIALES', name: 'BBQ Chicken' },
+    { id: '30', category: 'PIZZAS ESPECIALES', name: 'Panorama' },
+    { id: '31', category: 'PIZZAS ESPECIALES', name: 'Italiana' },
+    { id: '32', category: 'PIZZAS ESPECIALES', name: '4 Quesos' },
+    { id: '33', category: 'PIZZAS ESPECIALES', name: 'Rústica' },
     { id: '10', category: 'PASTAS RELLENAS', name: 'Ravioli Ricotta' },
     { id: '11', category: 'PASTAS RELLENAS', name: 'Agnolotti' },
     { id: '12', category: 'PASTAS', name: 'Spaghetti Carbonara' },

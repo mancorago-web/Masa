@@ -721,7 +721,7 @@ export default function Inventario() {
       if (savedSubIngredients) {
         const parsed = JSON.parse(savedSubIngredients);
         if (typeof parsed === 'object') {
-          setSubRecipeIngredients({ ...defaultSubIngredients, ...parsed });
+          setSubRecipeIngredients({ ...parsed, ...defaultSubIngredients });
         }
       }
     } catch (e) { console.error('Error loading subIngredients:', e); }
@@ -760,7 +760,7 @@ export default function Inventario() {
     }
     forceSubRecipes();
     if (data.subIngredients && typeof data.subIngredients === 'object') {
-      setSubRecipeIngredients({ ...defaultSubIngredients, ...data.subIngredients as Record<string, RecipeIngredient[]> });
+      setSubRecipeIngredients({ ...data.subIngredients as Record<string, RecipeIngredient[]>, ...defaultSubIngredients });
     }
     forceSubIngredients();
     if (data.nextRecipeId && typeof data.nextRecipeId === 'number') {

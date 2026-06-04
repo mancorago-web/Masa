@@ -536,6 +536,7 @@ export default function Inventario() {
   const [subRecipeIngredients, setSubRecipeIngredients] = useState<Record<string, RecipeIngredient[]>>(defaultSubIngredients);
   const nextRecipeId = useRef<number>(30);
   const deletedRecipeIds = useRef<Set<string>>(new Set());
+  const deletedSubIngredientKeys = useRef<Set<string>>(new Set());
 
   const getDataDoc = async () => {
     const db = getDb();
@@ -631,6 +632,7 @@ export default function Inventario() {
       localStorage.setItem('masa-subIngredients', JSON.stringify(subRecipeIngredients));
       localStorage.setItem('masa-nextRecipeId', JSON.stringify(nextRecipeId.current));
       localStorage.setItem('masa-deletedRecipes', JSON.stringify(Array.from(deletedRecipeIds.current)));
+      localStorage.setItem('masa-deletedSubIngredientKeys', JSON.stringify(Array.from(deletedSubIngredientKeys.current)));
       syncToFirestore({
         recipes: recipesRef.current,
         recipeIngredients: recipeIngredientsRef.current,
@@ -638,6 +640,7 @@ export default function Inventario() {
         subIngredients: subRecipeIngredients,
         nextRecipeId: nextRecipeId.current,
         deletedRecipes: Array.from(deletedRecipeIds.current),
+        deletedSubIngredientKeys: Array.from(deletedSubIngredientKeys.current),
       });
       setShowRecetasSaved(true);
       setTimeout(() => setShowRecetasSaved(false), 2000);
@@ -686,11 +689,12 @@ export default function Inventario() {
 
   const mergeSubIngredients = (saved: Record<string, RecipeIngredient[]>) => {
     const deprecatedNames = new Set(['Masa de Pizza', 'Salsa Clásica']);
+    const deleted = deletedSubIngredientKeys.current;
     setSubRecipeIngredients(() => {
       const result: Record<string, RecipeIngredient[]> = {};
       for (const [id, defaultIngs] of Object.entries(defaultSubIngredients)) {
         const savedIngs = (saved[id] || []).filter(i => !deprecatedNames.has(i.name));
-        const merged = [...defaultIngs];
+        const merged = [...defaultIngs.filter(ing => !deleted.has(`${id}:${ing.name}`))];
         for (const ing of savedIngs) {
           const idx = merged.findIndex(m => m.name === ing.name);
           if (idx >= 0) merged[idx] = ing; else merged.push(ing);
@@ -767,6 +771,13 @@ export default function Inventario() {
         if (Array.isArray(parsed)) parsed.forEach(id => deletedRecipeIds.current.add(id));
       }
     } catch (e) { console.error('Error loading deletedRecipes:', e); }
+    try {
+      const saved = localStorage.getItem('masa-deletedSubIngredientKeys');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) parsed.forEach(k => deletedSubIngredientKeys.current.add(k));
+      }
+    } catch (e) { console.error('Error loading deletedSubIngredientKeys:', e); }
   };
 
   const recetasFromFirestoreData = (data: Record<string, unknown>) => {
@@ -800,6 +811,9 @@ export default function Inventario() {
     }
     if (data.nextRecipeId && typeof data.nextRecipeId === 'number') {
       nextRecipeId.current = data.nextRecipeId as number;
+    }
+    if (data.deletedSubIngredientKeys && Array.isArray(data.deletedSubIngredientKeys)) {
+      (data.deletedSubIngredientKeys as string[]).forEach(k => deletedSubIngredientKeys.current.add(k));
     }
   };
 
@@ -975,6 +989,8 @@ export default function Inventario() {
 
   const removeSubIngredient = (subId: string, index: number) => {
     setSubRecipeIngredients(prev => {
+      const ing = (prev[subId] || [])[index];
+      if (ing) deletedSubIngredientKeys.current.add(`${subId}:${ing.name}`);
       const updated = { ...prev };
       updated[subId] = (updated[subId] || []).filter((_, i) => i !== index);
       return updated;

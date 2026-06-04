@@ -181,6 +181,7 @@ export default function Inventario() {
     { id: 's44', parentId: '33', name: 'Rústica 12 Pzas.' },
     { id: 's45', parentId: '33', name: 'Rústica 16 Pzas.' },
   ];
+  const SUBS_DATA_VERSION = '2026-06-04-v1';
   const defaultSubIngredients: Record<string, RecipeIngredient[]> = {
     's1': [
       { name: 'Masa de Pizza', quantity: 1, unit: 'Unidad', unitPrice: 0, cost: 0 },
@@ -530,7 +531,6 @@ export default function Inventario() {
   const [subRecipeIngredients, setSubRecipeIngredients] = useState<Record<string, RecipeIngredient[]>>(defaultSubIngredients);
   const nextRecipeId = useRef<number>(30);
   const deletedRecipeIds = useRef<Set<string>>(new Set());
-  const initialSubLoadDone = useRef(false);
 
   const getDataDoc = async () => {
     const db = getDb();
@@ -694,7 +694,7 @@ export default function Inventario() {
           const savedById = new Map(parsed.map((r: any) => [r.id, r]));
           const merged = defaultRecipes
             .filter(def => !deletedRecipeIds.current.has(def.id))
-            .map(def => savedById.has(def.id) ? { ...def } : def);
+            .map(def => savedById.has(def.id) ? { ...savedById.get(def.id) } : def);
           const mergedIds = new Set(merged.map((r: any) => r.id));
           for (const item of parsed) {
             if (!mergedIds.has(item.id)) { merged.push(item); mergedIds.add(item.id); }
@@ -730,16 +730,17 @@ export default function Inventario() {
       if (savedSubIngredients) {
         const parsed = JSON.parse(savedSubIngredients);
         if (typeof parsed === 'object') {
-          if (!initialSubLoadDone.current) {
+          const savedVersion = localStorage.getItem('masa-subs-version');
+          if (savedVersion !== SUBS_DATA_VERSION) {
             setSubRecipeIngredients({ ...parsed, ...defaultSubIngredients });
-            initialSubLoadDone.current = true;
+            localStorage.setItem('masa-subs-version', SUBS_DATA_VERSION);
           } else {
             setSubRecipeIngredients({ ...defaultSubIngredients, ...parsed });
           }
         }
       }
     } catch (e) { console.error('Error loading subIngredients:', e); }
-    if (!initialSubLoadDone.current) forceSubIngredients();
+    forceSubIngredients();
     try {
       const savedNextId = localStorage.getItem('masa-nextRecipeId');
       if (savedNextId) {
@@ -756,7 +757,7 @@ export default function Inventario() {
       const savedById = new Map((data.recipes as { id: string }[]).map(r => [r.id, r]));
       const merged = defaultRecipes
         .filter(def => !deletedRecipeIds.current.has(def.id))
-        .map(def => savedById.has(def.id) ? { ...def } : def);
+        .map(def => savedById.has(def.id) ? { ...savedById.get(def.id) } : def);
       const mergedIds = new Set(merged.map(r => r.id));
       for (const item of data.recipes as { id: string }[]) {
         if (!mergedIds.has(item.id)) { merged.push(item); mergedIds.add(item.id); }
@@ -775,9 +776,10 @@ export default function Inventario() {
     forceSubRecipes();
     if (data.subIngredients && typeof data.subIngredients === 'object') {
       const saved = data.subIngredients as Record<string, RecipeIngredient[]>;
-      if (!initialSubLoadDone.current) {
+      const savedVersion = localStorage.getItem('masa-subs-version');
+      if (savedVersion !== SUBS_DATA_VERSION) {
         setSubRecipeIngredients({ ...saved, ...defaultSubIngredients });
-        initialSubLoadDone.current = true;
+        localStorage.setItem('masa-subs-version', SUBS_DATA_VERSION);
       } else {
         setSubRecipeIngredients({ ...defaultSubIngredients, ...saved });
       }

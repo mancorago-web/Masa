@@ -680,14 +680,15 @@ export default function Inventario() {
   };
 
   const mergeSubIngredients = (saved: Record<string, RecipeIngredient[]>) => {
+    const deprecatedNames = new Set(['Masa de Pizza', 'Salsa Clásica']);
     setSubRecipeIngredients(() => {
       const result: Record<string, RecipeIngredient[]> = {};
       for (const [id, defaultIngs] of Object.entries(defaultSubIngredients)) {
         const savedIngs = saved[id] || [];
-        const savedNames = new Set(savedIngs.map(i => i.name));
-        const merged = [...savedIngs];
-        for (const ing of defaultIngs) {
-          if (!savedNames.has(ing.name)) merged.push(ing);
+        const defaultNames = new Set(defaultIngs.map(i => i.name));
+        const merged = [...defaultIngs];
+        for (const ing of savedIngs) {
+          if (!defaultNames.has(ing.name) && !deprecatedNames.has(ing.name)) merged.push(ing);
         }
         result[id] = merged;
       }

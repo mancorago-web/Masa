@@ -649,15 +649,19 @@ export default function Inventario() {
   const forceSubRecipes = () => {
     const currentRecipes = recipesRef.current;
     const pizzaCategories = ['PIZZAS CLÁSICAS', 'PIZZAS VEGETARIANAS', 'PIZZAS ESPECIALES'];
-    setSubRecipes(() => {
+    setSubRecipes(prev => {
       const result = [...defaultSubRecipes];
+      for (const sub of prev) {
+        if (!result.some(s => s.id === sub.id)) {
+          result.push(sub);
+        }
+      }
       let maxId = result.reduce((max, s) => {
         const num = parseInt(s.id.replace('s', ''));
         return num > max ? num : max;
       }, 0);
-      const pizzaRecipes = currentRecipes.filter(r => pizzaCategories.includes(r.category));
-      for (const recipe of pizzaRecipes) {
-        if (!result.some(s => s.parentId === recipe.id)) {
+      for (const recipe of currentRecipes) {
+        if (pizzaCategories.includes(recipe.category) && !result.some(s => s.parentId === recipe.id)) {
           result.push(
             { id: `s${maxId + 1}`, parentId: recipe.id, name: `${recipe.name} 8 Pzas.` },
             { id: `s${maxId + 2}`, parentId: recipe.id, name: `${recipe.name} 12 Pzas.` },

@@ -626,6 +626,11 @@ export default function Inventario() {
   const saveRecetas = () => {
     try {
       localStorage.setItem('masa-recipes', JSON.stringify(recipesRef.current));
+      localStorage.setItem('masa-recipeIngredients', JSON.stringify(recipeIngredientsRef.current));
+      localStorage.setItem('masa-subRecipes', JSON.stringify(subRecipes));
+      localStorage.setItem('masa-subIngredients', JSON.stringify(subRecipeIngredients));
+      localStorage.setItem('masa-nextRecipeId', JSON.stringify(nextRecipeId.current));
+      localStorage.setItem('masa-deletedRecipes', JSON.stringify(Array.from(deletedRecipeIds.current)));
       syncToFirestore({
         recipes: recipesRef.current,
         recipeIngredients: recipeIngredientsRef.current,
@@ -755,6 +760,13 @@ export default function Inventario() {
         nextRecipeId.current = parseInt(savedNextId);
       }
     } catch (e) { console.error('Error loading nextRecipeId:', e); }
+    try {
+      const savedDeleted = localStorage.getItem('masa-deletedRecipes');
+      if (savedDeleted) {
+        const parsed = JSON.parse(savedDeleted);
+        if (Array.isArray(parsed)) parsed.forEach(id => deletedRecipeIds.current.add(id));
+      }
+    } catch (e) { console.error('Error loading deletedRecipes:', e); }
   };
 
   const recetasFromFirestoreData = (data: Record<string, unknown>) => {

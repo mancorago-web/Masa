@@ -181,24 +181,27 @@ export default function Inventario() {
     { id: 's44', parentId: '33', name: 'Rústica 12 Pzas.' },
     { id: 's45', parentId: '33', name: 'Rústica 16 Pzas.' },
   ];
-  const SUBS_DATA_VERSION = '2026-06-04-v1';
+  const SUBS_DATA_VERSION = '2026-06-04-v2';
   const defaultSubIngredients: Record<string, RecipeIngredient[]> = {
     's1': [
-      { name: 'Masa de Pizza', quantity: 1, unit: 'Unidad', unitPrice: 0, cost: 0 },
-      { name: 'Salsa Clásica', quantity: 80, unit: 'Gramos', unitPrice: 0, cost: 0 },
+      { name: 'Masa (Pan)', quantity: 1, unit: 'Unidad', unitPrice: 0, cost: 0 },
+      { name: 'Salsa de tomate', quantity: 80, unit: 'Gramos', unitPrice: 0, cost: 0 },
       { name: 'Queso (mozarella)', quantity: 100, unit: 'Gramos', unitPrice: 0, cost: 0 },
+      { name: 'Orégano', quantity: 5, unit: 'Gramos', unitPrice: 0, cost: 0 },
       { name: 'Jamón', quantity: 60, unit: 'Gramos', unitPrice: 0, cost: 0 },
     ],
     's2': [
-      { name: 'Masa de Pizza', quantity: 1, unit: 'Unidad', unitPrice: 0, cost: 0 },
-      { name: 'Salsa Clásica', quantity: 120, unit: 'Gramos', unitPrice: 0, cost: 0 },
+      { name: 'Masa (Pan)', quantity: 1, unit: 'Unidad', unitPrice: 0, cost: 0 },
+      { name: 'Salsa de tomate', quantity: 120, unit: 'Gramos', unitPrice: 0, cost: 0 },
       { name: 'Queso (mozarella)', quantity: 150, unit: 'Gramos', unitPrice: 0, cost: 0 },
+      { name: 'Orégano', quantity: 8, unit: 'Gramos', unitPrice: 0, cost: 0 },
       { name: 'Jamón', quantity: 100, unit: 'Gramos', unitPrice: 0, cost: 0 },
     ],
     's3': [
-      { name: 'Masa de Pizza', quantity: 1, unit: 'Unidad', unitPrice: 0, cost: 0 },
-      { name: 'Salsa Clásica', quantity: 160, unit: 'Gramos', unitPrice: 0, cost: 0 },
+      { name: 'Masa (Pan)', quantity: 1, unit: 'Unidad', unitPrice: 0, cost: 0 },
+      { name: 'Salsa de tomate', quantity: 160, unit: 'Gramos', unitPrice: 0, cost: 0 },
       { name: 'Queso (mozarella)', quantity: 200, unit: 'Gramos', unitPrice: 0, cost: 0 },
+      { name: 'Orégano', quantity: 10, unit: 'Gramos', unitPrice: 0, cost: 0 },
       { name: 'Jamón', quantity: 140, unit: 'Gramos', unitPrice: 0, cost: 0 },
     ],
     's4': [

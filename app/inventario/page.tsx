@@ -76,6 +76,7 @@ const initialInventory: InventoryItem[] = [
   { id: '34', category: 'LACTEOS', name: 'Queso azul', currentStock: 1000, unit: 'Gramos', minStock: 1000 },
   { id: '35', category: 'LACTEOS', name: 'Mantequilla', currentStock: 500, unit: 'Gramos', minStock: 500 },
   { id: '55', category: 'LACTEOS', name: 'Leche', currentStock: 1, unit: 'Litro', minStock: 1 },
+  { id: '60', category: 'LACTEOS', name: 'Provola', currentStock: 500, unit: 'Gramos', minStock: 500 },
   { id: '36', category: 'EXTRAS', name: 'Aceite de oliva', currentStock: 0.5, unit: 'Litro', minStock: 0.5 },
   { id: '37', category: 'EXTRAS', name: 'Aceite vegetal', currentStock: 2, unit: 'Litros', minStock: 2 },
   { id: '38', category: 'EXTRAS', name: 'Pimienta', currentStock: 500, unit: 'Gramos', minStock: 500 },

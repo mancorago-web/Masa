@@ -181,6 +181,9 @@ export default function Inventario() {
     { id: 's43', parentId: '33', name: 'Rústica 8 Pzas.' },
     { id: 's44', parentId: '33', name: 'Rústica 12 Pzas.' },
     { id: 's45', parentId: '33', name: 'Rústica 16 Pzas.' },
+    { id: 's46', parentId: '34', name: 'Huerta & Mar 8 Pzas.' },
+    { id: 's47', parentId: '34', name: 'Huerta & Mar 12 Pzas.' },
+    { id: 's48', parentId: '34', name: 'Huerta & Mar 16 Pzas.' },
   ];
   const defaultSubIngredients: Record<string, RecipeIngredient[]> = {
     's1': [
@@ -585,6 +588,36 @@ export default function Inventario() {
       { name: 'Champiñones', quantity: 80, unit: 'Gramos', unitPrice: 0, cost: 0 },
       { name: 'Cebolla', quantity: 70, unit: 'Gramos', unitPrice: 0, cost: 0 },
     ],
+    's46': [
+      { name: 'Masa (Pan)', quantity: 1, unit: 'Unidad', unitPrice: 0, cost: 0 },
+      { name: 'Salsa de tomate', quantity: 80, unit: 'Gramos', unitPrice: 0, cost: 0 },
+      { name: 'Queso (mozarella)', quantity: 100, unit: 'Gramos', unitPrice: 0, cost: 0 },
+      { name: 'Orégano', quantity: 5, unit: 'Gramos', unitPrice: 0, cost: 0 },
+      { name: 'Champiñones', quantity: 40, unit: 'Gramos', unitPrice: 0, cost: 0 },
+      { name: 'Cebolla blanca', quantity: 30, unit: 'Gramos', unitPrice: 0, cost: 0 },
+      { name: 'Aceitunas', quantity: 25, unit: 'Gramos', unitPrice: 0, cost: 0 },
+      { name: 'Atún', quantity: 40, unit: 'Gramos', unitPrice: 0, cost: 0 },
+    ],
+    's47': [
+      { name: 'Masa (Pan)', quantity: 1, unit: 'Unidad', unitPrice: 0, cost: 0 },
+      { name: 'Salsa de tomate', quantity: 120, unit: 'Gramos', unitPrice: 0, cost: 0 },
+      { name: 'Queso (mozarella)', quantity: 150, unit: 'Gramos', unitPrice: 0, cost: 0 },
+      { name: 'Orégano', quantity: 8, unit: 'Gramos', unitPrice: 0, cost: 0 },
+      { name: 'Champiñones', quantity: 60, unit: 'Gramos', unitPrice: 0, cost: 0 },
+      { name: 'Cebolla blanca', quantity: 50, unit: 'Gramos', unitPrice: 0, cost: 0 },
+      { name: 'Aceitunas', quantity: 40, unit: 'Gramos', unitPrice: 0, cost: 0 },
+      { name: 'Atún', quantity: 60, unit: 'Gramos', unitPrice: 0, cost: 0 },
+    ],
+    's48': [
+      { name: 'Masa (Pan)', quantity: 1, unit: 'Unidad', unitPrice: 0, cost: 0 },
+      { name: 'Salsa de tomate', quantity: 160, unit: 'Gramos', unitPrice: 0, cost: 0 },
+      { name: 'Queso (mozarella)', quantity: 200, unit: 'Gramos', unitPrice: 0, cost: 0 },
+      { name: 'Orégano', quantity: 10, unit: 'Gramos', unitPrice: 0, cost: 0 },
+      { name: 'Champiñones', quantity: 80, unit: 'Gramos', unitPrice: 0, cost: 0 },
+      { name: 'Cebolla blanca', quantity: 70, unit: 'Gramos', unitPrice: 0, cost: 0 },
+      { name: 'Aceitunas', quantity: 55, unit: 'Gramos', unitPrice: 0, cost: 0 },
+      { name: 'Atún', quantity: 80, unit: 'Gramos', unitPrice: 0, cost: 0 },
+    ],
   };
 
   const [subRecipes, setSubRecipes] = useState<SubRecipe[]>(defaultSubRecipes);
@@ -956,6 +989,7 @@ export default function Inventario() {
     { id: '31', category: 'PIZZAS ESPECIALES', name: 'Italiana' },
     { id: '32', category: 'PIZZAS ESPECIALES', name: '4 Quesos' },
     { id: '33', category: 'PIZZAS ESPECIALES', name: 'Rústica' },
+    { id: '34', category: 'PIZZAS ESPECIALES', name: 'Huerta & Mar' },
     { id: '10', category: 'PASTAS RELLENAS', name: 'Ravioli Ricotta' },
     { id: '11', category: 'PASTAS RELLENAS', name: 'Agnolotti' },
     { id: '12', category: 'PASTAS', name: 'Spaghetti Carbonara' },

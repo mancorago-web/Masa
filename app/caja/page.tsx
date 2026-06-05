@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { getDb } from "@/lib/firebase";
@@ -14,7 +14,20 @@ interface Transaction {
   deleted?: boolean;
 }
 
+interface DailyRecord {
+  date: string;
+  initialAmount: number;
+  transactions: Transaction[];
+  totalExpenses: number;
+  finalBalance: number;
+}
+
 const STORAGE_KEY = 'masa-caja-chica';
+const DAILY_RECORDS_KEY = 'masa-caja-chica-daily';
+
+function todayStr() {
+  return new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD
+}
 
 function loadFromStorage() {
   if (typeof window === 'undefined') return null;
@@ -29,6 +42,19 @@ function saveToStorage(data: unknown) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
 }
 
+function loadDailyRecordsFromStorage(): Record<string, DailyRecord> {
+  if (typeof window === 'undefined') return {};
+  try {
+    const saved = localStorage.getItem(DAILY_RECORDS_KEY);
+    if (saved) return JSON.parse(saved);
+  } catch {}
+  return {};
+}
+
+function saveDailyRecordsToStorage(records: Record<string, DailyRecord>) {
+  localStorage.setItem(DAILY_RECORDS_KEY, JSON.stringify(records));
+}
+
 async function syncToFirestore(data: Record<string, unknown>) {
   const db = getDb();
   if (!db) return;
@@ -37,6 +63,28 @@ async function syncToFirestore(data: Record<string, unknown>) {
     await doc.set(data, { merge: true });
   } catch (e) {
     console.error('Firestore sync error:', e);
+  }
+}
+
+async function saveDailyRecordToFirestore(record: DailyRecord) {
+  const db = getDb();
+  if (!db) return;
+  try {
+    await db.collection('cajaChicaDaily').doc(record.date).set(record);
+  } catch (e) {
+    console.error('Firestore daily record sync error:', e);
+  }
+}
+
+async function loadDailyRecordsFromFirestore(): Promise<DailyRecord[]> {
+  const db = getDb();
+  if (!db) return [];
+  try {
+    const snap = await db.collection('cajaChicaDaily').orderBy('date', 'desc').get();
+    return snap.docs.map((d: any) => d.data() as DailyRecord);
+  } catch (e) {
+    console.error('Firestore load daily records error:', e);
+    return [];
   }
 }
 
@@ -51,6 +99,12 @@ export default function CajaChica() {
   const [modalDescription, setModalDescription] = useState('');
   const [modalAmount, setModalAmount] = useState('');
   const [savedMessage, setSavedMessage] = useState(false);
+  const [showRegistro, setShowRegistro] = useState(false);
+  const [registroDate, setRegistroDate] = useState(todayStr());
+  const [registroRecord, setRegistroRecord] = useState<DailyRecord | null>(null);
+  const [availableDates, setAvailableDates] = useState<string[]>([]);
+  const [loadingRecords, setLoadingRecords] = useState(false);
+  const dailyRecordsRef = useRef<Record<string, DailyRecord>>({});
 
   useEffect(() => {
     const saved = loadFromStorage();
@@ -58,12 +112,30 @@ export default function CajaChica() {
       setInitialAmount(saved.initialAmount ?? defaultInitialAmount);
       setTransactions(saved.transactions ?? []);
     }
+    // Load cached daily records
+    const cached = loadDailyRecordsFromStorage();
+    dailyRecordsRef.current = cached;
+    setAvailableDates(Object.keys(cached).sort().reverse());
   }, []);
 
   useEffect(() => {
     const data = { initialAmount, transactions };
     saveToStorage(data);
     syncToFirestore(data);
+    // Auto-save today's daily record
+    const today = todayStr();
+    const activeTotal = transactions.reduce((sum, t) => t.deleted ? sum : sum + t.amount, 0);
+    const record: DailyRecord = {
+      date: today,
+      initialAmount,
+      transactions,
+      totalExpenses: activeTotal,
+      finalBalance: initialAmount - activeTotal,
+    };
+    dailyRecordsRef.current = { ...dailyRecordsRef.current, [today]: record };
+    saveDailyRecordsToStorage(dailyRecordsRef.current);
+    saveDailyRecordToFirestore(record);
+    setAvailableDates(Object.keys(dailyRecordsRef.current).sort().reverse());
   }, [initialAmount, transactions]);
 
   const totalExpenses = transactions.reduce((sum, t) => t.deleted ? sum : sum + t.amount, 0);
@@ -115,6 +187,33 @@ export default function CajaChica() {
     setTransactions(prev => prev.map(t => t.id === id ? { ...t, deleted: true } : t));
     setSavedMessage(true);
     setTimeout(() => setSavedMessage(false), 2000);
+  };
+
+  const openRegistro = async () => {
+    setLoadingRecords(true);
+    setRegistroDate(todayStr());
+    setRegistroRecord(null);
+    // Try to load from Firestore for fresh data
+    const firestoreRecords = await loadDailyRecordsFromFirestore();
+    if (firestoreRecords.length > 0) {
+      const merged: Record<string, DailyRecord> = {};
+      for (const r of firestoreRecords) {
+        merged[r.date] = r;
+      }
+      // Merge with localStorage cache (local takes precedence for today)
+      const cached = loadDailyRecordsFromStorage();
+      dailyRecordsRef.current = { ...merged, ...cached };
+    } else {
+      dailyRecordsRef.current = loadDailyRecordsFromStorage();
+    }
+    setAvailableDates(Object.keys(dailyRecordsRef.current).sort().reverse());
+    setShowRegistro(true);
+    setLoadingRecords(false);
+  };
+
+  const viewRegistroDate = (date: string) => {
+    setRegistroDate(date);
+    setRegistroRecord(dailyRecordsRef.current[date] || null);
   };
 
   const formatCurrency = (n: number) => `S/${n.toFixed(2)}`;
@@ -174,6 +273,9 @@ export default function CajaChica() {
         <div className="flex gap-3 mb-6">
           <button onClick={openModal} className="px-6 py-3 bg-orange-500 text-white font-bold rounded-lg hover:bg-orange-600 transition">
             + Agregar Gasto
+          </button>
+          <button onClick={openRegistro} className="px-6 py-3 bg-blue-500 text-white font-bold rounded-lg hover:bg-blue-600 transition">
+            Registro
           </button>
         </div>
 
@@ -255,6 +357,90 @@ export default function CajaChica() {
                     Cancelar
                   </button>
                 </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Registro Modal */}
+        {showRegistro && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg w-full max-w-3xl shadow-xl max-h-[90vh] flex flex-col">
+              <div className="flex items-center justify-between p-4 border-b">
+                <h2 className="text-xl font-bold">Registro Diario</h2>
+                <button onClick={() => setShowRegistro(false)} className="text-gray-500 hover:text-gray-700 text-xl font-bold">✕</button>
+              </div>
+              <div className="p-4 border-b bg-gray-50">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Seleccionar fecha</label>
+                <select
+                  value={registroDate}
+                  onChange={(e) => viewRegistroDate(e.target.value)}
+                  className="w-full px-3 py-2 border rounded-lg bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-green-500"
+                >
+                  {availableDates.length === 0 && <option value="">No hay registros</option>}
+                  {availableDates.map(d => (
+                    <option key={d} value={d}>{d}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex-1 overflow-y-auto p-4">
+                {loadingRecords ? (
+                  <p className="text-gray-500 text-center py-8">Cargando...</p>
+                ) : registroRecord ? (
+                  <>
+                    <div className="grid grid-cols-3 gap-3 mb-4">
+                      <div className="bg-gray-50 p-3 rounded-lg text-center">
+                        <p className="text-xs text-gray-500">Fondo Inicial</p>
+                        <p className="text-lg font-bold text-gray-800">{formatCurrency(registroRecord.initialAmount)}</p>
+                      </div>
+                      <div className="bg-gray-50 p-3 rounded-lg text-center">
+                        <p className="text-xs text-gray-500">Total Gastos</p>
+                        <p className="text-lg font-bold text-red-600">{formatCurrency(registroRecord.totalExpenses)}</p>
+                      </div>
+                      <div className="bg-gray-50 p-3 rounded-lg text-center">
+                        <p className="text-xs text-gray-500">Saldo Final</p>
+                        <p className={`text-lg font-bold ${registroRecord.finalBalance >= 0 ? 'text-green-600' : 'text-red-600'}`}>{formatCurrency(registroRecord.finalBalance)}</p>
+                      </div>
+                    </div>
+                    {registroRecord.transactions.length === 0 ? (
+                      <p className="text-gray-500 text-center py-4">Sin movimientos este día.</p>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead className="bg-gray-50">
+                            <tr>
+                              <th className="px-4 py-2 text-left font-medium text-gray-600">Hora</th>
+                              <th className="px-4 py-2 text-left font-medium text-gray-600">Tipo</th>
+                              <th className="px-4 py-2 text-left font-medium text-gray-600">Descripción</th>
+                              <th className="px-4 py-2 text-right font-medium text-gray-600">Monto</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-200">
+                            {registroRecord.transactions.map(t => (
+                              <tr key={t.id} className={t.deleted ? 'bg-gray-100 opacity-60' : ''}>
+                                <td className="px-4 py-2 text-gray-600 whitespace-nowrap">{t.date}</td>
+                                <td className="px-4 py-2 whitespace-nowrap">
+                                  <span className={`px-2 py-1 rounded text-xs font-bold ${t.type === 'GASTO' ? 'bg-orange-100 text-orange-700' : 'bg-blue-100 text-blue-700'}`}>
+                                    {t.type === 'GASTO' ? 'Gasto' : 'Ajuste'}
+                                  </span>
+                                </td>
+                                <td className={`px-4 py-2 ${t.deleted ? 'text-gray-400 line-through' : 'text-gray-800'}`}>{t.description}</td>
+                                <td className={`px-4 py-2 text-right font-medium ${t.deleted ? 'text-gray-400 line-through' : 'text-red-600'}`}>-{formatCurrency(t.amount)}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <p className="text-gray-500 text-center py-8">Selecciona una fecha para ver su registro.</p>
+                )}
+              </div>
+              <div className="p-4 border-t text-right">
+                <button onClick={() => setShowRegistro(false)} className="px-4 py-2 bg-gray-300 text-gray-700 font-bold rounded-lg hover:bg-gray-400 transition">
+                  Cerrar
+                </button>
               </div>
             </div>
           </div>

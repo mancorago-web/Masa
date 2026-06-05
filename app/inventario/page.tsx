@@ -43,6 +43,7 @@ const initialInventory: InventoryItem[] = [
   { id: '56', category: 'BASE', name: 'Masa (Pan)', currentStock: 1, unit: 'Unidad', minStock: 1 },
   { id: '57', category: 'BASE', name: 'Salsa de ají', currentStock: 1, unit: 'Litro', minStock: 1 },
   { id: '62', category: 'BASE', name: 'Salsa boloñesa', currentStock: 1, unit: 'Litro', minStock: 1 },
+  { id: '63', category: 'BASE', name: 'Salsa bechamel', currentStock: 1, unit: 'Litro', minStock: 1 },
   { id: '8', category: 'GUARNICIONES', name: 'Jamón', currentStock: 1000, unit: 'Gramos', minStock: 1000 },
   { id: '9', category: 'GUARNICIONES', name: 'Peperoni', currentStock: 1000, unit: 'Gramos', minStock: 1000 },
   { id: '10', category: 'GUARNICIONES', name: 'Tocino', currentStock: 1000, unit: 'Gramos', minStock: 1000 },

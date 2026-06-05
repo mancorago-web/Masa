@@ -402,31 +402,40 @@ export default function Inventario() {
       { name: 'Albahaca', quantity: 10, unit: 'Gramos', unitPrice: 0, cost: 0 },
     ],
     's28': [
-      { name: 'Masa de Pizza', quantity: 1, unit: 'Unidad', unitPrice: 0, cost: 0 },
-      { name: 'Salsa Clásica', quantity: 80, unit: 'Gramos', unitPrice: 0, cost: 0 },
+      { name: 'Masa (Pan)', quantity: 1, unit: 'Unidad', unitPrice: 0, cost: 0 },
+      { name: 'Salsa de tomate', quantity: 80, unit: 'Gramos', unitPrice: 0, cost: 0 },
       { name: 'Queso (mozarella)', quantity: 100, unit: 'Gramos', unitPrice: 0, cost: 0 },
-      { name: 'Aceitunas negras', quantity: 25, unit: 'Gramos', unitPrice: 0, cost: 0 },
-      { name: 'Tomate seco', quantity: 20, unit: 'Gramos', unitPrice: 0, cost: 0 },
-      { name: 'Alcachofa', quantity: 25, unit: 'Gramos', unitPrice: 0, cost: 0 },
       { name: 'Orégano', quantity: 5, unit: 'Gramos', unitPrice: 0, cost: 0 },
+      { name: 'Zuccini', quantity: 30, unit: 'Gramos', unitPrice: 0, cost: 0 },
+      { name: 'Berengena', quantity: 30, unit: 'Gramos', unitPrice: 0, cost: 0 },
+      { name: 'Pimiento', quantity: 30, unit: 'Gramos', unitPrice: 0, cost: 0 },
+      { name: 'Aceitunas', quantity: 25, unit: 'Gramos', unitPrice: 0, cost: 0 },
+      { name: 'Alcaparras', quantity: 15, unit: 'Gramos', unitPrice: 0, cost: 0 },
+      { name: 'Perejil', quantity: 5, unit: 'Gramos', unitPrice: 0, cost: 0 },
     ],
     's29': [
-      { name: 'Masa de Pizza', quantity: 1, unit: 'Unidad', unitPrice: 0, cost: 0 },
-      { name: 'Salsa Clásica', quantity: 120, unit: 'Gramos', unitPrice: 0, cost: 0 },
+      { name: 'Masa (Pan)', quantity: 1, unit: 'Unidad', unitPrice: 0, cost: 0 },
+      { name: 'Salsa de tomate', quantity: 120, unit: 'Gramos', unitPrice: 0, cost: 0 },
       { name: 'Queso (mozarella)', quantity: 150, unit: 'Gramos', unitPrice: 0, cost: 0 },
-      { name: 'Aceitunas negras', quantity: 40, unit: 'Gramos', unitPrice: 0, cost: 0 },
-      { name: 'Tomate seco', quantity: 35, unit: 'Gramos', unitPrice: 0, cost: 0 },
-      { name: 'Alcachofa', quantity: 40, unit: 'Gramos', unitPrice: 0, cost: 0 },
       { name: 'Orégano', quantity: 8, unit: 'Gramos', unitPrice: 0, cost: 0 },
+      { name: 'Zuccini', quantity: 50, unit: 'Gramos', unitPrice: 0, cost: 0 },
+      { name: 'Berengena', quantity: 50, unit: 'Gramos', unitPrice: 0, cost: 0 },
+      { name: 'Pimiento', quantity: 50, unit: 'Gramos', unitPrice: 0, cost: 0 },
+      { name: 'Aceitunas', quantity: 40, unit: 'Gramos', unitPrice: 0, cost: 0 },
+      { name: 'Alcaparras', quantity: 25, unit: 'Gramos', unitPrice: 0, cost: 0 },
+      { name: 'Perejil', quantity: 8, unit: 'Gramos', unitPrice: 0, cost: 0 },
     ],
     's30': [
-      { name: 'Masa de Pizza', quantity: 1, unit: 'Unidad', unitPrice: 0, cost: 0 },
-      { name: 'Salsa Clásica', quantity: 160, unit: 'Gramos', unitPrice: 0, cost: 0 },
+      { name: 'Masa (Pan)', quantity: 1, unit: 'Unidad', unitPrice: 0, cost: 0 },
+      { name: 'Salsa de tomate', quantity: 160, unit: 'Gramos', unitPrice: 0, cost: 0 },
       { name: 'Queso (mozarella)', quantity: 200, unit: 'Gramos', unitPrice: 0, cost: 0 },
-      { name: 'Aceitunas negras', quantity: 55, unit: 'Gramos', unitPrice: 0, cost: 0 },
-      { name: 'Tomate seco', quantity: 50, unit: 'Gramos', unitPrice: 0, cost: 0 },
-      { name: 'Alcachofa', quantity: 55, unit: 'Gramos', unitPrice: 0, cost: 0 },
       { name: 'Orégano', quantity: 10, unit: 'Gramos', unitPrice: 0, cost: 0 },
+      { name: 'Zuccini', quantity: 70, unit: 'Gramos', unitPrice: 0, cost: 0 },
+      { name: 'Berengena', quantity: 70, unit: 'Gramos', unitPrice: 0, cost: 0 },
+      { name: 'Pimiento', quantity: 70, unit: 'Gramos', unitPrice: 0, cost: 0 },
+      { name: 'Aceitunas', quantity: 55, unit: 'Gramos', unitPrice: 0, cost: 0 },
+      { name: 'Alcaparras', quantity: 35, unit: 'Gramos', unitPrice: 0, cost: 0 },
+      { name: 'Perejil', quantity: 10, unit: 'Gramos', unitPrice: 0, cost: 0 },
     ],
     's31': [
       { name: 'Masa de Pizza', quantity: 1, unit: 'Unidad', unitPrice: 0, cost: 0 },
@@ -712,7 +721,7 @@ export default function Inventario() {
   };
 
   const mergeSubIngredients = (saved: Record<string, RecipeIngredient[]>) => {
-    const deprecatedNames = new Set(['Masa de Pizza', 'Salsa Clásica', 'Aceite de oliva', 'Cebolla', 'Aceitunas', 'Pimiento']);
+    const deprecatedNames = new Set(['Masa de Pizza', 'Salsa Clásica', 'Aceite de oliva', 'Cebolla', 'Pimiento', 'Aceitunas negras', 'Tomate seco', 'Alcachofa']);
     const deleted = deletedSubIngredientKeys.current;
     setSubRecipeIngredients(() => {
       const result: Record<string, RecipeIngredient[]> = {};

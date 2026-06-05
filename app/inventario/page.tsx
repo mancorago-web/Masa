@@ -1683,7 +1683,20 @@ export default function Inventario() {
                         <tbody className="bg-white divide-y divide-gray-200">
                           {getItemsByCategory(category).map((item, idx) => (
                             <tr key={item.id} className="hover:bg-gray-50">
-                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{item.name}</td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                <input
+                                  type="text"
+                                  placeholder="Nombre"
+                                  value={item.name || ''}
+                                  onChange={(e) => {
+                                    const newInv = [...inventory];
+                                    const i = newInv.findIndex(x => x.id === item.id);
+                                    if (i >= 0) { newInv[i] = { ...newInv[i], name: e.target.value }; setInventory(newInv); }
+                                  }}
+                                  disabled={!isEditingDatos}
+                                  className={`w-32 px-2 py-1 border rounded focus:outline-none focus:ring-2 focus:ring-green-500 ${isEditingDatos ? 'border-gray-300' : 'border-transparent bg-transparent'}`}
+                                />
+                              </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                 <input
                                   type="text"

@@ -53,6 +53,7 @@ const initialInventory: InventoryItem[] = [
   { id: '16', category: 'GUARNICIONES', name: 'Bondiola de chancho', currentStock: 1000, unit: 'Gramos', minStock: 1000 },
   { id: '17', category: 'GUARNICIONES', name: 'Panceta de chancho', currentStock: 500, unit: 'Gramos', minStock: 500 },
   { id: '59', category: 'GUARNICIONES', name: 'Prosciutto', currentStock: 500, unit: 'Gramos', minStock: 500 },
+  { id: '61', category: 'GUARNICIONES', name: 'Atún', currentStock: 500, unit: 'Gramos', minStock: 500 },
   { id: '18', category: 'VERDURAS', name: 'Tomate (guarnición)', currentStock: 1000, unit: 'Gramos', minStock: 1000 },
   { id: '19', category: 'VERDURAS', name: 'Pimiento', currentStock: 2, unit: 'Unidades', minStock: 2 },
   { id: '20', category: 'VERDURAS', name: 'Champiñones', currentStock: 6, unit: 'Latas', minStock: 6 },

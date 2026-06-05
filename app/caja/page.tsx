@@ -140,7 +140,7 @@ export default function CajaChica() {
                   step="0.01"
                   value={editInitialValue}
                   onChange={(e) => setEditInitialValue(parseFloat(e.target.value) || 0)}
-                  className="w-24 px-2 py-1 border rounded text-lg font-bold"
+                  className="w-24 px-2 py-1 border rounded bg-white text-gray-900 text-lg font-bold"
                   autoFocus
                 />
                 <button onClick={handleSaveInitial} className="text-green-600 hover:text-green-800 font-bold text-sm">OK</button>
@@ -225,7 +225,7 @@ export default function CajaChica() {
                     value={modalDescription}
                     onChange={(e) => setModalDescription(e.target.value)}
                     placeholder="Ej: Pago a moto, Compra de insumos..."
-                    className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                    className="w-full px-3 py-2 border rounded-lg bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-green-500"
                     autoFocus
                   />
                 </div>
@@ -237,7 +237,7 @@ export default function CajaChica() {
                     value={modalAmount}
                     onChange={(e) => setModalAmount(e.target.value)}
                     placeholder="0.00"
-                    className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                    className="w-full px-3 py-2 border rounded-lg bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-green-500"
                   />
                 </div>
                 <div className="flex gap-3 pt-2">

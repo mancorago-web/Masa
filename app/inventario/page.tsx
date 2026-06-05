@@ -381,25 +381,34 @@ export default function Inventario() {
       { name: 'Tomate', quantity: 70, unit: 'Gramos', unitPrice: 0, cost: 0 },
     ],
     's25': [
-      { name: 'Masa de Pizza', quantity: 1, unit: 'Unidad', unitPrice: 0, cost: 0 },
-      { name: 'Salsa Clásica', quantity: 80, unit: 'Gramos', unitPrice: 0, cost: 0 },
+      { name: 'Masa (Pan)', quantity: 1, unit: 'Unidad', unitPrice: 0, cost: 0 },
+      { name: 'Salsa de tomate', quantity: 80, unit: 'Gramos', unitPrice: 0, cost: 0 },
       { name: 'Queso (mozarella)', quantity: 100, unit: 'Gramos', unitPrice: 0, cost: 0 },
-      { name: 'Tomate cherry', quantity: 50, unit: 'Gramos', unitPrice: 0, cost: 0 },
+      { name: 'Orégano', quantity: 5, unit: 'Gramos', unitPrice: 0, cost: 0 },
+      { name: 'Ajo', quantity: 15, unit: 'Gramos', unitPrice: 0, cost: 0 },
+      { name: 'Aceitunas', quantity: 25, unit: 'Gramos', unitPrice: 0, cost: 0 },
       { name: 'Albahaca', quantity: 5, unit: 'Gramos', unitPrice: 0, cost: 0 },
+      { name: 'Tomate', quantity: 50, unit: 'Gramos', unitPrice: 0, cost: 0 },
     ],
     's26': [
-      { name: 'Masa de Pizza', quantity: 1, unit: 'Unidad', unitPrice: 0, cost: 0 },
-      { name: 'Salsa Clásica', quantity: 120, unit: 'Gramos', unitPrice: 0, cost: 0 },
+      { name: 'Masa (Pan)', quantity: 1, unit: 'Unidad', unitPrice: 0, cost: 0 },
+      { name: 'Salsa de tomate', quantity: 120, unit: 'Gramos', unitPrice: 0, cost: 0 },
       { name: 'Queso (mozarella)', quantity: 150, unit: 'Gramos', unitPrice: 0, cost: 0 },
-      { name: 'Tomate cherry', quantity: 80, unit: 'Gramos', unitPrice: 0, cost: 0 },
+      { name: 'Orégano', quantity: 8, unit: 'Gramos', unitPrice: 0, cost: 0 },
+      { name: 'Ajo', quantity: 25, unit: 'Gramos', unitPrice: 0, cost: 0 },
+      { name: 'Aceitunas', quantity: 40, unit: 'Gramos', unitPrice: 0, cost: 0 },
       { name: 'Albahaca', quantity: 8, unit: 'Gramos', unitPrice: 0, cost: 0 },
+      { name: 'Tomate', quantity: 80, unit: 'Gramos', unitPrice: 0, cost: 0 },
     ],
     's27': [
-      { name: 'Masa de Pizza', quantity: 1, unit: 'Unidad', unitPrice: 0, cost: 0 },
-      { name: 'Salsa Clásica', quantity: 160, unit: 'Gramos', unitPrice: 0, cost: 0 },
+      { name: 'Masa (Pan)', quantity: 1, unit: 'Unidad', unitPrice: 0, cost: 0 },
+      { name: 'Salsa de tomate', quantity: 160, unit: 'Gramos', unitPrice: 0, cost: 0 },
       { name: 'Queso (mozarella)', quantity: 200, unit: 'Gramos', unitPrice: 0, cost: 0 },
-      { name: 'Tomate cherry', quantity: 110, unit: 'Gramos', unitPrice: 0, cost: 0 },
+      { name: 'Orégano', quantity: 10, unit: 'Gramos', unitPrice: 0, cost: 0 },
+      { name: 'Ajo', quantity: 35, unit: 'Gramos', unitPrice: 0, cost: 0 },
+      { name: 'Aceitunas', quantity: 55, unit: 'Gramos', unitPrice: 0, cost: 0 },
       { name: 'Albahaca', quantity: 10, unit: 'Gramos', unitPrice: 0, cost: 0 },
+      { name: 'Tomate', quantity: 110, unit: 'Gramos', unitPrice: 0, cost: 0 },
     ],
     's28': [
       { name: 'Masa (Pan)', quantity: 1, unit: 'Unidad', unitPrice: 0, cost: 0 },
@@ -721,7 +730,7 @@ export default function Inventario() {
   };
 
   const mergeSubIngredients = (saved: Record<string, RecipeIngredient[]>) => {
-    const deprecatedNames = new Set(['Masa de Pizza', 'Salsa Clásica', 'Aceite de oliva', 'Cebolla', 'Aceitunas negras', 'Tomate seco', 'Alcachofa']);
+    const deprecatedNames = new Set(['Masa de Pizza', 'Salsa Clásica', 'Aceite de oliva', 'Cebolla', 'Aceitunas negras', 'Tomate seco', 'Alcachofa', 'Tomate cherry']);
     const deleted = deletedSubIngredientKeys.current;
     setSubRecipeIngredients(() => {
       const result: Record<string, RecipeIngredient[]> = {};

@@ -721,7 +721,7 @@ export default function Inventario() {
   };
 
   const mergeSubIngredients = (saved: Record<string, RecipeIngredient[]>) => {
-    const deprecatedNames = new Set(['Masa de Pizza', 'Salsa Clásica', 'Aceite de oliva', 'Cebolla', 'Pimiento', 'Aceitunas negras', 'Tomate seco', 'Alcachofa']);
+    const deprecatedNames = new Set(['Masa de Pizza', 'Salsa Clásica', 'Aceite de oliva', 'Cebolla', 'Aceitunas negras', 'Tomate seco', 'Alcachofa']);
     const deleted = deletedSubIngredientKeys.current;
     setSubRecipeIngredients(() => {
       const result: Record<string, RecipeIngredient[]> = {};

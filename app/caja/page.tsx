@@ -7,10 +7,11 @@ import { getDb } from "@/lib/firebase";
 
 interface Transaction {
   id: string;
-  type: 'GASTO' | 'IMPRESVISTO' | 'AJUSTE';
+  type: 'GASTO' | 'AJUSTE';
   description: string;
   amount: number;
   date: string;
+  deleted?: boolean;
 }
 
 const STORAGE_KEY = 'masa-caja-chica';
@@ -47,7 +48,6 @@ export default function CajaChica() {
   const [isEditingInitial, setIsEditingInitial] = useState(false);
   const [editInitialValue, setEditInitialValue] = useState(defaultInitialAmount);
   const [showAddModal, setShowAddModal] = useState(false);
-  const [modalType, setModalType] = useState<'GASTO' | 'IMPRESVISTO'>('GASTO');
   const [modalDescription, setModalDescription] = useState('');
   const [modalAmount, setModalAmount] = useState('');
   const [savedMessage, setSavedMessage] = useState(false);
@@ -66,7 +66,7 @@ export default function CajaChica() {
     syncToFirestore(data);
   }, [initialAmount, transactions]);
 
-  const totalExpenses = transactions.reduce((sum, t) => sum + t.amount, 0);
+  const totalExpenses = transactions.reduce((sum, t) => t.deleted ? sum : sum + t.amount, 0);
   const currentBalance = initialAmount - totalExpenses;
 
   const handleSaveInitial = () => {
@@ -88,8 +88,7 @@ export default function CajaChica() {
     }
   };
 
-  const openModal = (type: 'GASTO' | 'IMPRESVISTO') => {
-    setModalType(type);
+  const openModal = () => {
     setModalDescription('');
     setModalAmount('');
     setShowAddModal(true);
@@ -101,13 +100,19 @@ export default function CajaChica() {
     if (!modalDescription.trim()) return;
     const t: Transaction = {
       id: Date.now().toString(),
-      type: modalType,
+      type: 'GASTO',
       description: modalDescription.trim(),
       amount,
       date: new Date().toLocaleString('es-PE'),
     };
     setTransactions(prev => [t, ...prev]);
     setShowAddModal(false);
+    setSavedMessage(true);
+    setTimeout(() => setSavedMessage(false), 2000);
+  };
+
+  const handleDeleteTransaction = (id: string) => {
+    setTransactions(prev => prev.map(t => t.id === id ? { ...t, deleted: true } : t));
     setSavedMessage(true);
     setTimeout(() => setSavedMessage(false), 2000);
   };
@@ -167,11 +172,8 @@ export default function CajaChica() {
 
         {/* Action Buttons */}
         <div className="flex gap-3 mb-6">
-          <button onClick={() => openModal('GASTO')} className="px-6 py-3 bg-orange-500 text-white font-bold rounded-lg hover:bg-orange-600 transition">
+          <button onClick={openModal} className="px-6 py-3 bg-orange-500 text-white font-bold rounded-lg hover:bg-orange-600 transition">
             + Agregar Gasto
-          </button>
-          <button onClick={() => openModal('IMPRESVISTO')} className="px-6 py-3 bg-red-500 text-white font-bold rounded-lg hover:bg-red-600 transition">
-            + Agregar Imprevisto
           </button>
         </div>
 
@@ -193,15 +195,22 @@ export default function CajaChica() {
                 </thead>
                 <tbody className="divide-y divide-gray-200">
                   {transactions.map(t => (
-                    <tr key={t.id} className="hover:bg-gray-50">
+                    <tr key={t.id} className={`${t.deleted ? 'bg-gray-100 opacity-60' : 'hover:bg-gray-50'}`}>
                       <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{t.date}</td>
                       <td className="px-4 py-3 whitespace-nowrap">
-                        <span className={`px-2 py-1 rounded text-xs font-bold ${t.type === 'GASTO' ? 'bg-orange-100 text-orange-700' : t.type === 'IMPRESVISTO' ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'}`}>
-                          {t.type === 'GASTO' ? 'Gasto' : t.type === 'IMPRESVISTO' ? 'Imprevisto' : 'Ajuste'}
+                        <span className={`px-2 py-1 rounded text-xs font-bold ${t.type === 'GASTO' ? 'bg-orange-100 text-orange-700' : 'bg-blue-100 text-blue-700'}`}>
+                          {t.type === 'GASTO' ? 'Gasto' : 'Ajuste'}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-gray-800">{t.description}</td>
-                      <td className="px-4 py-3 text-right font-medium text-red-600">-{formatCurrency(t.amount)}</td>
+                      <td className={`px-4 py-3 ${t.deleted ? 'text-gray-400 line-through' : 'text-gray-800'}`}>{t.description}</td>
+                      <td className="px-4 py-3 text-right">
+                        <span className={`font-medium ${t.deleted ? 'text-gray-400 line-through' : 'text-red-600'}`}>-{formatCurrency(t.amount)}</span>
+                        {!t.deleted && (
+                          <button onClick={() => handleDeleteTransaction(t.id)} className="ml-2 text-gray-400 hover:text-red-500 transition" title="Eliminar">
+                            ✕
+                          </button>
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -214,9 +223,7 @@ export default function CajaChica() {
         {showAddModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-lg p-6 w-full max-w-md shadow-xl">
-              <h2 className="text-xl font-bold mb-4">
-                {modalType === 'GASTO' ? 'Agregar Gasto' : 'Agregar Imprevisto'}
-              </h2>
+              <h2 className="text-xl font-bold mb-4">Agregar Gasto</h2>
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Descripción</label>

@@ -65,7 +65,6 @@ const defaultRecipes: { id: string; category: string; name: string }[] = [
   { id: '27', category: 'PIZZAS VEGETARIANAS', name: 'Vegetariana' },
   { id: '28', category: 'PIZZAS VEGETARIANAS', name: 'Sorrentina' },
   { id: '29', category: 'PIZZAS VEGETARIANAS', name: 'Mediterranea' },
-  { id: '8', category: 'PIZZAS ESPECIALES', name: 'BBQ Chicken' },
   { id: '30', category: 'PIZZAS ESPECIALES', name: 'Panorama' },
   { id: '31', category: 'PIZZAS ESPECIALES', name: 'Italiana' },
   { id: '32', category: 'PIZZAS ESPECIALES', name: '4 Quesos' },
@@ -110,9 +109,6 @@ const defaultSubRecipes: { id: string; parentId: string; name: string }[] = [
   { id: 's28', parentId: '29', name: 'Mediterranea 8 Pzas.' },
   { id: 's29', parentId: '29', name: 'Mediterranea 12 Pzas.' },
   { id: 's30', parentId: '29', name: 'Mediterranea 16 Pzas.' },
-  { id: 's31', parentId: '8', name: 'BBQ Chicken 8 Pzas.' },
-  { id: 's32', parentId: '8', name: 'BBQ Chicken 12 Pzas.' },
-  { id: 's33', parentId: '8', name: 'BBQ Chicken 16 Pzas.' },
   { id: 's34', parentId: '30', name: 'Panorama 8 Pzas.' },
   { id: 's35', parentId: '30', name: 'Panorama 12 Pzas.' },
   { id: 's36', parentId: '30', name: 'Panorama 16 Pzas.' },
@@ -140,7 +136,7 @@ const defaultSubRecipes: { id: string; parentId: string; name: string }[] = [
 const pizzaBasePrices: Record<string, number> = {
   'Margherita': 24, 'Marinara': 24, 'Napoli': 26, 'Vegetariana': 28, 'Sorrentina': 28, 'Mediterranea': 28,
   'Americana': 28, 'Pepperoni': 30, 'Hawaiana': 30, 'Jamón y Champiñones': 30,
-  'BBQ Chicken': 32, 'Panorama': 32, 'Italiana': 32, '4 Quesos': 34, 'Rústica': 34,
+  'BBQ Chicken': 32,   'Panorama': 32, 'Italiana': 32, '4 Quesos': 34, 'Rústica': 34,
   'Huerta & Mar': 34, 'Buscaiola': 34, 'Capricciosa': 34,
 };
 

@@ -25,6 +25,7 @@ interface PaymentData {
   amountPaid?: number;
   change?: number;
   date: string;
+  deleted?: boolean;
 }
 
 interface MenuItem {
@@ -630,22 +631,49 @@ export default function Ventas() {
                 ) : (
                   <div className="space-y-3">
                     {paymentsHistory.map((p, i) => (
-                      <div key={i} className="border rounded-lg p-3">
+                      <div key={i} className={`border rounded-lg p-3 ${p.deleted ? 'opacity-40 bg-gray-100' : ''}`}>
                         <div className="flex items-center justify-between mb-1">
-                          <span className="font-bold">Mesa {p.tableId}</span>
-                          <span className="text-sm text-gray-500">{p.date}</span>
+                          <div className="flex items-center gap-2">
+                            <span className={`font-bold ${p.deleted ? 'line-through text-gray-400' : ''}`}>Mesa {p.tableId}</span>
+                            {p.deleted && <span className="text-xs text-gray-400 bg-gray-200 px-1.5 py-0.5 rounded">Eliminado</span>}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm text-gray-500">{p.date}</span>
+                            {!p.deleted && (
+                              <button
+                                onClick={() => {
+                                  setPaymentsHistory(prev => {
+                                    const updated = [...prev];
+                                    updated[i] = { ...updated[i], deleted: true };
+                                    return updated;
+                                  });
+                                }}
+                                className="text-gray-400 hover:text-red-500 text-xs font-bold"
+                                title="Eliminar venta"
+                              >✕</button>
+                            )}
+                          </div>
                         </div>
                         <div className="flex items-center justify-between">
                           <span className="text-sm text-gray-600">
-                            {p.items.length} productos · {p.method === 'efectivo' ? '💵 Efectivo' : p.method === 'yape' ? '📱 Yape' : '💳 POS'}
+                            {p.method === 'efectivo' ? '💵 Efectivo' : p.method === 'yape' ? '📱 Yape' : '💳 POS'}
                           </span>
-                          <span className="font-bold">{formatCurrency(p.subtotal)}</span>
+                          <span className={`font-bold ${p.deleted ? 'line-through text-gray-400' : ''}`}>{formatCurrency(p.subtotal)}</span>
                         </div>
                         {p.amountPaid && p.change !== undefined && (
-                          <p className="text-sm text-gray-500 mt-1">
+                          <p className={`text-sm mt-1 ${p.deleted ? 'text-gray-300' : 'text-gray-500'}`}>
                             Pagó: {formatCurrency(p.amountPaid)} · Vuelto: {formatCurrency(p.change)}
                           </p>
                         )}
+                        {/* Product details */}
+                        <div className={`mt-2 text-xs border-t pt-2 space-y-1 ${p.deleted ? 'text-gray-400' : 'text-gray-500'}`}>
+                          {p.items.map((item, idx) => (
+                            <div key={idx} className="flex justify-between">
+                              <span>{item.quantity}× {item.name}</span>
+                              <span>{formatCurrency(item.quantity * item.unitPrice)}</span>
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -653,7 +681,7 @@ export default function Ventas() {
               </div>
               <div className="p-4 border-t flex justify-between items-center">
                 <span className="text-sm text-gray-500">
-                  Total cobrado: {formatCurrency(paymentsHistory.reduce((sum, p) => sum + p.subtotal, 0))}
+                  Total cobrado: {formatCurrency(paymentsHistory.reduce((sum, p) => p.deleted ? sum : sum + p.subtotal, 0))}
                 </span>
                 <button onClick={() => setShowHistory(false)} className="px-4 py-2 bg-gray-200 text-gray-700 font-bold rounded-lg hover:bg-gray-300 transition">
                   Cerrar

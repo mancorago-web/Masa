@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { getDb } from "@/lib/firebase";
 
@@ -27,73 +27,127 @@ interface PaymentData {
   date: string;
 }
 
+interface MenuItem {
+  name: string;
+  price: number;
+}
+
+interface MenuCategory {
+  name: string;
+  items: MenuItem[];
+}
+
+const SALES_CATEGORIES = ['ENTRADAS', 'PIZZAS CLÁSICAS', 'PIZZAS VEGETARIANAS', 'PIZZAS ESPECIALES', 'PASTAS RELLENAS', 'PASTAS'];
+
+const defaultRecipes: { id: string; category: string; name: string }[] = [
+  { id: '20', category: 'ENTRADAS', name: 'Pan al ajo' },
+  { id: '21', category: 'ENTRADAS', name: 'Bruschetta' },
+  { id: '22', category: 'ENTRADAS', name: 'Crostini misti' },
+  { id: '19', category: 'PIZZAS CLÁSICAS', name: 'Americana' },
+  { id: '23', category: 'PIZZAS CLÁSICAS', name: 'Pepperoni' },
+  { id: '24', category: 'PIZZAS CLÁSICAS', name: 'Hawaiana' },
+  { id: '25', category: 'PIZZAS CLÁSICAS', name: 'Jamón y Champiñones' },
+  { id: '6', category: 'PIZZAS VEGETARIANAS', name: 'Margherita' },
+  { id: '7', category: 'PIZZAS VEGETARIANAS', name: 'Marinara' },
+  { id: '26', category: 'PIZZAS VEGETARIANAS', name: 'Napoli' },
+  { id: '27', category: 'PIZZAS VEGETARIANAS', name: 'Vegetariana' },
+  { id: '28', category: 'PIZZAS VEGETARIANAS', name: 'Sorrentina' },
+  { id: '29', category: 'PIZZAS VEGETARIANAS', name: 'Mediterranea' },
+  { id: '8', category: 'PIZZAS ESPECIALES', name: 'BBQ Chicken' },
+  { id: '30', category: 'PIZZAS ESPECIALES', name: 'Panorama' },
+  { id: '31', category: 'PIZZAS ESPECIALES', name: 'Italiana' },
+  { id: '32', category: 'PIZZAS ESPECIALES', name: '4 Quesos' },
+  { id: '33', category: 'PIZZAS ESPECIALES', name: 'Rústica' },
+  { id: '34', category: 'PIZZAS ESPECIALES', name: 'Huerta & Mar' },
+  { id: '35', category: 'PIZZAS ESPECIALES', name: 'Buscaiola' },
+  { id: '36', category: 'PIZZAS ESPECIALES', name: 'Capricciosa' },
+  { id: '10', category: 'PASTAS RELLENAS', name: 'Ravioli Ricotta' },
+  { id: '11', category: 'PASTAS RELLENAS', name: 'Agnolotti' },
+  { id: '12', category: 'PASTAS', name: 'Spaghetti Carbonara' },
+  { id: '13', category: 'PASTAS', name: 'Fettuccine Alfredo' },
+];
+
+const defaultSubRecipes: { id: string; parentId: string; name: string }[] = [
+  { id: 's1', parentId: '6', name: 'Margherita 8 Pzas.' },
+  { id: 's2', parentId: '6', name: 'Margherita 12 Pzas.' },
+  { id: 's3', parentId: '6', name: 'Margherita 16 Pzas.' },
+  { id: 's4', parentId: '7', name: 'Marinara 8 Pzas.' },
+  { id: 's5', parentId: '7', name: 'Marinara 12 Pzas.' },
+  { id: 's6', parentId: '7', name: 'Marinara 16 Pzas.' },
+  { id: 's7', parentId: '19', name: 'Americana 8 Pzas.' },
+  { id: 's8', parentId: '19', name: 'Americana 12 Pzas.' },
+  { id: 's9', parentId: '19', name: 'Americana 16 Pzas.' },
+  { id: 's10', parentId: '23', name: 'Pepperoni 8 Pzas.' },
+  { id: 's11', parentId: '23', name: 'Pepperoni 12 Pzas.' },
+  { id: 's12', parentId: '23', name: 'Pepperoni 16 Pzas.' },
+  { id: 's13', parentId: '24', name: 'Hawaiana 8 Pzas.' },
+  { id: 's14', parentId: '24', name: 'Hawaiana 12 Pzas.' },
+  { id: 's15', parentId: '24', name: 'Hawaiana 16 Pzas.' },
+  { id: 's16', parentId: '25', name: 'Jamón y Champiñones 8 Pzas.' },
+  { id: 's17', parentId: '25', name: 'Jamón y Champiñones 12 Pzas.' },
+  { id: 's18', parentId: '25', name: 'Jamón y Champiñones 16 Pzas.' },
+  { id: 's19', parentId: '26', name: 'Napoli 8 Pzas.' },
+  { id: 's20', parentId: '26', name: 'Napoli 12 Pzas.' },
+  { id: 's21', parentId: '26', name: 'Napoli 16 Pzas.' },
+  { id: 's22', parentId: '27', name: 'Vegetariana 8 Pzas.' },
+  { id: 's23', parentId: '27', name: 'Vegetariana 12 Pzas.' },
+  { id: 's24', parentId: '27', name: 'Vegetariana 16 Pzas.' },
+  { id: 's25', parentId: '28', name: 'Sorrentina 8 Pzas.' },
+  { id: 's26', parentId: '28', name: 'Sorrentina 12 Pzas.' },
+  { id: 's27', parentId: '28', name: 'Sorrentina 16 Pzas.' },
+  { id: 's28', parentId: '29', name: 'Mediterranea 8 Pzas.' },
+  { id: 's29', parentId: '29', name: 'Mediterranea 12 Pzas.' },
+  { id: 's30', parentId: '29', name: 'Mediterranea 16 Pzas.' },
+  { id: 's31', parentId: '8', name: 'BBQ Chicken 8 Pzas.' },
+  { id: 's32', parentId: '8', name: 'BBQ Chicken 12 Pzas.' },
+  { id: 's33', parentId: '8', name: 'BBQ Chicken 16 Pzas.' },
+  { id: 's34', parentId: '30', name: 'Panorama 8 Pzas.' },
+  { id: 's35', parentId: '30', name: 'Panorama 12 Pzas.' },
+  { id: 's36', parentId: '30', name: 'Panorama 16 Pzas.' },
+  { id: 's37', parentId: '31', name: 'Italiana 8 Pzas.' },
+  { id: 's38', parentId: '31', name: 'Italiana 12 Pzas.' },
+  { id: 's39', parentId: '31', name: 'Italiana 16 Pzas.' },
+  { id: 's40', parentId: '32', name: '4 Quesos 8 Pzas.' },
+  { id: 's41', parentId: '32', name: '4 Quesos 12 Pzas.' },
+  { id: 's42', parentId: '32', name: '4 Quesos 16 Pzas.' },
+  { id: 's43', parentId: '33', name: 'Rústica 8 Pzas.' },
+  { id: 's44', parentId: '33', name: 'Rústica 12 Pzas.' },
+  { id: 's45', parentId: '33', name: 'Rústica 16 Pzas.' },
+  { id: 's46', parentId: '34', name: 'Huerta & Mar 8 Pzas.' },
+  { id: 's47', parentId: '34', name: 'Huerta & Mar 12 Pzas.' },
+  { id: 's48', parentId: '34', name: 'Huerta & Mar 16 Pzas.' },
+  { id: 's49', parentId: '35', name: 'Buscaiola 8 Pzas.' },
+  { id: 's50', parentId: '35', name: 'Buscaiola 12 Pzas.' },
+  { id: 's51', parentId: '35', name: 'Buscaiola 16 Pzas.' },
+  { id: 's52', parentId: '36', name: 'Capricciosa 8 Pzas.' },
+  { id: 's53', parentId: '36', name: 'Capricciosa 12 Pzas.' },
+  { id: 's54', parentId: '36', name: 'Capricciosa 16 Pzas.' },
+];
+
+// Base prices per pizza for 8 Pzas.
+const pizzaBasePrices: Record<string, number> = {
+  'Margherita': 24, 'Marinara': 24, 'Napoli': 26, 'Vegetariana': 28, 'Sorrentina': 28, 'Mediterranea': 28,
+  'Americana': 28, 'Pepperoni': 30, 'Hawaiana': 30, 'Jamón y Champiñones': 30,
+  'BBQ Chicken': 32, 'Panorama': 32, 'Italiana': 32, '4 Quesos': 34, 'Rústica': 34,
+  'Huerta & Mar': 34, 'Buscaiola': 34, 'Capricciosa': 34,
+};
+
+const sizePrices = (base: number) => ({ '8 Pzas.': base, '12 Pzas.': Math.round(base * 1.25), '16 Pzas.': Math.round(base * 1.5) });
+
+const bebidasItems: MenuItem[] = [
+  { name: 'Agua', price: 4 }, { name: 'Gaseosa', price: 6 }, { name: 'Cerveza', price: 10 }, { name: 'Vino tinto', price: 28 },
+];
+
+const nonPizzaPrices: Record<string, number> = {
+  'Pan al ajo': 12, 'Bruschetta': 16, 'Crostini misti': 18,
+  'Spaghetti Carbonara': 28, 'Fettuccine Alfredo': 28, 'Ravioli Ricotta': 32, 'Agnolotti': 32,
+};
+
 const initialTables: TableOrder[] = Array.from({ length: 8 }, () => ({
   items: [],
   status: 'libre',
   customerName: '',
 }));
-
-const productCategories: { name: string; items: { name: string; price: number }[] }[] = [
-  {
-    name: 'Pizzas Clásicas',
-    items: [
-      { name: 'Americana', price: 32 },
-      { name: 'Pepperoni', price: 34 },
-      { name: 'Hawaiana', price: 34 },
-      { name: 'Jamón y Champiñones', price: 34 },
-    ],
-  },
-  {
-    name: 'Pizzas Vegetarianas',
-    items: [
-      { name: 'Margherita', price: 28 },
-      { name: 'Marinara', price: 28 },
-      { name: 'Napoli', price: 30 },
-      { name: 'Vegetariana', price: 32 },
-      { name: 'Sorrentina', price: 32 },
-      { name: 'Mediterranea', price: 32 },
-    ],
-  },
-  {
-    name: 'Pizzas Especiales',
-    items: [
-      { name: 'BBQ Chicken', price: 38 },
-      { name: 'Panorama', price: 38 },
-      { name: 'Italiana', price: 38 },
-      { name: '4 Quesos', price: 40 },
-      { name: 'Rústica', price: 40 },
-      { name: 'Huerta & Mar', price: 40 },
-      { name: 'Buscaiola', price: 40 },
-      { name: 'Capricciosa', price: 40 },
-    ],
-  },
-  {
-    name: 'Pastas',
-    items: [
-      { name: 'Spaghetti Carbonara', price: 28 },
-      { name: 'Fettuccine Alfredo', price: 28 },
-      { name: 'Ravioli Ricotta', price: 32 },
-      { name: 'Agnolotti', price: 32 },
-    ],
-  },
-  {
-    name: 'Entradas',
-    items: [
-      { name: 'Pan al ajo', price: 12 },
-      { name: 'Bruschetta', price: 16 },
-      { name: 'Crostini misti', price: 18 },
-    ],
-  },
-  {
-    name: 'Bebidas',
-    items: [
-      { name: 'Agua', price: 4 },
-      { name: 'Gaseosa', price: 6 },
-      { name: 'Cerveza', price: 10 },
-      { name: 'Vino tinto', price: 28 },
-    ],
-  },
-];
 
 const STORAGE_KEY = 'masa-ventas-tables';
 const PAYMENTS_KEY = 'masa-ventas-payments';
@@ -121,6 +175,57 @@ async function syncToFirestore(data: Record<string, unknown>) {
   }
 }
 
+function buildMenu(recipes: { id: string; category: string; name: string }[], subRecipes: { id: string; parentId: string; name: string }[]): MenuCategory[] {
+  const categories: MenuCategory[] = [];
+  const pizzaCatSet = new Set(['PIZZAS CLÁSICAS', 'PIZZAS VEGETARIANAS', 'PIZZAS ESPECIALES']);
+  const seen = new Set<string>();
+
+  for (const catName of SALES_CATEGORIES) {
+    const catRecipes = recipes.filter(r => r.category === catName);
+    if (catRecipes.length === 0) continue;
+    const displayName = catName === 'PIZZAS CLÁSICAS' ? 'Pizzas Clásicas'
+      : catName === 'PIZZAS VEGETARIANAS' ? 'Pizzas Vegetarianas'
+      : catName === 'PIZZAS ESPECIALES' ? 'Pizzas Especiales'
+      : catName === 'PASTAS RELLENAS' ? 'Pastas Rellenas'
+      : catName.charAt(0) + catName.slice(1).toLowerCase();
+    const items: MenuItem[] = [];
+
+    if (pizzaCatSet.has(catName)) {
+      for (const recipe of catRecipes) {
+        const base = pizzaBasePrices[recipe.name];
+        if (!base) continue;
+        const sizes = sizePrices(base);
+        const recipeSubs = subRecipes.filter(s => s.parentId === recipe.id);
+        if (recipeSubs.length > 0) {
+          for (const sub of recipeSubs) {
+            const sizeName = sub.name.includes('8 Pzas.') ? '8 Pzas.' : sub.name.includes('12 Pzas.') ? '12 Pzas.' : sub.name.includes('16 Pzas.') ? '16 Pzas.' : '';
+            const price = sizes[sizeName];
+            if (price) { items.push({ name: sub.name, price }); seen.add(sub.name); }
+          }
+        } else {
+          // No sub-recipes found — create default sizes
+          for (const [sizeLabel, price] of Object.entries(sizes)) {
+            const subName = `${recipe.name} ${sizeLabel}`;
+            if (!seen.has(subName)) { items.push({ name: subName, price }); seen.add(subName); }
+          }
+        }
+      }
+    } else {
+      for (const recipe of catRecipes) {
+        const price = nonPizzaPrices[recipe.name];
+        if (price && !seen.has(recipe.name)) { items.push({ name: recipe.name, price }); seen.add(recipe.name); }
+      }
+    }
+
+    if (items.length > 0) categories.push({ name: displayName, items });
+  }
+
+  // Always add Bebidas
+  categories.push({ name: 'Bebidas', items: bebidasItems });
+
+  return categories;
+}
+
 export default function Ventas() {
   const [tables, setTables] = useState<TableOrder[]>(() => loadFromStorage(STORAGE_KEY, initialTables));
   const [activeTable, setActiveTable] = useState(0);
@@ -132,6 +237,28 @@ export default function Ventas() {
   const [showConfirmPayment, setShowConfirmPayment] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [paymentsHistory, setPaymentsHistory] = useState<PaymentData[]>(() => loadFromStorage(PAYMENTS_KEY, []));
+  const [recipes, setRecipes] = useState(defaultRecipes);
+  const [subRecipes, setSubRecipes] = useState(defaultSubRecipes);
+
+  // Load recipes & sub-recipes from localStorage (shared with inventario)
+  useEffect(() => {
+    const savedRecipes = loadFromStorage<{ id: string; category: string; name: string }[] | null>('masa-recipes', null);
+    if (savedRecipes && Array.isArray(savedRecipes)) {
+      const savedById = new Map(savedRecipes.map(r => [r.id, r]));
+      const merged = defaultRecipes.map(def => savedById.has(def.id) ? { ...savedById.get(def.id) } : def);
+      const mergedIds = new Set(merged.map(r => r.id));
+      for (const item of savedRecipes) {
+        if (!mergedIds.has(item.id)) { merged.push(item); mergedIds.add(item.id); }
+      }
+      setRecipes(merged);
+    }
+    const savedSubs = loadFromStorage<{ id: string; parentId: string; name: string }[] | null>('masa-subRecipes', null);
+    if (savedSubs && Array.isArray(savedSubs)) {
+      setSubRecipes(savedSubs);
+    }
+  }, []);
+
+  const productCategories = useMemo(() => buildMenu(recipes, subRecipes), [recipes, subRecipes]);
 
   useEffect(() => {
     saveToStorage(STORAGE_KEY, tables);

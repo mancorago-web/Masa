@@ -106,37 +106,74 @@ export default function CajaChica() {
   const [loadingRecords, setLoadingRecords] = useState(false);
   const dailyRecordsRef = useRef<Record<string, DailyRecord>>({});
 
+  const todayRef = useRef(todayStr());
+
+  // Save daily record helper
+  const saveDailySnapshot = useRef((date: string, init: number, txns: Transaction[]) => {
+    const activeTotal = txns.reduce((sum, t) => t.deleted ? sum : sum + t.amount, 0);
+    const record: DailyRecord = {
+      date,
+      initialAmount: init,
+      transactions: txns,
+      totalExpenses: activeTotal,
+      finalBalance: init - activeTotal,
+    };
+    dailyRecordsRef.current = { ...dailyRecordsRef.current, [date]: record };
+    saveDailyRecordsToStorage(dailyRecordsRef.current);
+    saveDailyRecordToFirestore(record);
+    setAvailableDates(Object.keys(dailyRecordsRef.current).sort().reverse());
+  }).current;
+
   useEffect(() => {
     const saved = loadFromStorage();
     if (saved) {
-      setInitialAmount(saved.initialAmount ?? defaultInitialAmount);
-      setTransactions(saved.transactions ?? []);
+      const init = saved.initialAmount ?? defaultInitialAmount;
+      const txns = saved.transactions ?? [];
+      setInitialAmount(init);
+      setTransactions(txns);
+      todayRef.current = todayStr();
+      // Ensure today's record exists
+      saveDailySnapshot(todayRef.current, init, txns);
     }
     // Load cached daily records
     const cached = loadDailyRecordsFromStorage();
     dailyRecordsRef.current = cached;
     setAvailableDates(Object.keys(cached).sort().reverse());
-  }, []);
+  }, [saveDailySnapshot]);
+
+  // Midnight auto-close: check every 30s if the date changed
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const now = todayStr();
+      if (now !== todayRef.current) {
+        // Date changed — save previous day and reset for new day
+        const prevDate = todayRef.current;
+        todayRef.current = now;
+        setInitialAmount(prev => {
+          setTransactions(prevTxns => {
+            saveDailySnapshot(prevDate, prev, prevTxns);
+            // Start fresh: same initial, no transactions
+            const newData = { initialAmount: prev, transactions: [] };
+            saveToStorage(newData);
+            syncToFirestore(newData);
+            // Also save today's empty record
+            saveDailySnapshot(now, prev, []);
+            return [];
+          });
+          return prev;
+        });
+      }
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [saveDailySnapshot]);
 
   useEffect(() => {
     const data = { initialAmount, transactions };
     saveToStorage(data);
     syncToFirestore(data);
     // Auto-save today's daily record
-    const today = todayStr();
-    const activeTotal = transactions.reduce((sum, t) => t.deleted ? sum : sum + t.amount, 0);
-    const record: DailyRecord = {
-      date: today,
-      initialAmount,
-      transactions,
-      totalExpenses: activeTotal,
-      finalBalance: initialAmount - activeTotal,
-    };
-    dailyRecordsRef.current = { ...dailyRecordsRef.current, [today]: record };
-    saveDailyRecordsToStorage(dailyRecordsRef.current);
-    saveDailyRecordToFirestore(record);
-    setAvailableDates(Object.keys(dailyRecordsRef.current).sort().reverse());
-  }, [initialAmount, transactions]);
+    saveDailySnapshot(todayRef.current, initialAmount, transactions);
+  }, [initialAmount, transactions, saveDailySnapshot]);
 
   const totalExpenses = transactions.reduce((sum, t) => t.deleted ? sum : sum + t.amount, 0);
   const currentBalance = initialAmount - totalExpenses;

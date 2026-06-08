@@ -132,12 +132,12 @@ export default function Dashboard() {
       // Try sub-recipe match first (pizza sizes like "Americana 8 Pzas.")
       const subId = subRecipeByName.get(nameLower);
       if (subId && subIngredients[subId]) {
-        cost = sumCost(subIngredients[subId]);
+        cost = sumCost(subIngredients[subId]) * data.qty;
       } else {
         // Try recipe match (non-pizza items like "Pan al ajo")
         const recipeId = recipeByName.get(nameLower);
         if (recipeId && recipeIngredients[recipeId]) {
-          cost = sumCost(recipeIngredients[recipeId]);
+          cost = sumCost(recipeIngredients[recipeId]) * data.qty;
         } else {
           // Bebidas or unknown — estimate at 30% of selling price
           const avgPrice = data.qty > 0 ? data.revenue / data.qty : 0;

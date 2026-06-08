@@ -398,7 +398,10 @@ export default function Ventas() {
 
   const formatCurrency = (n: number) => `S/${n.toFixed(2)}`;
 
-  const todayStr = () => new Date().toLocaleDateString('es-PE').split(',')[0].trim();
+  const todayStr = () => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  };
 
   const parsePaymentDate = (dateStr: string) => {
     try {

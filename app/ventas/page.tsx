@@ -32,9 +32,21 @@ interface MenuItem {
   price: number;
 }
 
+interface SizeOption {
+  label: string;
+  price: number;
+}
+
+interface PizzaProduct {
+  name: string;
+  sizes: SizeOption[];
+}
+
 interface MenuCategory {
   name: string;
+  type: 'simple' | 'pizza';
   items: MenuItem[];
+  pizzas: PizzaProduct[];
 }
 
 const SALES_CATEGORIES = ['ENTRADAS', 'PIZZAS CLÁSICAS', 'PIZZAS VEGETARIANAS', 'PIZZAS ESPECIALES', 'PASTAS RELLENAS', 'PASTAS'];
@@ -143,6 +155,8 @@ const nonPizzaPrices: Record<string, number> = {
   'Spaghetti Carbonara': 28, 'Fettuccine Alfredo': 28, 'Ravioli Ricotta': 32, 'Agnolotti': 32,
 };
 
+const sizeLabels = ['8 Pzas.', '12 Pzas.', '16 Pzas.'];
+
 const initialTables: TableOrder[] = Array.from({ length: 8 }, () => ({
   items: [],
   status: 'libre',
@@ -178,7 +192,6 @@ async function syncToFirestore(data: Record<string, unknown>) {
 function buildMenu(recipes: { id: string; category: string; name: string }[], subRecipes: { id: string; parentId: string; name: string }[]): MenuCategory[] {
   const categories: MenuCategory[] = [];
   const pizzaCatSet = new Set(['PIZZAS CLÁSICAS', 'PIZZAS VEGETARIANAS', 'PIZZAS ESPECIALES']);
-  const seen = new Set<string>();
 
   for (const catName of SALES_CATEGORIES) {
     const catRecipes = recipes.filter(r => r.category === catName);
@@ -188,41 +201,42 @@ function buildMenu(recipes: { id: string; category: string; name: string }[], su
       : catName === 'PIZZAS ESPECIALES' ? 'Pizzas Especiales'
       : catName === 'PASTAS RELLENAS' ? 'Pastas Rellenas'
       : catName.charAt(0) + catName.slice(1).toLowerCase();
-    const items: MenuItem[] = [];
 
     if (pizzaCatSet.has(catName)) {
+      const pizzas: PizzaProduct[] = [];
       for (const recipe of catRecipes) {
         const base = pizzaBasePrices[recipe.name];
         if (!base) continue;
         const sizes = sizePrices(base);
         const recipeSubs = subRecipes.filter(s => s.parentId === recipe.id);
         if (recipeSubs.length > 0) {
+          const sizesList: SizeOption[] = [];
           for (const sub of recipeSubs) {
             const sizeName = sub.name.includes('8 Pzas.') ? '8 Pzas.' : sub.name.includes('12 Pzas.') ? '12 Pzas.' : sub.name.includes('16 Pzas.') ? '16 Pzas.' : '';
             const price = sizes[sizeName];
-            if (price) { items.push({ name: sub.name, price }); seen.add(sub.name); }
+            if (price) sizesList.push({ label: sizeName, price });
           }
+          pizzas.push({ name: recipe.name, sizes: sizesList });
         } else {
-          // No sub-recipes found — create default sizes
-          for (const [sizeLabel, price] of Object.entries(sizes)) {
-            const subName = `${recipe.name} ${sizeLabel}`;
-            if (!seen.has(subName)) { items.push({ name: subName, price }); seen.add(subName); }
-          }
+          pizzas.push({
+            name: recipe.name,
+            sizes: sizeLabels.map(label => ({ label, price: sizes[label] })),
+          });
         }
       }
+      categories.push({ name: displayName, type: 'pizza', items: [], pizzas });
     } else {
+      const items: MenuItem[] = [];
+      const seen = new Set<string>();
       for (const recipe of catRecipes) {
         const price = nonPizzaPrices[recipe.name];
         if (price && !seen.has(recipe.name)) { items.push({ name: recipe.name, price }); seen.add(recipe.name); }
       }
+      if (items.length > 0) categories.push({ name: displayName, type: 'simple', items, pizzas: [] });
     }
-
-    if (items.length > 0) categories.push({ name: displayName, items });
   }
 
-  // Always add Bebidas
-  categories.push({ name: 'Bebidas', items: bebidasItems });
-
+  categories.push({ name: 'Bebidas', type: 'simple', items: bebidasItems, pizzas: [] });
   return categories;
 }
 
@@ -231,6 +245,7 @@ export default function Ventas() {
   const [activeTable, setActiveTable] = useState(0);
   const [showProductMenu, setShowProductMenu] = useState(false);
   const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
+  const [expandedPizza, setExpandedPizza] = useState<string | null>(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<'efectivo' | 'yape' | 'pos' | null>(null);
   const [cashAmount, setCashAmount] = useState('');
@@ -456,7 +471,15 @@ export default function Ventas() {
                 {productCategories.map(cat => (
                   <div key={cat.name} className="border rounded-lg overflow-hidden">
                     <button
-                      onClick={() => setExpandedCategory(expandedCategory === cat.name ? null : cat.name)}
+                      onClick={() => {
+                        if (expandedCategory === cat.name) {
+                          setExpandedCategory(null);
+                          setExpandedPizza(null);
+                        } else {
+                          setExpandedCategory(cat.name);
+                          setExpandedPizza(null);
+                        }
+                      }}
                       className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 hover:bg-gray-100 font-semibold text-left"
                     >
                       <span className="text-gray-800">{cat.name}</span>
@@ -464,14 +487,38 @@ export default function Ventas() {
                     </button>
                     {expandedCategory === cat.name && (
                       <div className="divide-y divide-gray-100">
-                        {cat.items.map(item => (
+                        {cat.type === 'pizza' ? cat.pizzas.map(pizza => (
+                          <div key={pizza.name}>
+                            <button
+                              onClick={() => setExpandedPizza(expandedPizza === pizza.name ? null : pizza.name)}
+                              className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-gray-50 text-left"
+                            >
+                              <span className="text-gray-800 font-medium text-sm">{pizza.name}</span>
+                              <span className="text-gray-400 text-xs">{expandedPizza === pizza.name ? '▼' : '▶'}</span>
+                            </button>
+                            {expandedPizza === pizza.name && (
+                              <div className="bg-gray-50 border-t border-gray-100">
+                                {pizza.sizes.map(size => (
+                                  <button
+                                    key={size.label}
+                                    onClick={() => addItem(`${pizza.name} ${size.label}`, size.price)}
+                                    className="w-full flex items-center justify-between px-6 py-2.5 hover:bg-green-50 transition text-left text-sm"
+                                  >
+                                    <span className="text-gray-700">{size.label}</span>
+                                    <span className="text-green-700 font-bold">{formatCurrency(size.price)}</span>
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        )) : cat.items.map(item => (
                           <button
                             key={item.name}
                             onClick={() => addItem(item.name, item.price)}
-                            className="w-full flex items-center justify-between px-4 py-3 hover:bg-green-50 transition text-left"
+                            className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-green-50 transition text-left"
                           >
-                            <span className="text-gray-800">{item.name}</span>
-                            <span className="text-green-700 font-bold">{formatCurrency(item.price)}</span>
+                            <span className="text-gray-800 text-sm">{item.name}</span>
+                            <span className="text-green-700 font-bold text-sm">{formatCurrency(item.price)}</span>
                           </button>
                         ))}
                       </div>

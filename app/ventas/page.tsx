@@ -21,6 +21,7 @@ interface PaymentData {
   tableId: number;
   items: OrderItem[];
   subtotal: number;
+  tip: number;
   method: 'efectivo' | 'yape' | 'pos';
   amountPaid?: number;
   change?: number;
@@ -247,6 +248,7 @@ export default function Ventas() {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<'efectivo' | 'yape' | 'pos' | null>(null);
   const [cashAmount, setCashAmount] = useState('');
+  const [tipAmount, setTipAmount] = useState('');
   const [showConfirmPayment, setShowConfirmPayment] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [paymentsHistory, setPaymentsHistory] = useState<PaymentData[]>(() => loadFromStorage(PAYMENTS_KEY, []));
@@ -324,6 +326,7 @@ export default function Ventas() {
   const openPayment = () => {
     setPaymentMethod(null);
     setCashAmount('');
+    setTipAmount('');
     setShowConfirmPayment(false);
     setShowPaymentModal(true);
   };
@@ -341,10 +344,12 @@ export default function Ventas() {
 
   const confirmPayment = () => {
     const paid = paymentMethod === 'efectivo' ? parseFloat(cashAmount) : subtotal;
+    const tip = parseFloat(tipAmount) || 0;
     const payment: PaymentData = {
       tableId: activeTable + 1,
       items: [...activeOrder.items],
       subtotal,
+      tip,
       method: paymentMethod!,
       amountPaid: paymentMethod === 'efectivo' ? paid : undefined,
       change: paymentMethod === 'efectivo' ? paid - subtotal : undefined,
@@ -578,6 +583,25 @@ export default function Ventas() {
                 <div className="text-center py-3 text-gray-600">Pasa la tarjeta por el POS para procesar el pago.</div>
               )}
 
+              {paymentMethod && (
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Propina (S/)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={tipAmount}
+                    onChange={(e) => setTipAmount(e.target.value)}
+                    placeholder="0.00"
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg bg-white text-gray-900 text-lg font-bold focus:outline-none focus:ring-2 focus:ring-green-500"
+                  />
+                  {parseFloat(tipAmount) > 0 && (
+                    <p className="text-green-700 font-bold mt-2">
+                      Total con propina: {formatCurrency(subtotal + parseFloat(tipAmount))}
+                    </p>
+                  )}
+                </div>
+              )}
+
               <div className="flex gap-3 pt-2">
                 <button
                   onClick={handlePayment}
@@ -602,6 +626,9 @@ export default function Ventas() {
               <h2 className="text-xl font-bold mb-2">Pago Confirmado</h2>
               <p className="text-gray-600 mb-1">Mesa {activeTable + 1} — {paymentMethod === 'efectivo' ? 'Efectivo' : paymentMethod === 'yape' ? 'Yape' : 'Tarjeta/POS'}</p>
               <p className="text-2xl font-bold mb-1">{formatCurrency(subtotal)}</p>
+              {parseFloat(tipAmount) > 0 && (
+                <p className="text-green-700 font-semibold mb-1">Propina: {formatCurrency(parseFloat(tipAmount))}</p>
+              )}
               {paymentMethod === 'efectivo' && cashAmount && (
                 <p className="text-green-700 font-bold mb-4">Vuelto: {formatCurrency(parseFloat(cashAmount) - subtotal)}</p>
               )}
@@ -660,6 +687,11 @@ export default function Ventas() {
                           </span>
                           <span className={`font-bold ${p.deleted ? 'line-through text-gray-400' : ''}`}>{formatCurrency(p.subtotal)}</span>
                         </div>
+                        {p.tip > 0 && (
+                          <p className={`text-sm mt-0.5 ${p.deleted ? 'text-gray-300' : 'text-green-700'}`}>
+                            Propina: {formatCurrency(p.tip)}
+                          </p>
+                        )}
                         {p.amountPaid && p.change !== undefined && (
                           <p className={`text-sm mt-1 ${p.deleted ? 'text-gray-300' : 'text-gray-500'}`}>
                             Pagó: {formatCurrency(p.amountPaid)} · Vuelto: {formatCurrency(p.change)}
@@ -680,9 +712,10 @@ export default function Ventas() {
                 )}
               </div>
               <div className="p-4 border-t flex justify-between items-center">
-                <span className="text-sm text-gray-500">
-                  Total cobrado: {formatCurrency(paymentsHistory.reduce((sum, p) => p.deleted ? sum : sum + p.subtotal, 0))}
-                </span>
+                <div className="text-sm text-gray-500 space-y-1">
+                  <p>Total cobrado: {formatCurrency(paymentsHistory.reduce((sum, p) => p.deleted ? sum : sum + p.subtotal, 0))}</p>
+                  <p>Total propinas: {formatCurrency(paymentsHistory.reduce((sum, p) => p.deleted ? sum : sum + p.tip, 0))}</p>
+                </div>
                 <button onClick={() => setShowHistory(false)} className="px-4 py-2 bg-gray-200 text-gray-700 font-bold rounded-lg hover:bg-gray-300 transition">
                   Cerrar
                 </button>

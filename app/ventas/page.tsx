@@ -256,7 +256,7 @@ export default function Ventas() {
   const [paymentsHistory, setPaymentsHistory] = useState<PaymentData[]>(() => loadFromStorage(PAYMENTS_KEY, []));
   const [recipes, setRecipes] = useState(defaultRecipes);
   const [subRecipes, setSubRecipes] = useState(defaultSubRecipes);
-  const initialFirestoreLoad = useRef(true);
+  const lastLocalPaymentChange = useRef(0);
 
   // Load recipes & sub-recipes from localStorage (shared with inventario)
   useEffect(() => {
@@ -290,13 +290,14 @@ export default function Ventas() {
             });
           }
           if (data.payments && Array.isArray(data.payments)) {
+            // If we just made a local change within 2s, trust local state to avoid race condition
+            if (Date.now() - lastLocalPaymentChange.current < 2000) return;
             setPaymentsHistory(prev => {
               const incoming = JSON.stringify(data.payments);
               const current = JSON.stringify(prev);
               return incoming === current ? prev : data.payments;
             });
           }
-          initialFirestoreLoad.current = false;
         });
       return () => unsub();
     }
@@ -386,7 +387,10 @@ export default function Ventas() {
       change: paymentMethod === 'efectivo' ? paid - subtotal : undefined,
       date: new Date().toLocaleString('es-PE'),
     };
-    setPaymentsHistory(prev => [payment, ...prev]);
+    setPaymentsHistory(prev => {
+      lastLocalPaymentChange.current = Date.now();
+      return [payment, ...prev];
+    });
     setTables(prev => {
       const updated = [...prev];
       updated[activeTable] = { items: [], status: 'libre', customerName: '' };
@@ -733,6 +737,7 @@ export default function Ventas() {
                               <button
                                 onClick={() => {
                                   setPaymentsHistory(prev => {
+                                    lastLocalPaymentChange.current = Date.now();
                                     const updated = prev.map(p2 => p2.id === p.id ? { ...p2, deleted: true } : p2);
                                     return updated;
                                   });

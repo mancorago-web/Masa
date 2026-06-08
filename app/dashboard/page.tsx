@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo, useRef } from "react";
 import Link from "next/link";
+import { getDb } from "@/lib/firebase";
 
 interface InventoryItem {
   id: string;
@@ -182,7 +183,7 @@ export default function Dashboard() {
 
   const isToday = selectedDate === todayStr();
 
-  // Load all data on mount
+  // Load all data on mount + real-time Firestore listener for payments
   useEffect(() => {
     const today = todayStr();
     setSelectedDate(today);
@@ -193,6 +194,45 @@ export default function Dashboard() {
     setRecipeIngredients(loadFromStorage<Record<string, RecipeIngredient[]>>('masa-recipeIngredients', {}));
     setSubIngredients(loadFromStorage<Record<string, RecipeIngredient[]>>('masa-subIngredients', {}));
     setInventory(loadFromStorage<InventoryItem[]>('masa-inventory', []));
+
+    // Real-time Firestore listener for payments cross-device sync
+    const db = getDb();
+    if (db) {
+      const unsub = db.collection('config').doc('ventas')
+        .onSnapshot((snap: any) => {
+          if (!snap.exists) return;
+          const data = snap.data();
+          if (data.payments && Array.isArray(data.payments)) {
+            setPayments(prev => {
+              const incoming = JSON.stringify(data.payments);
+              const current = JSON.stringify(prev);
+              return incoming === current ? prev : data.payments;
+            });
+          }
+        });
+      // Also listen for inventory/recipes updates
+      const unsub2 = db.collection('config').doc('datosGenerales')
+        .onSnapshot((snap: any) => {
+          if (!snap.exists) return;
+          const data = snap.data();
+          if (data.inventory && Array.isArray(data.inventory)) {
+            setInventory(prev => {
+              const incoming = JSON.stringify(data.inventory);
+              const current = JSON.stringify(prev);
+              return incoming === current ? prev : data.inventory;
+            });
+          }
+          if (data.recipes && Array.isArray(data.recipes)) {
+            setRecipes(prev => {
+              const incoming = JSON.stringify(data.recipes);
+              const current = JSON.stringify(prev);
+              return incoming === current ? prev : data.recipes;
+            });
+          }
+        });
+      setLoading(false);
+      return () => { unsub(); unsub2(); };
+    }
     setLoading(false);
   }, []);
 

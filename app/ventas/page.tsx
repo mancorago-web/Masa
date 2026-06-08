@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import Link from "next/link";
 import { getDb } from "@/lib/firebase";
 
@@ -256,6 +256,7 @@ export default function Ventas() {
   const [paymentsHistory, setPaymentsHistory] = useState<PaymentData[]>(() => loadFromStorage(PAYMENTS_KEY, []));
   const [recipes, setRecipes] = useState(defaultRecipes);
   const [subRecipes, setSubRecipes] = useState(defaultSubRecipes);
+  const initialFirestoreLoad = useRef(true);
 
   // Load recipes & sub-recipes from localStorage (shared with inventario)
   useEffect(() => {
@@ -273,6 +274,32 @@ export default function Ventas() {
     if (savedSubs && Array.isArray(savedSubs)) {
       setSubRecipes(savedSubs);
     }
+
+    // Real-time Firestore listener for cross-device sync
+    const db = getDb();
+    if (db) {
+      const unsub = db.collection('config').doc('ventas')
+        .onSnapshot((snap: any) => {
+          if (!snap.exists) return;
+          const data = snap.data();
+          if (data.tables && Array.isArray(data.tables) && data.tables.length === 8) {
+            setTables(prev => {
+              const incoming = JSON.stringify(data.tables);
+              const current = JSON.stringify(prev);
+              return incoming === current ? prev : data.tables;
+            });
+          }
+          if (data.payments && Array.isArray(data.payments)) {
+            setPaymentsHistory(prev => {
+              const incoming = JSON.stringify(data.payments);
+              const current = JSON.stringify(prev);
+              return incoming === current ? prev : data.payments;
+            });
+          }
+          initialFirestoreLoad.current = false;
+        });
+      return () => unsub();
+    }
   }, []);
 
   const productCategories = useMemo(() => buildMenu(recipes, subRecipes), [recipes, subRecipes]);
@@ -284,6 +311,7 @@ export default function Ventas() {
 
   useEffect(() => {
     saveToStorage(PAYMENTS_KEY, paymentsHistory);
+    syncToFirestore({ payments: paymentsHistory });
   }, [paymentsHistory]);
 
   const activeOrder = tables[activeTable];

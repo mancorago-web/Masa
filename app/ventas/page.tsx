@@ -332,7 +332,7 @@ export default function Ventas() {
                       onClick={() => setExpandedCategory(expandedCategory === cat.name ? null : cat.name)}
                       className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 hover:bg-gray-100 font-semibold text-left"
                     >
-                      <span>{cat.name}</span>
+                      <span className="text-gray-800">{cat.name}</span>
                       <span className="text-gray-400">{expandedCategory === cat.name ? '▼' : '▶'}</span>
                     </button>
                     {expandedCategory === cat.name && (

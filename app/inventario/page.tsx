@@ -1055,8 +1055,9 @@ export default function Inventario() {
     { id: '34', category: 'PIZZAS ESPECIALES', name: 'Huerta & Mar' },
     { id: '35', category: 'PIZZAS ESPECIALES', name: 'Buscaiola' },
     { id: '36', category: 'PIZZAS ESPECIALES', name: 'Capricciosa' },
-    { id: '10', category: 'PASTAS RELLENAS', name: 'Ravioli Ricotta' },
-    { id: '11', category: 'PASTAS RELLENAS', name: 'Agnolotti' },
+    { id: '37', category: 'PASTAS RELLENAS', name: 'Lasagna Boloñesa' },
+    { id: '38', category: 'PASTAS RELLENAS', name: 'Lasagna Vegetariana' },
+    { id: '39', category: 'PASTAS RELLENAS', name: 'Berenjena Parmesana' },
     { id: '12', category: 'PASTAS', name: 'Spaghetti Carbonara' },
     { id: '13', category: 'PASTAS', name: 'Fettuccine Alfredo' },
   ];

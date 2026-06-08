@@ -72,8 +72,9 @@ const defaultRecipes: { id: string; category: string; name: string }[] = [
   { id: '34', category: 'PIZZAS ESPECIALES', name: 'Huerta & Mar' },
   { id: '35', category: 'PIZZAS ESPECIALES', name: 'Buscaiola' },
   { id: '36', category: 'PIZZAS ESPECIALES', name: 'Capricciosa' },
-  { id: '10', category: 'PASTAS RELLENAS', name: 'Ravioli Ricotta' },
-  { id: '11', category: 'PASTAS RELLENAS', name: 'Agnolotti' },
+  { id: '37', category: 'PASTAS RELLENAS', name: 'Lasagna Boloñesa' },
+  { id: '38', category: 'PASTAS RELLENAS', name: 'Lasagna Vegetariana' },
+  { id: '39', category: 'PASTAS RELLENAS', name: 'Berenjena Parmesana' },
   { id: '12', category: 'PASTAS', name: 'Spaghetti Carbonara' },
   { id: '13', category: 'PASTAS', name: 'Fettuccine Alfredo' },
 ];
@@ -148,7 +149,7 @@ const bebidasItems: MenuItem[] = [
 
 const nonPizzaPrices: Record<string, number> = {
   'Pan al ajo': 12, 'Bruschetta': 16, 'Crostini misti': 18,
-  'Spaghetti Carbonara': 28, 'Fettuccine Alfredo': 28, 'Ravioli Ricotta': 32, 'Agnolotti': 32,
+  'Spaghetti Carbonara': 28, 'Fettuccine Alfredo': 28, 'Lasagna Boloñesa': 32, 'Lasagna Vegetariana': 32, 'Berenjena Parmesana': 28,
 };
 
 const sizeLabels = ['8 Pzas.', '12 Pzas.', '16 Pzas.'];

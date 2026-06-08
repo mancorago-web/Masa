@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import Link from "next/link";
 
 interface InventoryItem {
@@ -41,6 +41,29 @@ interface PaymentData {
   deleted?: boolean;
 }
 
+interface SoldItem {
+  name: string;
+  qty: number;
+  revenue: number;
+  cost: number;
+  margin: number;
+}
+
+interface DailyTotals {
+  revenue: number;
+  tips: number;
+  itemsSold: number;
+  totalCost: number;
+  totalMargin: number;
+  paymentBreakdown: { efectivo: number; yape: number; pos: number };
+}
+
+interface DailySnapshot {
+  date: string;
+  totals: DailyTotals;
+  soldItems: SoldItem[];
+}
+
 function loadFromStorage<T>(key: string, fallback: T): T {
   if (typeof window === 'undefined') return fallback;
   try {
@@ -48,6 +71,10 @@ function loadFromStorage<T>(key: string, fallback: T): T {
     if (saved) return JSON.parse(saved);
   } catch {}
   return fallback;
+}
+
+function saveToStorage(key: string, data: unknown) {
+  try { localStorage.setItem(key, JSON.stringify(data)); } catch {}
 }
 
 function todayStr() {
@@ -64,6 +91,82 @@ function parsePaymentDate(dateStr: string) {
 }
 
 const formatCurrency = (n: number) => `S/${n.toFixed(2)}`;
+const SNAPSHOT_PREFIX = 'masa-dashboard-daily-';
+
+function computeSoldItems(
+  payments: PaymentData[],
+  recipes: { id: string; category: string; name: string }[],
+  subRecipes: { id: string; parentId: string; name: string }[],
+  recipeIngredients: Record<string, RecipeIngredient[]>,
+  subIngredients: Record<string, RecipeIngredient[]>,
+  inventory: InventoryItem[],
+): SoldItem[] {
+  const items: SoldItem[] = [];
+  const map = new Map<string, { qty: number; revenue: number }>();
+
+  for (const p of payments) {
+    for (const item of p.items) {
+      const existing = map.get(item.name);
+      if (existing) {
+        existing.qty += item.quantity;
+        existing.revenue += item.quantity * item.unitPrice;
+      } else {
+        map.set(item.name, { qty: item.quantity, revenue: item.quantity * item.unitPrice });
+      }
+    }
+  }
+
+  const invCost = new Map<string, number>();
+  for (const inv of inventory) {
+    if (inv.unitCost) invCost.set(inv.name.toLowerCase(), inv.unitCost);
+  }
+
+  const sumCost = (ings: RecipeIngredient[]) =>
+    ings.reduce((s, ing) => s + (ing.cost || ing.quantity * (invCost.get(ing.name.toLowerCase()) || 0)), 0);
+
+  const recipeByName = new Map<string, string>();
+  for (const r of recipes) recipeByName.set(r.name.toLowerCase(), r.id);
+
+  const subRecipeByName = new Map<string, string>();
+  for (const sr of subRecipes) subRecipeByName.set(sr.name.toLowerCase(), sr.id);
+
+  for (const [name, data] of map.entries()) {
+    let cost = 0;
+    const nameLower = name.toLowerCase();
+
+    const subId = subRecipeByName.get(nameLower);
+    if (subId && subIngredients[subId]) {
+      cost = sumCost(subIngredients[subId]) * data.qty;
+    } else {
+      const recipeId = recipeByName.get(nameLower);
+      if (recipeId && recipeIngredients[recipeId]) {
+        cost = sumCost(recipeIngredients[recipeId]) * data.qty;
+      } else {
+        const avgPrice = data.qty > 0 ? data.revenue / data.qty : 0;
+        cost = avgPrice * 0.3 * data.qty;
+      }
+    }
+
+    const margin = data.revenue > 0 ? ((data.revenue - cost) / data.revenue) * 100 : 0;
+    items.push({ name, qty: data.qty, revenue: data.revenue, cost, margin });
+  }
+
+  items.sort((a, b) => b.revenue - a.revenue);
+  return items;
+}
+
+function computeTotals(payments: PaymentData[], soldItems: SoldItem[]): DailyTotals {
+  const revenue = payments.reduce((s, p) => s + p.subtotal, 0);
+  const tips = payments.reduce((s, p) => s + p.tip, 0);
+  const itemsSold = soldItems.reduce((s, i) => s + i.qty, 0);
+  const totalCost = soldItems.reduce((s, i) => s + i.cost, 0);
+  const totalMargin = revenue > 0 ? ((revenue - totalCost) / revenue) * 100 : 0;
+  const paymentBreakdown = { efectivo: 0, yape: 0, pos: 0 };
+  for (const p of payments) {
+    paymentBreakdown[p.method] += p.subtotal;
+  }
+  return { revenue, tips, itemsSold, totalCost, totalMargin, paymentBreakdown };
+}
 
 export default function Dashboard() {
   const [payments, setPayments] = useState<PaymentData[]>([]);
@@ -74,9 +177,16 @@ export default function Dashboard() {
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [selectedDate, setSelectedDate] = useState('');
   const [loading, setLoading] = useState(true);
+  const [snapshotData, setSnapshotData] = useState<DailySnapshot | null>(null);
+  const lastSavedDate = useRef('');
 
+  const isToday = selectedDate === todayStr();
+
+  // Load all data on mount
   useEffect(() => {
-    setSelectedDate(todayStr());
+    const today = todayStr();
+    setSelectedDate(today);
+    lastSavedDate.current = today;
     setPayments(loadFromStorage<PaymentData[]>('masa-ventas-payments', []));
     setRecipes(loadFromStorage<{ id: string; category: string; name: string }[]>('masa-recipes', []));
     setSubRecipes(loadFromStorage<{ id: string; parentId: string; name: string }[]>('masa-subRecipes', []));
@@ -86,87 +196,82 @@ export default function Dashboard() {
     setLoading(false);
   }, []);
 
+  // When selectedDate changes to a non-today date, try loading snapshot
+  useEffect(() => {
+    if (!selectedDate || isToday) {
+      setSnapshotData(null);
+      return;
+    }
+    const saved = loadFromStorage<DailySnapshot | null>(SNAPSHOT_PREFIX + selectedDate, null);
+    setSnapshotData(saved);
+  }, [selectedDate, isToday]);
+
+  // Auto-save snapshot every 30s and on midnight
+  useEffect(() => {
+    if (loading) return;
+
+    const saveSnapshot = () => {
+      const today = todayStr();
+      if (lastSavedDate.current !== today) {
+        lastSavedDate.current = today;
+      }
+      // Only save today's snapshot using current computed data
+      const p = payments.filter(p => !p.deleted && parsePaymentDate(p.date) === today);
+      if (p.length === 0) return;
+      const computedSold = computeSoldItems(p, recipes, subRecipes, recipeIngredients, subIngredients, inventory);
+      const computedTotals = computeTotals(p, computedSold);
+      const snapshot: DailySnapshot = {
+        date: today,
+        totals: computedTotals,
+        soldItems: computedSold,
+      };
+      saveToStorage(SNAPSHOT_PREFIX + today, snapshot);
+    };
+
+    // Save immediately on mount
+    const timer = setTimeout(saveSnapshot, 2000);
+
+    const interval = setInterval(saveSnapshot, 30000);
+
+    // Midnight check
+    const msToMidnight = () => {
+      const now = new Date();
+      const midnight = new Date(now);
+      midnight.setDate(midnight.getDate() + 1);
+      midnight.setHours(0, 0, 0, 0);
+      return midnight.getTime() - now.getTime();
+    };
+
+    let midnightTimer = setTimeout(function tick() {
+      saveSnapshot();
+      lastSavedDate.current = todayStr();
+      midnightTimer = setTimeout(tick, msToMidnight());
+    }, msToMidnight());
+
+    return () => {
+      clearTimeout(timer);
+      clearInterval(interval);
+      clearTimeout(midnightTimer);
+    };
+  }, [loading, payments, recipes, subRecipes, recipeIngredients, subIngredients, inventory]);
+
   const filteredPayments = useMemo(() => {
     if (!selectedDate) return [];
-    return payments.filter(p => !p.deleted && parsePaymentDate(p.date) === selectedDate);
-  }, [payments, selectedDate]);
+    if (isToday) return payments.filter(p => !p.deleted && parsePaymentDate(p.date) === selectedDate);
+    // For past dates, return empty — we use snapshot
+    return [];
+  }, [payments, selectedDate, isToday]);
 
   const soldItems = useMemo(() => {
-    const items: { name: string; qty: number; revenue: number; cost: number; margin: number }[] = [];
-    const map = new Map<string, { qty: number; revenue: number }>();
-
-    for (const p of filteredPayments) {
-      for (const item of p.items) {
-        const existing = map.get(item.name);
-        if (existing) {
-          existing.qty += item.quantity;
-          existing.revenue += item.quantity * item.unitPrice;
-        } else {
-          map.set(item.name, { qty: item.quantity, revenue: item.quantity * item.unitPrice });
-        }
-      }
-    }
-
-    // Build inventory name → unitCost lookup
-    const invCost = new Map<string, number>();
-    for (const inv of inventory) {
-      if (inv.unitCost) invCost.set(inv.name.toLowerCase(), inv.unitCost);
-    }
-
-    // Sum cost for a list of ingredients
-    const sumCost = (ings: RecipeIngredient[]) =>
-      ings.reduce((s, ing) => s + (ing.cost || ing.quantity * (invCost.get(ing.name.toLowerCase()) || 0)), 0);
-
-    // Build a map of recipe name → recipe id
-    const recipeByName = new Map<string, string>();
-    for (const r of recipes) recipeByName.set(r.name.toLowerCase(), r.id);
-
-    // Build a map of sub-recipe name → sub-recipe id
-    const subRecipeByName = new Map<string, string>();
-    for (const sr of subRecipes) subRecipeByName.set(sr.name.toLowerCase(), sr.id);
-
-    for (const [name, data] of map.entries()) {
-      let cost = 0;
-      const nameLower = name.toLowerCase();
-
-      // Try sub-recipe match first (pizza sizes like "Americana 8 Pzas.")
-      const subId = subRecipeByName.get(nameLower);
-      if (subId && subIngredients[subId]) {
-        cost = sumCost(subIngredients[subId]) * data.qty;
-      } else {
-        // Try recipe match (non-pizza items like "Pan al ajo")
-        const recipeId = recipeByName.get(nameLower);
-        if (recipeId && recipeIngredients[recipeId]) {
-          cost = sumCost(recipeIngredients[recipeId]) * data.qty;
-        } else {
-          // Bebidas or unknown — estimate at 30% of selling price
-          const avgPrice = data.qty > 0 ? data.revenue / data.qty : 0;
-          cost = avgPrice * 0.3 * data.qty;
-        }
-      }
-
-      const totalRevenue = data.revenue;
-      const totalCost = cost;
-      const margin = totalRevenue > 0 ? ((totalRevenue - totalCost) / totalRevenue) * 100 : 0;
-      items.push({ name, qty: data.qty, revenue: totalRevenue, cost: totalCost, margin });
-    }
-
-    items.sort((a, b) => b.revenue - a.revenue);
-    return items;
-  }, [filteredPayments, recipes, subRecipes, recipeIngredients, subIngredients, inventory]);
+    if (!isToday && snapshotData) return snapshotData.soldItems;
+    if (!isToday) return [];
+    return computeSoldItems(filteredPayments, recipes, subRecipes, recipeIngredients, subIngredients, inventory);
+  }, [filteredPayments, recipes, subRecipes, recipeIngredients, subIngredients, inventory, isToday, snapshotData]);
 
   const totals = useMemo(() => {
-    const revenue = filteredPayments.reduce((s, p) => s + p.subtotal, 0);
-    const tips = filteredPayments.reduce((s, p) => s + p.tip, 0);
-    const itemsSold = soldItems.reduce((s, i) => s + i.qty, 0);
-    const totalCost = soldItems.reduce((s, i) => s + i.cost, 0);
-    const totalMargin = revenue > 0 ? ((revenue - totalCost) / revenue) * 100 : 0;
-    const paymentBreakdown = { efectivo: 0, yape: 0, pos: 0 };
-    for (const p of filteredPayments) {
-      paymentBreakdown[p.method] += p.subtotal;
-    }
-    return { revenue, tips, itemsSold, totalCost, totalMargin, paymentBreakdown };
-  }, [filteredPayments, soldItems]);
+    if (!isToday && snapshotData) return snapshotData.totals;
+    return computeTotals(filteredPayments, soldItems);
+  }, [filteredPayments, soldItems, isToday, snapshotData]);
 
   if (loading) {
     return (

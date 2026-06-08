@@ -129,20 +129,90 @@ export default function CajaChica() {
   }).current;
 
   useEffect(() => {
-    const saved = loadFromStorage();
-    if (saved) {
-      const init = saved.initialAmount ?? defaultInitialAmount;
-      const txns = saved.transactions ?? [];
-      setInitialAmount(init);
-      setTransactions(txns);
-      todayRef.current = todayStr();
-      // Ensure today's record exists
-      saveDailySnapshot(todayRef.current, init, txns);
-    }
-    // Load cached daily records
+    // Load cached daily records first
     const cached = loadDailyRecordsFromStorage();
     dailyRecordsRef.current = cached;
     setAvailableDates(Object.keys(cached).sort().reverse());
+
+    const saved = loadFromStorage();
+    const today = todayStr();
+    todayRef.current = today;
+    if (saved) {
+      const init = saved.initialAmount ?? defaultInitialAmount;
+      const txns = saved.transactions ?? [];
+      // Archive transactions from previous days
+      const todayTxns = txns.filter((t: Transaction) => {
+        const tDate = t.date ? t.date.split(',')[0].trim() : '';
+        const tDay = tDate ? new Date(tDate).toLocaleDateString('en-CA') : '';
+        return !tDate || tDay === today;
+      });
+      const olderTxns = txns.filter((t: Transaction) => {
+        const tDate = t.date ? t.date.split(',')[0].trim() : '';
+        const tDay = tDate ? new Date(tDate).toLocaleDateString('en-CA') : '';
+        return tDate && tDay !== today;
+      });
+      // Save older transactions as daily records grouped by date
+      const byDate: Record<string, Transaction[]> = {};
+      for (const t of olderTxns) {
+        const tDate = t.date ? t.date.split(',')[0].trim() : '';
+        const tDay = tDate ? new Date(tDate).toLocaleDateString('en-CA') : '';
+        if (tDay) {
+          if (!byDate[tDay]) byDate[tDay] = [];
+          byDate[tDay].push(t);
+        }
+      }
+      let updatedRecords = { ...dailyRecordsRef.current };
+      for (const [date, dayTxns] of Object.entries(byDate)) {
+        const dayInit = defaultInitialAmount;
+        const activeTotal = dayTxns.reduce((sum, t) => t.deleted ? sum : sum + t.amount, 0);
+        updatedRecords[date] = {
+          date,
+          initialAmount: dayInit,
+          transactions: dayTxns,
+          totalExpenses: activeTotal,
+          finalBalance: dayInit - activeTotal,
+        };
+        saveDailyRecordToFirestore(updatedRecords[date]);
+      }
+      dailyRecordsRef.current = updatedRecords;
+      saveDailyRecordsToStorage(updatedRecords);
+      setAvailableDates(Object.keys(updatedRecords).sort().reverse());
+
+      setInitialAmount(init);
+      setTransactions(todayTxns);
+      // If there were old transactions, update storage
+      if (olderTxns.length > 0) {
+        const newData = { initialAmount: init, transactions: todayTxns };
+        saveToStorage(newData);
+        syncToFirestore(newData);
+      }
+      // Ensure today's record exists
+      const activeTotal = todayTxns.reduce((sum, t) => t.deleted ? sum : sum + t.amount, 0);
+      const todayRecord: DailyRecord = {
+        date: today,
+        initialAmount: init,
+        transactions: todayTxns,
+        totalExpenses: activeTotal,
+        finalBalance: init - activeTotal,
+      };
+      dailyRecordsRef.current[today] = todayRecord;
+      saveDailyRecordsToStorage(dailyRecordsRef.current);
+      saveDailyRecordToFirestore(todayRecord);
+      setAvailableDates(Object.keys(dailyRecordsRef.current).sort().reverse());
+    } else {
+      // No saved data — save today's empty record
+      const emptyRecord: DailyRecord = {
+        date: today,
+        initialAmount: defaultInitialAmount,
+        transactions: [],
+        totalExpenses: 0,
+        finalBalance: defaultInitialAmount,
+      };
+      dailyRecordsRef.current[today] = emptyRecord;
+      saveDailyRecordsToStorage(dailyRecordsRef.current);
+      saveDailyRecordToFirestore(emptyRecord);
+      setAvailableDates(Object.keys(dailyRecordsRef.current).sort().reverse());
+    }
   }, [saveDailySnapshot]);
 
   // Midnight auto-close: check every 30s if the date changed

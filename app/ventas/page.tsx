@@ -18,6 +18,7 @@ interface TableOrder {
 }
 
 interface PaymentData {
+  id: string;
   tableId: number;
   items: OrderItem[];
   subtotal: number;
@@ -251,6 +252,7 @@ export default function Ventas() {
   const [tipAmount, setTipAmount] = useState('');
   const [showConfirmPayment, setShowConfirmPayment] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+  const [historyDate, setHistoryDate] = useState('');
   const [paymentsHistory, setPaymentsHistory] = useState<PaymentData[]>(() => loadFromStorage(PAYMENTS_KEY, []));
   const [recipes, setRecipes] = useState(defaultRecipes);
   const [subRecipes, setSubRecipes] = useState(defaultSubRecipes);
@@ -346,6 +348,7 @@ export default function Ventas() {
     const paid = paymentMethod === 'efectivo' ? parseFloat(cashAmount) : subtotal;
     const tip = parseFloat(tipAmount) || 0;
     const payment: PaymentData = {
+      id: Date.now().toString() + Math.random().toString(36).slice(2, 6),
       tableId: activeTable + 1,
       items: [...activeOrder.items],
       subtotal,
@@ -367,6 +370,26 @@ export default function Ventas() {
 
   const formatCurrency = (n: number) => `S/${n.toFixed(2)}`;
 
+  const todayStr = () => new Date().toLocaleDateString('es-PE').split(',')[0].trim();
+
+  const parsePaymentDate = (dateStr: string) => {
+    try {
+      const parts = dateStr.split(',')[0].trim().split('/');
+      if (parts.length === 3) return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+    } catch {}
+    return '';
+  };
+
+  const openHistory = () => {
+    setHistoryDate(todayStr());
+    setShowHistory(true);
+  };
+
+  const filteredPayments = useMemo(() => {
+    if (!historyDate) return [];
+    return paymentsHistory.filter(p => parsePaymentDate(p.date) === historyDate);
+  }, [paymentsHistory, historyDate]);
+
   return (
     <main className="min-h-screen bg-gray-100 p-2 md:p-4">
       <div className="container mx-auto max-w-7xl">
@@ -375,7 +398,7 @@ export default function Ventas() {
             ← Volver al menú
           </Link>
           <h1 className="text-xl md:text-2xl font-bold">Ventas</h1>
-          <button onClick={() => setShowHistory(true)} className="text-blue-600 hover:underline text-sm md:text-base">
+          <button onClick={openHistory} className="text-blue-600 hover:underline text-sm md:text-base">
             Historial
           </button>
         </div>
@@ -652,13 +675,22 @@ export default function Ventas() {
                 <h2 className="text-lg font-bold">Historial de Cobros</h2>
                 <button onClick={() => setShowHistory(false)} className="text-gray-500 hover:text-gray-700 text-xl font-bold">✕</button>
               </div>
+              <div className="px-4 pt-3 pb-1">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Seleccionar fecha</label>
+                <input
+                  type="date"
+                  value={historyDate}
+                  onChange={(e) => setHistoryDate(e.target.value)}
+                  className="w-full px-3 py-2 border-2 border-gray-200 rounded-lg bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-green-500"
+                />
+              </div>
               <div className="flex-1 overflow-y-auto p-4">
-                {paymentsHistory.length === 0 ? (
-                  <p className="text-center text-gray-400 py-8">Sin cobros registrados.</p>
+                {filteredPayments.length === 0 ? (
+                  <p className="text-center text-gray-400 py-8">Sin cobros registrados en esta fecha.</p>
                 ) : (
                   <div className="space-y-3">
-                    {paymentsHistory.map((p, i) => (
-                      <div key={i} className={`border rounded-lg p-3 ${p.deleted ? 'opacity-40 bg-gray-100' : ''}`}>
+                    {filteredPayments.map((p) => (
+                      <div key={p.id} className={`border rounded-lg p-3 ${p.deleted ? 'opacity-40 bg-gray-100' : ''}`}>
                         <div className="flex items-center justify-between mb-1">
                           <div className="flex items-center gap-2">
                             <span className={`font-bold ${p.deleted ? 'line-through text-gray-400' : ''}`}>Mesa {p.tableId}</span>
@@ -670,8 +702,7 @@ export default function Ventas() {
                               <button
                                 onClick={() => {
                                   setPaymentsHistory(prev => {
-                                    const updated = [...prev];
-                                    updated[i] = { ...updated[i], deleted: true };
+                                    const updated = prev.map(p2 => p2.id === p.id ? { ...p2, deleted: true } : p2);
                                     return updated;
                                   });
                                 }}
@@ -697,7 +728,6 @@ export default function Ventas() {
                             Pagó: {formatCurrency(p.amountPaid)} · Vuelto: {formatCurrency(p.change)}
                           </p>
                         )}
-                        {/* Product details */}
                         <div className={`mt-2 text-xs border-t pt-2 space-y-1 ${p.deleted ? 'text-gray-400' : 'text-gray-500'}`}>
                           {p.items.map((item, idx) => (
                             <div key={idx} className="flex justify-between">
@@ -713,8 +743,8 @@ export default function Ventas() {
               </div>
               <div className="p-4 border-t flex justify-between items-center">
                 <div className="text-sm text-gray-500 space-y-1">
-                  <p>Total cobrado: {formatCurrency(paymentsHistory.reduce((sum, p) => p.deleted ? sum : sum + p.subtotal, 0))}</p>
-                  <p>Total propinas: {formatCurrency(paymentsHistory.reduce((sum, p) => p.deleted ? sum : sum + p.tip, 0))}</p>
+                  <p>Total cobrado: {formatCurrency(filteredPayments.reduce((sum, p) => p.deleted ? sum : sum + p.subtotal, 0))}</p>
+                  <p>Total propinas: {formatCurrency(filteredPayments.reduce((sum, p) => p.deleted ? sum : sum + p.tip, 0))}</p>
                 </div>
                 <button onClick={() => setShowHistory(false)} className="px-4 py-2 bg-gray-200 text-gray-700 font-bold rounded-lg hover:bg-gray-300 transition">
                   Cerrar

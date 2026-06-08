@@ -107,6 +107,10 @@ export default function CajaChica() {
   const dailyRecordsRef = useRef<Record<string, DailyRecord>>({});
 
   const todayRef = useRef(todayStr());
+  const initialAmountRef = useRef(initialAmount);
+  const transactionsRef = useRef(transactions);
+  initialAmountRef.current = initialAmount;
+  transactionsRef.current = transactions;
 
   // Save daily record helper
   const saveDailySnapshot = useRef((date: string, init: number, txns: Transaction[]) => {
@@ -146,22 +150,19 @@ export default function CajaChica() {
     const interval = setInterval(() => {
       const now = todayStr();
       if (now !== todayRef.current) {
-        // Date changed — save previous day and reset for new day
         const prevDate = todayRef.current;
+        const prevInit = initialAmountRef.current;
+        const prevTxns = transactionsRef.current;
         todayRef.current = now;
-        setInitialAmount(prev => {
-          setTransactions(prevTxns => {
-            saveDailySnapshot(prevDate, prev, prevTxns);
-            // Start fresh: same initial, no transactions
-            const newData = { initialAmount: prev, transactions: [] };
-            saveToStorage(newData);
-            syncToFirestore(newData);
-            // Also save today's empty record
-            saveDailySnapshot(now, prev, []);
-            return [];
-          });
-          return prev;
-        });
+        // Snapshot the previous day
+        saveDailySnapshot(prevDate, prevInit, prevTxns);
+        // Reset for new day
+        setTransactions([]);
+        setInitialAmount(prevInit);
+        const newData = { initialAmount: prevInit, transactions: [] };
+        saveToStorage(newData);
+        syncToFirestore(newData);
+        saveDailySnapshot(now, prevInit, []);
       }
     }, 30000);
     return () => clearInterval(interval);

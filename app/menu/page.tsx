@@ -9,6 +9,7 @@ const menuItems = [
   { key: "inventario", href: "/inventario", label: "Inventario", desc: "Control de ingredientes, recetas y masa", emoji: "📦" },
   { key: "caja", href: "/caja", label: "Caja Chica", desc: "Gestión de efectivo y gastos", emoji: "💰" },
   { key: "ventas", href: "/ventas", label: "Ventas", desc: "Salón y delivery", emoji: "🍕" },
+  { key: "cocina", href: "/cocina", label: "Cocina", desc: "Pedidos en tiempo real", emoji: "👨‍🍳" },
   { key: "dashboard", href: "/dashboard", label: "Dashboard", desc: "Ventas en tiempo real", emoji: "📊" },
   { key: "facturas", href: "/facturas", label: "Facturas", desc: "Facturas y comprobantes", emoji: "🧾" },
   { key: "planillas", href: "/planillas", label: "Planillas", desc: "Control de colaboradores", emoji: "📋" },

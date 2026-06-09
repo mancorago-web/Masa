@@ -22,13 +22,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let cancelled = false;
     const init = async () => {
-      await ensureDefaultAdmin();
+      try {
+        await ensureDefaultAdmin();
+      } catch (e) {
+        console.error("Auth init error:", e);
+      }
+      if (cancelled) return;
       const session = getCurrentUser();
       if (session) setUser(session);
       setLoading(false);
     };
     init();
+    // Safety timeout: force loading=false after 5s no matter what
+    const timeout = setTimeout(() => {
+      if (cancelled) return;
+      setLoading(false);
+    }, 5000);
+    return () => {
+      cancelled = true;
+      clearTimeout(timeout);
+    };
   }, []);
 
   const loginUser = useCallback((u: AppUser) => {

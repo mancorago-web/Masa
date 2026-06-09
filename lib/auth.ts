@@ -33,6 +33,16 @@ const PAGE_PERMISSIONS: Record<UserRole, string[]> = {
 };
 
 export async function hashPassword(password: string): Promise<string> {
+  // Fallback if crypto.subtle is not available (e.g. insecure context)
+  if (typeof crypto === "undefined" || !crypto.subtle) {
+    let hash = 0;
+    for (let i = 0; i < password.length; i++) {
+      const char = password.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash |= 0;
+    }
+    return "fallback_" + Math.abs(hash).toString(16);
+  }
   const encoder = new TextEncoder();
   const data = encoder.encode(password);
   const hashBuffer = await crypto.subtle.digest("SHA-256", data);
@@ -41,15 +51,27 @@ export async function hashPassword(password: string): Promise<string> {
 }
 
 export async function login(id: string, password: string): Promise<AppUser | null> {
-  const db = getDb();
-  if (!db) return null;
   try {
+    const db = getDb();
+    if (!db) return null;
     const doc = await db.collection(USERS_COLLECTION).doc(id).get();
     if (!doc.exists) return null;
     const user = doc.data() as StoredUser;
     if (!user.active) return null;
     const hash = await hashPassword(password);
-    if (hash !== user.passwordHash) return null;
+    if (hash !== user.passwordHash) {
+      // Try the other hash method (for cross-browser compatibility)
+      if (typeof crypto !== "undefined" && crypto.subtle) {
+        const encoder = new TextEncoder();
+        const data = encoder.encode(password);
+        const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        const sha256 = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+        if (sha256 !== user.passwordHash) return null;
+      } else {
+        return null;
+      }
+    }
     const session: AppUser = { id: user.id, name: user.name, role: user.role };
     localStorage.setItem(SESSION_KEY, JSON.stringify(session));
     return session;
@@ -78,9 +100,9 @@ export function hasAccess(user: AppUser | null, page: string): boolean {
 }
 
 export async function ensureDefaultAdmin(): Promise<boolean> {
-  const db = getDb();
-  if (!db) return false;
   try {
+    const db = getDb();
+    if (!db) return false;
     const snap = await db.collection(USERS_COLLECTION).limit(1).get();
     if (!snap.empty) return false;
     const hash = await hashPassword("admin");
@@ -106,9 +128,9 @@ export async function createUser(
   role: UserRole,
   createdBy?: string
 ): Promise<boolean> {
-  const db = getDb();
-  if (!db) return false;
   try {
+    const db = getDb();
+    if (!db) return false;
     const hash = await hashPassword(password);
     await db.collection(USERS_COLLECTION).doc(id).set({
       id,
@@ -127,9 +149,9 @@ export async function createUser(
 }
 
 export async function updateUserPassword(id: string, newPassword: string): Promise<boolean> {
-  const db = getDb();
-  if (!db) return false;
   try {
+    const db = getDb();
+    if (!db) return false;
     const hash = await hashPassword(newPassword);
     await db.collection(USERS_COLLECTION).doc(id).update({ passwordHash: hash });
     return true;
@@ -140,9 +162,9 @@ export async function updateUserPassword(id: string, newPassword: string): Promi
 }
 
 export async function updateUserRole(id: string, role: UserRole): Promise<boolean> {
-  const db = getDb();
-  if (!db) return false;
   try {
+    const db = getDb();
+    if (!db) return false;
     await db.collection(USERS_COLLECTION).doc(id).update({ role });
     return true;
   } catch (e) {
@@ -152,9 +174,9 @@ export async function updateUserRole(id: string, role: UserRole): Promise<boolea
 }
 
 export async function toggleUserActive(id: string): Promise<boolean> {
-  const db = getDb();
-  if (!db) return false;
   try {
+    const db = getDb();
+    if (!db) return false;
     const doc = await db.collection(USERS_COLLECTION).doc(id).get();
     if (!doc.exists) return false;
     const current = doc.data() as StoredUser;
@@ -167,9 +189,9 @@ export async function toggleUserActive(id: string): Promise<boolean> {
 }
 
 export async function deleteUser(id: string): Promise<boolean> {
-  const db = getDb();
-  if (!db) return false;
   try {
+    const db = getDb();
+    if (!db) return false;
     await db.collection(USERS_COLLECTION).doc(id).delete();
     return true;
   } catch (e) {
@@ -179,9 +201,9 @@ export async function deleteUser(id: string): Promise<boolean> {
 }
 
 export async function getAllUsers(): Promise<StoredUser[]> {
-  const db = getDb();
-  if (!db) return [];
   try {
+    const db = getDb();
+    if (!db) return [];
     const snap = await db.collection(USERS_COLLECTION).get();
     return snap.docs.map((d: any) => d.data() as StoredUser);
   } catch (e) {

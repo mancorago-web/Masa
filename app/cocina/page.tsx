@@ -7,17 +7,16 @@ import { getDb } from "@/lib/firebase";
 import { useAuth } from "@/components/AuthProvider";
 
 interface KitchenItem {
+  id: string;
   name: string;
   quantity: number;
+  completed: boolean;
 }
 
-interface KitchenRecord {
-  id: string;
+interface KitchenTable {
   tableNumber: number;
   items: KitchenItem[];
-  receivedAt: string;
-  completedAt: string | null;
-  status: "pending" | "completed";
+  updatedAt: string;
 }
 
 interface OrderItem {
@@ -33,31 +32,31 @@ interface TableOrder {
   customerName: string;
 }
 
-const HISTORY_KEY = "masa-kitchen-history";
-const COCINA_FIRESTORE_DOC = "config";
-const COCINA_FIRESTORE_FIELD = "cocina";
+const STORAGE_KEY = "masa-kitchen-tables";
+const FIRESTORE_DOC = "config";
+const FIRESTORE_FIELD = "cocina";
 
-function loadHistory(): KitchenRecord[] {
+function loadTables(): KitchenTable[] {
   if (typeof window === "undefined") return [];
   try {
-    const saved = localStorage.getItem(HISTORY_KEY);
+    const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) return JSON.parse(saved);
   } catch {}
   return [];
 }
 
-function saveHistoryToStorage(records: KitchenRecord[]) {
-  localStorage.setItem(HISTORY_KEY, JSON.stringify(records));
+function saveTablesToStorage(tables: KitchenTable[]) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(tables));
 }
 
-async function syncHistoryToFirestore(history: KitchenRecord[]) {
+async function syncToFirestore(tables: KitchenTable[]) {
   const db = getDb();
   if (!db) return;
   try {
     await db
-      .collection(COCINA_FIRESTORE_DOC)
-      .doc(COCINA_FIRESTORE_FIELD)
-      .set({ history }, { merge: true });
+      .collection(FIRESTORE_DOC)
+      .doc(FIRESTORE_FIELD)
+      .set({ tables }, { merge: true });
   } catch (e) {
     console.error("Firestore sync error (cocina):", e);
   }
@@ -75,62 +74,63 @@ function isSameDay(a: string, b: string) {
 export default function Cocina() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
-  const [history, setHistory] = useState<KitchenRecord[]>([]);
+  const [tables, setTables] = useState<KitchenTable[]>([]);
   const [notifications, setNotifications] = useState<{ id: number; text: string }[]>([]);
   const [showHistory, setShowHistory] = useState(false);
   const [historyDate, setHistoryDate] = useState(todayStr());
+  const [historySnapshots, setHistorySnapshots] = useState<
+    { date: string; tables: KitchenTable[] }[]
+  >([]);
   const prevTablesRef = useRef<string>("");
   const firstLoad = useRef(true);
   const notifId = useRef(0);
-  const historyRef = useRef<KitchenRecord[]>([]);
-
-  // Keep ref in sync
-  historyRef.current = history;
+  const tablesRef = useRef<KitchenTable[]>([]);
+  tablesRef.current = tables;
 
   useEffect(() => {
     if (!authLoading && !user) router.replace("/login");
   }, [user, authLoading, router]);
 
-  // Load existing history on mount + listen for new orders from Ventas
+  // Load + listeners
   useEffect(() => {
-    const cached = loadHistory();
-    if (cached.length > 0) {
-      setHistory(cached);
-    }
+    const cached = loadTables();
+    if (cached.length > 0) setTables(cached);
 
     const db = getDb();
     if (!db) return;
 
-    // Listen for kitchen history changes from other devices
-    const unsubHistory = db
-      .collection(COCINA_FIRESTORE_DOC)
-      .doc(COCINA_FIRESTORE_FIELD)
+    // Listen for kitchen table changes from other devices
+    const unsubKitchen = db
+      .collection(FIRESTORE_DOC)
+      .doc(FIRESTORE_FIELD)
       .onSnapshot((snap: any) => {
         if (!snap.exists) return;
         const data = snap.data();
-        if (data.history && Array.isArray(data.history)) {
-          setHistory((prev) => {
-            if (data.history.length < prev.length) return prev;
-            const incoming = JSON.stringify(data.history);
-            const current = JSON.stringify(prev);
-            if (incoming === current) return prev;
-            // Merge: keep local updates (completion status) but accept new records
-            const localMap = new Map(prev.map((r) => [r.id, r]));
-            let changed = false;
-            const merged = data.history.map((r: KitchenRecord) => {
-              const local = localMap.get(r.id);
-              if (local && local.status === "completed" && r.status === "pending") {
-                changed = true;
-                return local;
-              }
-              return r;
+        if (!data.tables || !Array.isArray(data.tables)) return;
+        setTables((prev) => {
+          if (data.tables.length < prev.length) return prev;
+          const incoming = JSON.stringify(data.tables);
+          const current = JSON.stringify(prev);
+          if (incoming === current) return prev;
+          // Merge: keep local completed flags, accept new items from remote
+          const prevMap = new Map(prev.map((t) => [t.tableNumber, t]));
+          const merged = data.tables.map((t: KitchenTable) => {
+            const local = prevMap.get(t.tableNumber);
+            if (!local) return t;
+            // Preserve completed status for items that exist locally
+            const localItems = new Map(local.items.map((i) => [i.id, i]));
+            const mergedItems = t.items.map((item) => {
+              const localItem = localItems.get(item.id);
+              if (localItem) return localItem;
+              return item;
             });
-            return changed ? merged : data.history;
+            return { ...t, items: mergedItems };
           });
-        }
+          return merged;
+        });
       });
 
-    // Listen for new orders from Ventas tables
+    // Listen for new orders from Ventas
     const unsubVentas = db
       .collection("config")
       .doc("ventas")
@@ -148,47 +148,84 @@ export default function Cocina() {
           firstLoad.current = false;
           return;
         }
-
         if (!prevStr) return;
 
         try {
           const prevTables: TableOrder[] = JSON.parse(prevStr);
           const curTables: TableOrder[] = data.tables;
-          const newRecords: KitchenRecord[] = [];
           const now = new Date().toISOString();
+          let hasNew = false;
 
-          for (let i = 0; i < curTables.length; i++) {
-            const prevTotal = prevTables[i]?.items.reduce((s, it) => s + it.quantity, 0) || 0;
-            const curTotal = curTables[i].items.reduce((s, it) => s + it.quantity, 0);
-            if (curTotal > prevTotal && curTables[i].status === "ocupado") {
+          setTables((prev) => {
+            const updated = [...prev];
+            const notifs: string[] = [];
+
+            for (let i = 0; i < curTables.length; i++) {
+              const prevTotal =
+                prevTables[i]?.items.reduce((s, it) => s + it.quantity, 0) || 0;
+              const curTotal = curTables[i].items.reduce(
+                (s, it) => s + it.quantity,
+                0
+              );
+              if (
+                curTotal <= prevTotal ||
+                curTables[i].status !== "ocupado"
+              )
+                continue;
+
+              // New items detected for this table
               const newItems: KitchenItem[] = [];
               for (const cur of curTables[i].items) {
-                const prev = prevTables[i]?.items.find((p) => p.id === cur.id);
+                const prev = prevTables[i]?.items.find(
+                  (p) => p.id === cur.id
+                );
                 if (!prev) {
-                  newItems.push({ name: cur.name, quantity: cur.quantity });
+                  newItems.push({
+                    id: cur.id,
+                    name: cur.name,
+                    quantity: cur.quantity,
+                    completed: false,
+                  });
                 } else if (cur.quantity > prev.quantity) {
                   newItems.push({
+                    id: `${cur.id}-${Math.random().toString(36).slice(2, 4)}`,
                     name: cur.name,
                     quantity: cur.quantity - prev.quantity,
+                    completed: false,
                   });
                 }
               }
-              if (newItems.length > 0) {
-                const record: KitchenRecord = {
-                  id: `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-                  tableNumber: i + 1,
-                  items: newItems,
-                  receivedAt: now,
-                  completedAt: null,
-                  status: "pending",
-                };
-                newRecords.push(record);
 
-                // Show notification
+              if (newItems.length > 0) {
+                hasNew = true;
+                const tableNum = i + 1;
+                const existing = updated.find(
+                  (t) => t.tableNumber === tableNum
+                );
+                if (existing) {
+                  existing.items.push(...newItems);
+                  existing.updatedAt = now;
+                } else {
+                  updated.push({
+                    tableNumber: tableNum,
+                    items: newItems,
+                    updatedAt: now,
+                  });
+                }
+                notifs.push(
+                  `Mesa ${tableNum}: ${newItems
+                    .map((it) => `${it.name} x${it.quantity}`)
+                    .join(", ")}`
+                );
+              }
+            }
+
+            if (hasNew) {
+              // Show notifications
+              for (const text of notifs) {
                 const id = ++notifId.current;
-                const desc = newItems.map((it) => `${it.name} x${it.quantity}`).join(", ");
                 setNotifications((n) => [
-                  { id, text: `Mesa ${i + 1}: ${desc}` },
+                  { id, text },
                   ...n.slice(0, 4),
                 ]);
                 setTimeout(() => {
@@ -196,48 +233,76 @@ export default function Cocina() {
                 }, 5000);
               }
             }
-          }
 
-          if (newRecords.length > 0) {
-            setHistory((prev) => {
-              const updated = [...newRecords, ...prev];
-              saveHistoryToStorage(updated);
-              syncHistoryToFirestore(updated);
-              return updated;
-            });
-          }
+            return updated;
+          });
         } catch {}
       });
 
     return () => {
-      unsubHistory();
+      unsubKitchen();
       unsubVentas();
     };
   }, []);
 
-  // Auto-save history on change (for completion toggles)
+  // Auto-save on change
   useEffect(() => {
-    if (history.length > 0) {
-      saveHistoryToStorage(history);
-      syncHistoryToFirestore(history);
+    if (tables.length > 0) {
+      saveTablesToStorage(tables);
+      syncToFirestore(tables);
     }
-  }, [history]);
+  }, [tables]);
 
-  const markCompleted = (recordId: string) => {
-    setHistory((prev) =>
-      prev.map((r) =>
-        r.id === recordId
-          ? { ...r, status: "completed" as const, completedAt: new Date().toISOString() }
-          : r
-      )
-    );
+  // Daily snapshot at midnight for history
+  useEffect(() => {
+    const saveSnapshot = () => {
+      const date = todayStr();
+      const current = tablesRef.current;
+      if (current.length === 0) return;
+      setHistorySnapshots((prev) => {
+        const existing = prev.find((s) => s.date === date);
+        if (existing) {
+          return prev.map((s) =>
+            s.date === date ? { ...s, tables: current } : s
+          );
+        }
+        return [...prev, { date, tables: current }];
+      });
+      localStorage.setItem(
+        `masa-kitchen-snapshot-${date}`,
+        JSON.stringify(current)
+      );
+    };
+
+    // Save snapshot every 30s
+    const interval = setInterval(saveSnapshot, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Load history snapshot on demand
+  const loadHistoryForDate = (date: string) => {
+    const cached = localStorage.getItem(`masa-kitchen-snapshot-${date}`);
+    if (cached) {
+      try {
+        return JSON.parse(cached) as KitchenTable[];
+      } catch {}
+    }
+    return null;
   };
 
-  const reopenOrder = (recordId: string) => {
-    setHistory((prev) =>
-      prev.map((r) =>
-        r.id === recordId ? { ...r, status: "pending" as const, completedAt: null } : r
-      )
+  const toggleItem = (tableNumber: number, itemId: string) => {
+    setTables((prev) =>
+      prev.map((t) => {
+        if (t.tableNumber !== tableNumber) return t;
+        return {
+          ...t,
+          items: t.items.map((item) =>
+            item.id === itemId
+              ? { ...item, completed: !item.completed }
+              : item
+          ),
+        };
+      })
     );
   };
 
@@ -259,13 +324,19 @@ export default function Cocina() {
     );
   }
 
-  const todayRecords = history.filter((r) => isSameDay(r.receivedAt, todayStr()));
-  const pending = todayRecords.filter((r) => r.status === "pending");
-  const completed = todayRecords.filter((r) => r.status === "completed");
+  // Sort tables: pending first, then completed
+  const sorted = [...tables].sort((a, b) => {
+    const aAllDone = a.items.every((i) => i.completed);
+    const bAllDone = b.items.every((i) => i.completed);
+    if (aAllDone && !bAllDone) return 1;
+    if (!aAllDone && bAllDone) return -1;
+    return 0;
+  });
 
-  const filteredForHistory = showHistory
-    ? history.filter((r) => isSameDay(r.receivedAt, historyDate))
-    : [];
+  const pendingCount = tables.reduce(
+    (sum, t) => sum + t.items.filter((i) => !i.completed).reduce((s, it) => s + it.quantity, 0),
+    0
+  );
 
   return (
     <main className="min-h-screen bg-gray-100">
@@ -279,10 +350,21 @@ export default function Cocina() {
         </div>
         <div className="flex items-center gap-2">
           <span className="text-sm bg-yellow-500 text-black px-2 py-0.5 rounded-full font-bold">
-            {pending.length} pendientes
+            {pendingCount} pendientes
           </span>
           <button
-            onClick={() => setShowHistory(true)}
+            onClick={() => {
+              setShowHistory(true);
+              // Load snapshot for selected date
+              const snap = loadHistoryForDate(historyDate);
+              if (snap) {
+                setHistorySnapshots((prev) => {
+                  const existing = prev.find((s) => s.date === historyDate);
+                  if (existing) return prev;
+                  return [...prev, { date: historyDate, tables: snap }];
+                });
+              }
+            }}
             className="text-sm bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700"
           >
             Historial
@@ -292,7 +374,7 @@ export default function Cocina() {
 
       {/* Notifications */}
       {notifications.length > 0 && (
-        <div className="fixed top-16 right-4 z-50 space-y-2 max-w-xs">
+        <div className="fixed top-16 right-4 z-50 space-y-2 max-w-sm">
           {notifications.map((n) => (
             <div
               key={n.id}
@@ -304,7 +386,9 @@ export default function Cocina() {
                   <p className="text-sm text-yellow-900 mt-1">{n.text}</p>
                 </div>
                 <button
-                  onClick={() => setNotifications((prev) => prev.filter((x) => x.id !== n.id))}
+                  onClick={() =>
+                    setNotifications((prev) => prev.filter((x) => x.id !== n.id))
+                  }
                   className="text-yellow-600 hover:text-yellow-800 ml-2"
                 >
                   ✕
@@ -315,110 +399,88 @@ export default function Cocina() {
         </div>
       )}
 
-      {/* Today's Orders */}
+      {/* Tables Grid */}
       <div className="container mx-auto p-4">
-        {todayRecords.length === 0 ? (
+        {tables.length === 0 ? (
           <div className="text-center py-20">
             <p className="text-4xl mb-4">🍕</p>
-            <p className="text-gray-400 text-lg">No hay pedidos hoy</p>
+            <p className="text-gray-400 text-lg">No hay pedidos</p>
           </div>
         ) : (
-          <>
-            {/* Pending orders */}
-            {pending.length > 0 && (
-              <div className="mb-6">
-                <h2 className="text-sm font-semibold text-gray-500 uppercase mb-3">
-                  Pendientes ({pending.length})
-                </h2>
-                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-                  {pending.map((record) => (
-                    <div key={record.id} className="bg-white rounded-xl shadow-md p-4">
-                      <div className="flex items-center justify-between mb-3">
-                        <h3 className="text-lg font-bold">Mesa {record.tableNumber}</h3>
-                        <span className="text-xs text-gray-400">
-                          {new Date(record.receivedAt).toLocaleTimeString([], {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
-                        </span>
-                      </div>
-                      <ul className="space-y-2 mb-3">
-                        {record.items.map((item, idx) => (
-                          <li
-                            key={idx}
-                            className="bg-gray-50 px-3 py-2 rounded-lg flex justify-between"
-                          >
-                            <span className="font-medium">{item.name}</span>
-                            <span className="font-bold">x{item.quantity}</span>
-                          </li>
-                        ))}
-                      </ul>
-                      <button
-                        onClick={() => markCompleted(record.id)}
-                        className="w-full bg-green-600 text-white py-2 rounded-lg font-semibold hover:bg-green-700"
-                      >
-                        Marcar Listo
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+            {sorted.map((table) => {
+              const allDone = table.items.every((i) => i.completed);
+              return (
+                <div
+                  key={table.tableNumber}
+                  className={`rounded-xl shadow-md p-4 transition-colors ${
+                    allDone
+                      ? "bg-green-50 border border-green-300"
+                      : "bg-white border border-gray-200"
+                  }`}
+                >
+                  {/* Table header */}
+                  <div className="flex items-center justify-between mb-3">
+                    <h2 className="text-xl font-bold">Mesa {table.tableNumber}</h2>
+                    <span className="text-xs text-gray-400">
+                      {new Date(table.updatedAt).toLocaleTimeString([], {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </span>
+                  </div>
 
-            {/* Completed orders */}
-            {completed.length > 0 && (
-              <div>
-                <h2 className="text-sm font-semibold text-gray-500 uppercase mb-3">
-                  Completados ({completed.length})
-                </h2>
-                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-                  {completed.map((record) => (
-                    <div
-                      key={record.id}
-                      className="bg-green-50 border border-green-300 rounded-xl shadow-md p-4"
-                    >
-                      <div className="flex items-center justify-between mb-3">
-                        <h3 className="text-lg font-bold text-green-800">
-                          Mesa {record.tableNumber}
-                        </h3>
-                        <span className="text-xs text-green-600">
-                          {new Date(record.receivedAt).toLocaleTimeString([], {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
-                        </span>
-                      </div>
-                      <ul className="space-y-2 mb-3">
-                        {record.items.map((item, idx) => (
-                          <li
-                            key={idx}
-                            className="bg-green-100 px-3 py-2 rounded-lg flex justify-between text-green-700"
+                  {/* Items */}
+                  <ul className="space-y-2">
+                    {table.items.map((item) => (
+                      <li key={item.id}>
+                        <button
+                          onClick={() => toggleItem(table.tableNumber, item.id)}
+                          className={`w-full text-left px-3 py-2.5 rounded-lg flex items-center justify-between transition-all ${
+                            item.completed
+                              ? "bg-green-200 text-green-800"
+                              : "bg-gray-50 hover:bg-gray-100 active:bg-gray-200"
+                          }`}
+                        >
+                          <span
+                            className={`font-medium ${
+                              item.completed ? "line-through" : ""
+                            }`}
                           >
-                            <span>{item.name}</span>
-                            <span className="font-bold">x{item.quantity}</span>
-                          </li>
-                        ))}
-                      </ul>
-                      <p className="text-center text-green-600 text-sm font-semibold mb-2">
-                        ✅ Listo{" "}
-                        {record.completedAt &&
-                          new Date(record.completedAt).toLocaleTimeString([], {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
-                      </p>
-                      <button
-                        onClick={() => reopenOrder(record.id)}
-                        className="w-full border border-green-400 text-green-700 py-1.5 rounded-lg text-sm font-semibold hover:bg-green-100"
-                      >
-                        Reabrir
-                      </button>
-                    </div>
-                  ))}
+                            {item.name}
+                          </span>
+                          <span className="flex items-center gap-2">
+                            <span className="text-lg font-bold">x{item.quantity}</span>
+                            <span
+                              className={`w-5 h-5 rounded-full border-2 flex items-center justify-center text-xs ${
+                                item.completed
+                                  ? "bg-green-600 border-green-600 text-white"
+                                  : "border-gray-400"
+                              }`}
+                            >
+                              {item.completed ? "✓" : ""}
+                            </span>
+                          </span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+
+                  {/* Table status */}
+                  {allDone && (
+                    <p className="text-center text-green-600 text-sm font-semibold mt-3">
+                      ✅ Mesa completa
+                    </p>
+                  )}
+                  {!allDone && (
+                    <p className="text-center text-gray-400 text-xs mt-3">
+                      Toca cada plato al terminarlo
+                    </p>
+                  )}
                 </div>
-              </div>
-            )}
-          </>
+              );
+            })}
+          </div>
         )}
       </div>
 
@@ -443,66 +505,80 @@ export default function Cocina() {
               <input
                 type="date"
                 value={historyDate}
-                onChange={(e) => setHistoryDate(e.target.value)}
+                onChange={(e) => {
+                  setHistoryDate(e.target.value);
+                  const snap = loadHistoryForDate(e.target.value);
+                  if (snap) {
+                    setHistorySnapshots((prev) => {
+                      const existing = prev.find(
+                        (s) => s.date === e.target.value
+                      );
+                      if (existing) return prev;
+                      return [
+                        ...prev,
+                        { date: e.target.value, tables: snap },
+                      ];
+                    });
+                  }
+                }}
                 className="border rounded px-3 py-2 w-full max-w-xs"
               />
             </div>
 
             <div className="flex-1 overflow-y-auto p-4">
-              {filteredForHistory.length === 0 ? (
-                <p className="text-center text-gray-400 py-10">
-                  No hay pedidos para esta fecha
-                </p>
-              ) : (
-                <div className="space-y-3">
-                  {filteredForHistory.map((record) => (
-                    <div
-                      key={record.id}
-                      className={`rounded-lg border p-3 ${
-                        record.status === "completed"
-                          ? "bg-green-50 border-green-200"
-                          : "bg-white border-gray-200"
-                      }`}
-                    >
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="font-bold">
-                          Mesa {record.tableNumber}
-                        </span>
-                        <span className="text-xs text-gray-400">
-                          {new Date(record.receivedAt).toLocaleString([], {
-                            day: "2-digit",
-                            month: "2-digit",
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
-                        </span>
+              {(() => {
+                const snap = historySnapshots.find(
+                  (s) => s.date === historyDate
+                );
+                const displayTables = snap
+                  ? snap.tables
+                  : loadHistoryForDate(historyDate);
+                if (
+                  !displayTables ||
+                  (Array.isArray(displayTables) && displayTables.length === 0)
+                ) {
+                  return (
+                    <p className="text-center text-gray-400 py-10">
+                      No hay pedidos para esta fecha
+                    </p>
+                  );
+                }
+                const tablesData = Array.isArray(displayTables)
+                  ? displayTables
+                  : [];
+                return (
+                  <div className="space-y-3">
+                    {tablesData.map((table) => (
+                      <div
+                        key={table.tableNumber}
+                        className={`rounded-lg border p-3 ${
+                          table.items.every((i) => i.completed)
+                            ? "bg-green-50 border-green-200"
+                            : "bg-white border-gray-200"
+                        }`}
+                      >
+                        <div className="font-bold mb-2">
+                          Mesa {table.tableNumber}
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          {table.items.map((item) => (
+                            <span
+                              key={item.id}
+                              className={`text-sm px-2 py-0.5 rounded ${
+                                item.completed
+                                  ? "bg-green-100 text-green-700 line-through"
+                                  : "bg-gray-100 text-gray-700"
+                              }`}
+                            >
+                              {item.name} x{item.quantity}
+                            </span>
+                          ))}
+                        </div>
                       </div>
-                      <div className="flex flex-wrap gap-2">
-                        {record.items.map((item, idx) => (
-                          <span
-                            key={idx}
-                            className={`text-sm px-2 py-0.5 rounded ${
-                              record.status === "completed"
-                                ? "bg-green-100 text-green-700"
-                                : "bg-gray-100 text-gray-700"
-                            }`}
-                          >
-                            {item.name} x{item.quantity}
-                          </span>
-                        ))}
-                      </div>
-                      <div className="mt-1 text-xs text-gray-400">
-                        {record.status === "completed"
-                          ? `Completado ${new Date(record.completedAt!).toLocaleTimeString([], {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })}`
-                          : "Pendiente"}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+                    ))}
+                  </div>
+                );
+              })()}
             </div>
           </div>
         </div>

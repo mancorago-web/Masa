@@ -512,14 +512,12 @@ export default function Cocina() {
                       )}
                     </div>
                     <div className="flex items-center gap-2">
-                      {!isCollapsed && (
-                        <span className="text-xs text-gray-400">
-                          {new Date(table.updatedAt).toLocaleTimeString([], {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
-                        </span>
-                      )}
+                      <span className="text-xs text-gray-400">
+                        {new Date(table.updatedAt).toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </span>
                       <span className="text-gray-400 text-xs">{isCollapsed ? '▼' : '▲'}</span>
                     </div>
                   </div>

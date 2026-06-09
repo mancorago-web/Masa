@@ -531,69 +531,113 @@ export default function Ventas() {
         {/* Product Menu Modal */}
         {showProductMenu && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-lg w-full max-w-2xl shadow-xl max-h-[85vh] flex flex-col">
+            <div className="bg-white rounded-lg w-full max-w-4xl shadow-xl max-h-[85vh] flex flex-col">
               <div className="flex items-center justify-between p-4 border-b">
-                <h2 className="text-lg font-bold">Agregar Producto</h2>
+                <h2 className="text-lg font-bold">Agregar Producto — Mesa {activeTable + 1}</h2>
                 <button onClick={() => setShowProductMenu(false)} className="text-gray-500 hover:text-gray-700 text-xl font-bold">✕</button>
               </div>
-              <div className="flex-1 overflow-y-auto p-4 space-y-2">
-                {productCategories.map(cat => (
-                  <div key={cat.name} className="border rounded-lg overflow-hidden">
-                    <button
-                      onClick={() => {
-                        if (expandedCategory === cat.name) {
-                          setExpandedCategory(null);
-                          setExpandedPizza(null);
-                        } else {
-                          setExpandedCategory(cat.name);
-                          setExpandedPizza(null);
-                        }
-                      }}
-                      className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 hover:bg-gray-100 font-semibold text-left"
-                    >
-                      <span className="text-gray-800">{cat.name}</span>
-                      <span className="text-gray-400">{expandedCategory === cat.name ? '▼' : '▶'}</span>
-                    </button>
-                    {expandedCategory === cat.name && (
-                      <div className="divide-y divide-gray-100">
-                        {cat.type === 'pizza' ? cat.pizzas.map(pizza => (
-                          <div key={pizza.name}>
+              <div className="flex-1 flex overflow-hidden">
+                <div className="flex-1 overflow-y-auto p-4 space-y-2">
+                  {productCategories.map(cat => (
+                    <div key={cat.name} className="border rounded-lg overflow-hidden">
+                      <button
+                        onClick={() => {
+                          if (expandedCategory === cat.name) {
+                            setExpandedCategory(null);
+                            setExpandedPizza(null);
+                          } else {
+                            setExpandedCategory(cat.name);
+                            setExpandedPizza(null);
+                          }
+                        }}
+                        className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 hover:bg-gray-100 font-semibold text-left"
+                      >
+                        <span className="text-gray-800">{cat.name}</span>
+                        <span className="text-gray-400">{expandedCategory === cat.name ? '▼' : '▶'}</span>
+                      </button>
+                      {expandedCategory === cat.name && (
+                        <div className="divide-y divide-gray-100">
+                          {cat.type === 'pizza' ? cat.pizzas.map(pizza => (
+                            <div key={pizza.name}>
+                              <button
+                                onClick={() => setExpandedPizza(expandedPizza === pizza.name ? null : pizza.name)}
+                                className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-gray-50 text-left"
+                              >
+                                <span className="text-gray-800 font-medium text-sm">{pizza.name}</span>
+                                <span className="text-gray-400 text-xs">{expandedPizza === pizza.name ? '▼' : '▶'}</span>
+                              </button>
+                              {expandedPizza === pizza.name && (
+                                <div className="bg-gray-50 border-t border-gray-100">
+                                  {pizza.sizes.map(size => (
+                                    <button
+                                      key={size.label}
+                                      onClick={() => addItem(`${pizza.name} ${size.label}`, size.price)}
+                                      className="w-full flex items-center justify-between px-6 py-2.5 hover:bg-green-50 transition text-left text-sm"
+                                    >
+                                      <span className="text-gray-700">{size.label}</span>
+                                      <span className="text-green-700 font-bold">{formatCurrency(size.price)}</span>
+                                    </button>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          )) : cat.items.map(item => (
                             <button
-                              onClick={() => setExpandedPizza(expandedPizza === pizza.name ? null : pizza.name)}
-                              className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-gray-50 text-left"
+                              key={item.name}
+                              onClick={() => addItem(item.name, item.price)}
+                              className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-green-50 transition text-left"
                             >
-                              <span className="text-gray-800 font-medium text-sm">{pizza.name}</span>
-                              <span className="text-gray-400 text-xs">{expandedPizza === pizza.name ? '▼' : '▶'}</span>
+                              <span className="text-gray-800 text-sm">{item.name}</span>
+                              <span className="text-green-700 font-bold text-sm">{formatCurrency(item.price)}</span>
                             </button>
-                            {expandedPizza === pizza.name && (
-                              <div className="bg-gray-50 border-t border-gray-100">
-                                {pizza.sizes.map(size => (
-                                  <button
-                                    key={size.label}
-                                    onClick={() => addItem(`${pizza.name} ${size.label}`, size.price)}
-                                    className="w-full flex items-center justify-between px-6 py-2.5 hover:bg-green-50 transition text-left text-sm"
-                                  >
-                                    <span className="text-gray-700">{size.label}</span>
-                                    <span className="text-green-700 font-bold">{formatCurrency(size.price)}</span>
-                                  </button>
-                                ))}
-                              </div>
-                            )}
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                {/* Cart sidebar */}
+                <div className="w-72 border-l bg-gray-50 flex flex-col">
+                  <div className="p-3 border-b bg-white">
+                    <h3 className="font-bold text-sm text-gray-700">Pedido actual</h3>
+                  </div>
+                  <div className="flex-1 overflow-y-auto p-3 space-y-2">
+                    {tables[activeTable]?.items?.length === 0 ? (
+                      <p className="text-gray-400 text-sm text-center mt-8">Selecciona productos del menú</p>
+                    ) : (
+                      tables[activeTable]?.items?.map(item => (
+                        <div key={item.id} className="bg-white rounded-lg border p-2.5 flex items-center justify-between">
+                          <div className="flex-1 min-w-0 mr-2">
+                            <p className="text-sm font-medium text-gray-800 truncate">{item.name}</p>
+                            <p className="text-xs text-gray-500">{formatCurrency(item.unitPrice)} c/u</p>
                           </div>
-                        )) : cat.items.map(item => (
-                          <button
-                            key={item.name}
-                            onClick={() => addItem(item.name, item.price)}
-                            className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-green-50 transition text-left"
-                          >
-                            <span className="text-gray-800 text-sm">{item.name}</span>
-                            <span className="text-green-700 font-bold text-sm">{formatCurrency(item.price)}</span>
-                          </button>
-                        ))}
-                      </div>
+                          <div className="flex items-center gap-1.5 flex-shrink-0">
+                            <button
+                              onClick={() => updateQuantity(item.id, -1)}
+                              className="w-6 h-6 rounded-full bg-gray-200 hover:bg-gray-300 flex items-center justify-center text-sm font-bold text-gray-600"
+                            >−</button>
+                            <span className="w-5 text-center text-sm font-bold text-gray-800">{item.quantity}</span>
+                            <button
+                              onClick={() => updateQuantity(item.id, 1)}
+                              className="w-6 h-6 rounded-full bg-gray-200 hover:bg-gray-300 flex items-center justify-center text-sm font-bold text-gray-600"
+                            >+</button>
+                          </div>
+                        </div>
+                      ))
                     )}
                   </div>
-                ))}
+                  {tables[activeTable]?.items?.length > 0 && (
+                    <div className="p-3 border-t bg-white">
+                      <div className="flex items-center justify-between text-sm font-bold text-gray-800 mb-1">
+                        <span>Subtotal</span>
+                        <span>{formatCurrency(tables[activeTable].items.reduce((sum, i) => sum + i.unitPrice * i.quantity, 0))}</span>
+                      </div>
+                      <div className="flex items-center justify-between text-xs text-gray-500">
+                        <span>{tables[activeTable].items.reduce((sum, i) => sum + i.quantity, 0)} productos</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </div>

@@ -83,6 +83,7 @@ export default function Cocina() {
   const [historySnapshots, setHistorySnapshots] = useState<
     { date: string; tables: KitchenTable[] }[]
   >([]);
+  const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set());
   const prevTablesRef = useRef<string>("");
   const firstLoad = useRef(true);
   const notifId = useRef(0);
@@ -336,6 +337,28 @@ export default function Cocina() {
     );
   };
 
+  const toggleCollapse = (id: string) => {
+    setCollapsedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  // Auto-collapse tables when all items are completed
+  useEffect(() => {
+    setCollapsedIds(prev => {
+      const next = new Set(prev);
+      for (const t of tables) {
+        const id = t.id ?? `${t.tableNumber}-${t.round ?? 1}`;
+        if (t.items.every(i => i.completed)) {
+          next.add(id);
+        }
+      }
+      return next;
+    });
+  }, [tables]);
+
   if (authLoading) {
     return (
       <main className="min-h-screen bg-gray-100 flex items-center justify-center">
@@ -354,10 +377,16 @@ export default function Cocina() {
     );
   }
 
-  // Sort tables: pending first, then completed
+  // Sort tables: pending first, then completed, collapsed to bottom
   const sorted = [...tables].sort((a, b) => {
+    const aId = a.id ?? `${a.tableNumber}-${a.round ?? 1}`;
+    const bId = b.id ?? `${b.tableNumber}-${b.round ?? 1}`;
+    const aCollapsed = collapsedIds.has(aId);
+    const bCollapsed = collapsedIds.has(bId);
     const aAllDone = a.items.every((i) => i.completed);
     const bAllDone = b.items.every((i) => i.completed);
+    if (aCollapsed && !bCollapsed) return 1;
+    if (!aCollapsed && bCollapsed) return -1;
     if (aAllDone && !bAllDone) return 1;
     if (!aAllDone && bAllDone) return -1;
     return 0;
@@ -440,79 +469,102 @@ export default function Cocina() {
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
             {sorted.map((table) => {
               const allDone = table.items.every((i) => i.completed);
+              const tableId = table.id ?? `${table.tableNumber}-${table.round ?? 1}`;
+              const isCollapsed = collapsedIds.has(tableId);
               return (
                 <div
-                  key={table.tableNumber}
-                  className={`rounded-xl shadow-md p-4 transition-colors ${
-                    allDone
+                  key={tableId}
+                  className={`rounded-xl shadow-md transition-colors ${
+                    isCollapsed
+                      ? "bg-green-50 border border-green-300"
+                      : allDone
                       ? "bg-green-50 border border-green-300"
                       : "bg-white border border-gray-200"
                   }`}
                 >
-                  {/* Table header */}
-                  <div className="flex items-center justify-between mb-3">
-                    <h2 className="text-xl font-bold">
-                      Mesa {table.tableNumber}
-                      {table.round && table.round > 1 && (
-                        <span className="text-base font-normal text-gray-500 ml-2">
-                          Pedido {table.round}
+                  {/* Clickable header */}
+                  <div
+                    onClick={() => isCollapsed ? toggleCollapse(tableId) : undefined}
+                    className={`flex items-center justify-between cursor-pointer ${
+                      isCollapsed ? "p-3" : "p-4 pb-0"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <h2 className={`font-bold ${isCollapsed ? "text-base" : "text-xl"}`}>
+                        Mesa {table.tableNumber}
+                        {table.round && table.round > 1 && (
+                          <span className={`font-normal text-gray-500 ml-2 ${isCollapsed ? "text-sm" : "text-base"}`}>
+                            Pedido {table.round}
+                          </span>
+                        )}
+                      </h2>
+                      {isCollapsed && (
+                        <span className="text-green-600 text-sm font-semibold">✅ Listo</span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {!isCollapsed && (
+                        <span className="text-xs text-gray-400">
+                          {new Date(table.updatedAt).toLocaleTimeString([], {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
                         </span>
                       )}
-                    </h2>
-                    <span className="text-xs text-gray-400">
-                      {new Date(table.updatedAt).toLocaleTimeString([], {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </span>
+                      <span className="text-gray-400 text-xs">{isCollapsed ? '▼' : '▲'}</span>
+                    </div>
                   </div>
 
-                  {/* Items */}
-                  <ul className="space-y-2">
-                    {table.items.map((item) => (
-                      <li key={item.id}>
-                        <button
-                          onClick={() => toggleItem(table.tableNumber, item.id)}
-                          className={`w-full text-left px-3 py-2.5 rounded-lg flex items-center justify-between transition-all ${
-                            item.completed
-                              ? "bg-green-200 text-green-800"
-                              : "bg-gray-50 hover:bg-gray-100 active:bg-gray-200"
-                          }`}
-                        >
-                          <span
-                            className={`font-medium ${
-                              item.completed ? "line-through" : ""
-                            }`}
-                          >
-                            {item.name}
-                          </span>
-                          <span className="flex items-center gap-2">
-                            <span className="text-lg font-bold">x{item.quantity}</span>
-                            <span
-                              className={`w-5 h-5 rounded-full border-2 flex items-center justify-center text-xs ${
+                  {/* Expandable details */}
+                  {!isCollapsed && (
+                    <div className="p-4">
+                      {/* Items */}
+                      <ul className="space-y-2">
+                        {table.items.map((item) => (
+                          <li key={item.id}>
+                            <button
+                              onClick={() => toggleItem(table.tableNumber, item.id)}
+                              className={`w-full text-left px-3 py-2.5 rounded-lg flex items-center justify-between transition-all ${
                                 item.completed
-                                  ? "bg-green-600 border-green-600 text-white"
-                                  : "border-gray-400"
+                                  ? "bg-green-200 text-green-800"
+                                  : "bg-gray-50 hover:bg-gray-100 active:bg-gray-200"
                               }`}
                             >
-                              {item.completed ? "✓" : ""}
-                            </span>
-                          </span>
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
+                              <span
+                                className={`font-medium ${
+                                  item.completed ? "line-through" : ""
+                                }`}
+                              >
+                                {item.name}
+                              </span>
+                              <span className="flex items-center gap-2">
+                                <span className="text-lg font-bold">x{item.quantity}</span>
+                                <span
+                                  className={`w-5 h-5 rounded-full border-2 flex items-center justify-center text-xs ${
+                                    item.completed
+                                      ? "bg-green-600 border-green-600 text-white"
+                                      : "border-gray-400"
+                                  }`}
+                                >
+                                  {item.completed ? "✓" : ""}
+                                </span>
+                              </span>
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
 
-                  {/* Table status */}
-                  {allDone && (
-                    <p className="text-center text-green-600 text-sm font-semibold mt-3">
-                      ✅ Mesa completa
-                    </p>
-                  )}
-                  {!allDone && (
-                    <p className="text-center text-gray-400 text-xs mt-3">
-                      Toca cada plato al terminarlo
-                    </p>
+                      {/* Table status */}
+                      {allDone ? (
+                        <p className="text-center text-green-600 text-sm font-semibold mt-3">
+                          ✅ Mesa completa
+                        </p>
+                      ) : (
+                        <p className="text-center text-gray-400 text-xs mt-3">
+                          Toca cada plato al terminarlo
+                        </p>
+                      )}
+                    </div>
                   )}
                 </div>
               );

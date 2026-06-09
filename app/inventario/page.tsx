@@ -4,6 +4,7 @@ import { useState, useMemo, useEffect, Fragment, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { getDb } from "@/lib/firebase";
+import { useAuth } from "@/components/AuthProvider";
 
 interface InventoryItem {
   id: string;
@@ -99,6 +100,7 @@ const initialInventory: InventoryItem[] = [
 
 export default function Inventario() {
   const router = useRouter();
+  const { user, loading: authLoading } = useAuth();
   const [inventory, setInventory] = useState<InventoryItem[]>(() => {
     if (typeof window === 'undefined') return initialInventory;
     try {
@@ -132,6 +134,13 @@ export default function Inventario() {
   const [showDatosSaved, setShowDatosSaved] = useState(false);
   const [isEditingDatos, setIsEditingDatos] = useState(false);
   const [expandedSubRecipeDetails, setExpandedSubRecipeDetails] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (!authLoading && !user) router.replace("/login");
+  }, [user, authLoading, router]);
+
+  if (authLoading) return <main className="min-h-screen bg-gray-100 flex items-center justify-center"><p className="text-gray-400">Cargando...</p></main>;
+  if (!user) return null;
 
   const getDatosInfo = (name: string, qty: number, recipeUnit: string) => {
     const item = inventory.find(i => i.name.toLowerCase().trim() === name.toLowerCase().trim() && i.unitCost);

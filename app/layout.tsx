@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import HeaderTimer from "@/components/HeaderTimer";
 import ServiceWorkerRegistration from "@/components/ServiceWorkerRegistration";
+import { AuthProvider } from "@/components/AuthProvider";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -43,25 +44,27 @@ export default function RootLayout({
       </head>
       <body className={inter.className}>
         <ServiceWorkerRegistration />
-        <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
-          <div className="bg-gray-800 text-white py-2 px-4 flex justify-between items-center">
-            <div className="font-bold text-sm md:text-base">📅 Sincronizado</div>
-            <HeaderTimer />
+        <AuthProvider>
+          <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+            <div className="bg-gray-800 text-white py-2 px-4 flex justify-between items-center">
+              <div className="font-bold text-sm md:text-base">📅 Sincronizado</div>
+              <HeaderTimer />
+            </div>
+            <div style={{ flex: 1 }}>
+              {children}
+            </div>
+            <footer style={{
+              backgroundColor: '#1f2937',
+              color: 'white',
+              textAlign: 'center',
+              padding: '12px',
+              fontSize: '14px',
+              flexShrink: 0,
+            }}>
+              MASA © 2026 | v1.0.0
+            </footer>
           </div>
-          <div style={{ flex: 1 }}>
-            {children}
-          </div>
-          <footer style={{
-            backgroundColor: '#1f2937',
-            color: 'white',
-            textAlign: 'center',
-            padding: '12px',
-            fontSize: '14px',
-            flexShrink: 0,
-          }}>
-            MASA © 2026 | v1.0.0
-          </footer>
-        </div>
+        </AuthProvider>
       </body>
     </html>
   );

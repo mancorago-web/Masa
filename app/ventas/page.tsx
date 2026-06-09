@@ -1,8 +1,10 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { getDb } from "@/lib/firebase";
+import { useAuth } from "@/components/AuthProvider";
 
 interface OrderItem {
   id: string;
@@ -241,6 +243,8 @@ function buildMenu(recipes: { id: string; category: string; name: string }[], su
 }
 
 export default function Ventas() {
+  const router = useRouter();
+  const { user, loading: authLoading } = useAuth();
   const [tables, setTables] = useState<TableOrder[]>(() => loadFromStorage(STORAGE_KEY, initialTables));
   const [activeTable, setActiveTable] = useState(0);
   const [showProductMenu, setShowProductMenu] = useState(false);
@@ -256,6 +260,13 @@ export default function Ventas() {
   const [paymentsHistory, setPaymentsHistory] = useState<PaymentData[]>(() => loadFromStorage(PAYMENTS_KEY, []));
   const [recipes, setRecipes] = useState(defaultRecipes);
   const [subRecipes, setSubRecipes] = useState(defaultSubRecipes);
+
+  useEffect(() => {
+    if (!authLoading && !user) router.replace("/login");
+  }, [user, authLoading, router]);
+
+  if (authLoading) return <main className="min-h-screen bg-gray-100 flex items-center justify-center"><p className="text-gray-400">Cargando...</p></main>;
+  if (!user) return null;
 
   // Load recipes & sub-recipes from localStorage (shared with inventario)
   useEffect(() => {

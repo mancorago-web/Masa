@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { getDb } from "@/lib/firebase";
+import { useAuth } from "@/components/AuthProvider";
 
 interface Transaction {
   id: string;
@@ -91,6 +92,8 @@ async function loadDailyRecordsFromFirestore(): Promise<DailyRecord[]> {
 const defaultInitialAmount = 200;
 
 export default function CajaChica() {
+  const router = useRouter();
+  const { user, loading: authLoading } = useAuth();
   const [initialAmount, setInitialAmount] = useState(defaultInitialAmount);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isEditingInitial, setIsEditingInitial] = useState(false);
@@ -105,6 +108,13 @@ export default function CajaChica() {
   const [availableDates, setAvailableDates] = useState<string[]>([]);
   const [loadingRecords, setLoadingRecords] = useState(false);
   const dailyRecordsRef = useRef<Record<string, DailyRecord>>({});
+
+  useEffect(() => {
+    if (!authLoading && !user) router.replace("/login");
+  }, [user, authLoading, router]);
+
+  if (authLoading) return <main className="min-h-screen bg-gray-100 flex items-center justify-center"><p className="text-gray-400">Cargando...</p></main>;
+  if (!user) return null;
 
   const todayRef = useRef(todayStr());
   const initialAmountRef = useRef(initialAmount);

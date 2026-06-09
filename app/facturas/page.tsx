@@ -1,8 +1,10 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { getDb } from "@/lib/firebase";
+import { useAuth } from "@/components/AuthProvider";
 
 interface Invoice {
   id: string;
@@ -59,12 +61,21 @@ const emptyForm = {
 };
 
 export default function Facturas() {
+  const router = useRouter();
+  const { user, loading: authLoading } = useAuth();
   const [invoices, setInvoices] = useState<Invoice[]>(
     () => loadFromStorage<Invoice[]>(STORAGE_KEY, [])
   );
   const [showForm, setShowForm] = useState(false);
   const [filterDate, setFilterDate] = useState(todayStr());
   const [form, setForm] = useState(emptyForm);
+
+  useEffect(() => {
+    if (!authLoading && !user) router.replace("/login");
+  }, [user, authLoading, router]);
+
+  if (authLoading) return <main className="min-h-screen bg-gray-100 flex items-center justify-center"><p className="text-gray-400">Cargando...</p></main>;
+  if (!user) return null;
 
   // Load from Firestore on mount + real-time listener
   useEffect(() => {

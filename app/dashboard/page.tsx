@@ -1,8 +1,10 @@
 "use client";
 
 import { useState, useEffect, useMemo, useRef } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { getDb } from "@/lib/firebase";
+import { useAuth } from "@/components/AuthProvider";
 
 interface InventoryItem {
   id: string;
@@ -170,6 +172,8 @@ function computeTotals(payments: PaymentData[], soldItems: SoldItem[]): DailyTot
 }
 
 export default function Dashboard() {
+  const router = useRouter();
+  const { user, loading: authLoading } = useAuth();
   const [payments, setPayments] = useState<PaymentData[]>([]);
   const [recipes, setRecipes] = useState<{ id: string; category: string; name: string }[]>([]);
   const [subRecipes, setSubRecipes] = useState<{ id: string; parentId: string; name: string }[]>([]);
@@ -182,6 +186,13 @@ export default function Dashboard() {
   const lastSavedDate = useRef('');
 
   const isToday = selectedDate === todayStr();
+
+  useEffect(() => {
+    if (!authLoading && !user) router.replace("/login");
+  }, [user, authLoading, router]);
+
+  if (authLoading) return <main className="min-h-screen bg-gray-100 flex items-center justify-center"><p className="text-gray-400">Cargando...</p></main>;
+  if (!user) return null;
 
   // Load all data on mount + real-time Firestore listener for payments
   useEffect(() => {

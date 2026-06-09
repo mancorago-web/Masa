@@ -29,7 +29,7 @@ const PAGE_PERMISSIONS: Record<UserRole, string[]> = {
   admin: ["inventario", "caja", "ventas", "dashboard", "facturas", "planillas", "usuarios"],
   manager: ["inventario", "caja", "ventas", "dashboard", "facturas", "planillas"],
   waiter: ["caja", "ventas", "facturas"],
-  kitchen: ["inventario", "ventas", "cocina"],
+  kitchen: ["inventario", "cocina"],
 };
 
 export async function hashPassword(password: string): Promise<string> {

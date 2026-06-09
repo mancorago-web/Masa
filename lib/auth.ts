@@ -28,8 +28,8 @@ export const ROLE_LABELS: Record<UserRole, string> = {
 const PAGE_PERMISSIONS: Record<UserRole, string[]> = {
   admin: ["inventario", "caja", "ventas", "dashboard", "facturas", "planillas", "usuarios"],
   manager: ["inventario", "caja", "ventas", "dashboard", "facturas", "planillas"],
-  waiter: ["ventas", "facturas"],
-  kitchen: ["inventario"],
+  waiter: ["caja", "ventas", "facturas"],
+  kitchen: ["inventario", "ventas"],
 };
 
 export async function hashPassword(password: string): Promise<string> {

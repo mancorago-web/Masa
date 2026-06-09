@@ -345,16 +345,25 @@ export default function Cocina() {
     });
   };
 
-  // Auto-collapse tables when all items are completed
+  // Auto-collapse tables when they become fully completed (but don't override manual expand)
+  const prevAllDoneRef = useRef<Set<string>>(new Set());
   useEffect(() => {
+    const currentAllDone = new Set<string>();
+    for (const t of tables) {
+      const id = t.id ?? `${t.tableNumber}-${t.round ?? 1}`;
+      if (t.items.every(i => i.completed)) {
+        currentAllDone.add(id);
+      }
+    }
     setCollapsedIds(prev => {
       const next = new Set(prev);
-      for (const t of tables) {
-        const id = t.id ?? `${t.tableNumber}-${t.round ?? 1}`;
-        if (t.items.every(i => i.completed)) {
+      // Only auto-collapse newly completed tables (not already tracked)
+      for (const id of currentAllDone) {
+        if (!prevAllDoneRef.current.has(id)) {
           next.add(id);
         }
       }
+      prevAllDoneRef.current = currentAllDone;
       return next;
     });
   }, [tables]);

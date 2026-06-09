@@ -27,7 +27,7 @@ export const ROLE_LABELS: Record<UserRole, string> = {
 
 const PAGE_PERMISSIONS: Record<UserRole, string[]> = {
   admin: ["inventario", "caja", "ventas", "dashboard", "facturas", "planillas", "usuarios"],
-  manager: ["inventario", "caja", "ventas", "dashboard", "facturas"],
+  manager: ["inventario", "caja", "ventas", "dashboard", "facturas", "planillas"],
   waiter: ["ventas", "facturas"],
   kitchen: ["inventario"],
 };

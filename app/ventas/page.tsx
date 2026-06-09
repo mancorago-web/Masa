@@ -341,7 +341,6 @@ export default function Ventas() {
       updated[activeTable] = order;
       return updated;
     });
-    setShowProductMenu(false);
   };
 
   const updateQuantity = (itemId: string, delta: number) => {

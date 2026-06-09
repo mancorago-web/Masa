@@ -14,7 +14,9 @@ interface KitchenItem {
 }
 
 interface KitchenTable {
+  id: string;
   tableNumber: number;
+  round: number;
   items: KitchenItem[];
   updatedAt: string;
 }
@@ -107,27 +109,28 @@ export default function Cocina() {
         if (!snap.exists) return;
         const data = snap.data();
         if (!data.tables || !Array.isArray(data.tables)) return;
-        setTables((prev) => {
-          if (data.tables.length < prev.length) return prev;
-          const incoming = JSON.stringify(data.tables);
-          const current = JSON.stringify(prev);
-          if (incoming === current) return prev;
-          // Merge: keep local completed flags, accept new items from remote
-          const prevMap = new Map(prev.map((t) => [t.tableNumber, t]));
-          const merged = data.tables.map((t: KitchenTable) => {
-            const local = prevMap.get(t.tableNumber);
-            if (!local) return t;
-            // Preserve completed status for items that exist locally
-            const localItems = new Map(local.items.map((i) => [i.id, i]));
-            const mergedItems = t.items.map((item) => {
-              const localItem = localItems.get(item.id);
-              if (localItem) return localItem;
-              return item;
+            setTables((prev) => {
+              if (data.tables.length < prev.length) return prev;
+              const incoming = JSON.stringify(data.tables);
+              const current = JSON.stringify(prev);
+              if (incoming === current) return prev;
+              // Merge: keep local completed flags, accept new items from remote
+              const prevMap = new Map(prev.map((t) => [t.id ?? `${t.tableNumber}-1`, t]));
+              const merged = data.tables.map((t: KitchenTable) => {
+                const key = t.id ?? `${t.tableNumber}-1`;
+                const local = prevMap.get(key);
+                if (!local) return { ...t, round: t.round ?? 1, id: t.id ?? `${t.tableNumber}-${t.round ?? 1}` };
+                // Preserve completed status for items that exist locally
+                const localItems = new Map(local.items.map((i) => [i.id, i]));
+                const mergedItems = t.items.map((item) => {
+                  const localItem = localItems.get(item.id);
+                  if (localItem) return localItem;
+                  return item;
+                });
+                return { ...t, items: mergedItems };
+              });
+              return merged;
             });
-            return { ...t, items: mergedItems };
-          });
-          return merged;
-        });
       });
 
     // Listen for new orders from Ventas
@@ -161,19 +164,22 @@ export default function Cocina() {
             const notifs: string[] = [];
 
             for (let i = 0; i < curTables.length; i++) {
+              const prevStatus = prevTables[i]?.status;
+              const curStatus = curTables[i].status;
               const prevTotal =
                 prevTables[i]?.items.reduce((s, it) => s + it.quantity, 0) || 0;
               const curTotal = curTables[i].items.reduce(
                 (s, it) => s + it.quantity,
                 0
               );
-              if (
-                curTotal <= prevTotal ||
-                curTables[i].status !== "ocupado"
-              )
+
+              // Skip if no change or table is not occupied
+              if (curTotal <= prevTotal || curStatus !== "ocupado")
                 continue;
 
-              // New items detected for this table
+              // Detect if this is a new round (table was libre → now ocupado)
+              const isNewRound = prevStatus === "libre" || !prevTables[i];
+
               const newItems: KitchenItem[] = [];
               for (const cur of curTables[i].items) {
                 const prev = prevTables[i]?.items.find(
@@ -199,19 +205,43 @@ export default function Cocina() {
               if (newItems.length > 0) {
                 hasNew = true;
                 const tableNum = i + 1;
-                const existing = updated.find(
-                  (t) => t.tableNumber === tableNum
-                );
-                if (existing) {
-                  existing.items.push(...newItems);
-                  existing.updatedAt = now;
-                } else {
+
+                if (isNewRound) {
+                  // Find highest existing round for this table
+                  const existingRounds = updated
+                    .filter((t) => t.tableNumber === tableNum)
+                    .map((t) => t.round || 1);
+                  const newRound =
+                    existingRounds.length > 0
+                      ? Math.max(...existingRounds) + 1
+                      : 1;
                   updated.push({
+                    id: `${tableNum}-${newRound}-${Date.now()}`,
                     tableNumber: tableNum,
+                    round: newRound,
                     items: newItems,
                     updatedAt: now,
                   });
+                } else {
+                  // Append to the latest round for this table
+                  const existing = updated
+                    .filter((t) => t.tableNumber === tableNum)
+                    .sort((a, b) => (b.round || 1) - (a.round || 1))[0];
+                  if (existing) {
+                    existing.items.push(...newItems);
+                    existing.updatedAt = now;
+                  } else {
+                    // No existing entry — create one
+                    updated.push({
+                      id: `${tableNum}-1-${Date.now()}`,
+                      tableNumber: tableNum,
+                      round: 1,
+                      items: newItems,
+                      updatedAt: now,
+                    });
+                  }
                 }
+
                 notifs.push(
                   `Mesa ${tableNum}: ${newItems
                     .map((it) => `${it.name} x${it.quantity}`)
@@ -421,7 +451,14 @@ export default function Cocina() {
                 >
                   {/* Table header */}
                   <div className="flex items-center justify-between mb-3">
-                    <h2 className="text-xl font-bold">Mesa {table.tableNumber}</h2>
+                    <h2 className="text-xl font-bold">
+                      Mesa {table.tableNumber}
+                      {table.round && table.round > 1 && (
+                        <span className="text-base font-normal text-gray-500 ml-2">
+                          Pedido {table.round}
+                        </span>
+                      )}
+                    </h2>
                     <span className="text-xs text-gray-400">
                       {new Date(table.updatedAt).toLocaleTimeString([], {
                         hour: "2-digit",
@@ -550,7 +587,7 @@ export default function Cocina() {
                   <div className="space-y-3">
                     {tablesData.map((table) => (
                       <div
-                        key={table.tableNumber}
+                        key={table.id ?? `${table.tableNumber}-${table.round ?? 1}`}
                         className={`rounded-lg border p-3 ${
                           table.items.every((i) => i.completed)
                             ? "bg-green-50 border-green-200"
@@ -559,6 +596,11 @@ export default function Cocina() {
                       >
                         <div className="font-bold mb-2">
                           Mesa {table.tableNumber}
+                          {table.round && table.round > 1 && (
+                            <span className="font-normal text-gray-500 ml-1">
+                              Pedido {table.round}
+                            </span>
+                          )}
                         </div>
                         <div className="flex flex-wrap gap-2">
                           {table.items.map((item) => (

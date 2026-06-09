@@ -250,6 +250,7 @@ export default function Ventas() {
   const [showProductMenu, setShowProductMenu] = useState(false);
   const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
   const [expandedPizza, setExpandedPizza] = useState<string | null>(null);
+  const [modalTab, setModalTab] = useState<'menu' | 'cart'>('menu');
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<'efectivo' | 'yape' | 'pos' | null>(null);
   const [cashAmount, setCashAmount] = useState('');
@@ -468,7 +469,7 @@ export default function Ventas() {
               <p className="text-sm text-gray-500">{activeOrder.status === 'ocupado' ? activeOrder.items.length + ' productos' : 'Mesa libre'}</p>
             </div>
             <div className="flex gap-2">
-              <button onClick={() => setShowProductMenu(true)} className="px-4 py-2 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 text-sm">
+              <button onClick={() => { setShowProductMenu(true); setModalTab('menu'); }} className="px-4 py-2 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 text-sm">
                 + Agregar Producto
               </button>
               {activeOrder.status === 'ocupado' && (
@@ -531,12 +532,20 @@ export default function Ventas() {
         {/* Product Menu Modal */}
         {showProductMenu && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-lg w-full max-w-4xl shadow-xl max-h-[85vh] flex flex-col">
+            <div className="bg-white rounded-lg w-full max-w-2xl shadow-xl max-h-[85vh] flex flex-col">
               <div className="flex items-center justify-between p-4 border-b">
-                <h2 className="text-lg font-bold">Agregar Producto — Mesa {activeTable + 1}</h2>
-                <button onClick={() => setShowProductMenu(false)} className="text-gray-500 hover:text-gray-700 text-xl font-bold">✕</button>
+                <h2 className="text-lg font-bold">Mesa {activeTable + 1}</h2>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setModalTab(modalTab === 'menu' ? 'cart' : 'menu')}
+                    className={`text-sm px-3 py-1.5 rounded-full font-medium transition ${modalTab === 'cart' ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-700'}`}
+                  >
+                    Pedido {tables[activeTable]?.items?.length > 0 && `(${tables[activeTable].items.reduce((s, i) => s + i.quantity, 0)})`}
+                  </button>
+                  <button onClick={() => setShowProductMenu(false)} className="text-gray-500 hover:text-gray-700 text-xl font-bold">✕</button>
+                </div>
               </div>
-              <div className="flex-1 flex overflow-hidden">
+              {modalTab === 'menu' ? (
                 <div className="flex-1 overflow-y-auto p-4 space-y-2">
                   {productCategories.map(cat => (
                     <div key={cat.name} className="border rounded-lg overflow-hidden">
@@ -596,49 +605,47 @@ export default function Ventas() {
                     </div>
                   ))}
                 </div>
-                {/* Cart sidebar */}
-                <div className="w-72 border-l bg-gray-50 flex flex-col">
-                  <div className="p-3 border-b bg-white">
-                    <h3 className="font-bold text-sm text-gray-700">Pedido actual</h3>
-                  </div>
-                  <div className="flex-1 overflow-y-auto p-3 space-y-2">
-                    {tables[activeTable]?.items?.length === 0 ? (
-                      <p className="text-gray-400 text-sm text-center mt-8">Selecciona productos del menú</p>
-                    ) : (
-                      tables[activeTable]?.items?.map(item => (
-                        <div key={item.id} className="bg-white rounded-lg border p-2.5 flex items-center justify-between">
-                          <div className="flex-1 min-w-0 mr-2">
-                            <p className="text-sm font-medium text-gray-800 truncate">{item.name}</p>
-                            <p className="text-xs text-gray-500">{formatCurrency(item.unitPrice)} c/u</p>
-                          </div>
-                          <div className="flex items-center gap-1.5 flex-shrink-0">
-                            <button
-                              onClick={() => updateQuantity(item.id, -1)}
-                              className="w-6 h-6 rounded-full bg-gray-200 hover:bg-gray-300 flex items-center justify-center text-sm font-bold text-gray-600"
-                            >−</button>
-                            <span className="w-5 text-center text-sm font-bold text-gray-800">{item.quantity}</span>
-                            <button
-                              onClick={() => updateQuantity(item.id, 1)}
-                              className="w-6 h-6 rounded-full bg-gray-200 hover:bg-gray-300 flex items-center justify-center text-sm font-bold text-gray-600"
-                            >+</button>
-                          </div>
+              ) : (
+                <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                  {tables[activeTable]?.items?.length === 0 ? (
+                    <p className="text-gray-400 text-center mt-8">Aún no hay productos agregados</p>
+                  ) : (
+                    tables[activeTable]?.items?.map(item => (
+                      <div key={item.id} className="bg-white rounded-lg border p-3 flex items-center justify-between">
+                        <div className="flex-1 min-w-0 mr-2">
+                          <p className="font-medium text-gray-800 truncate">{item.name}</p>
+                          <p className="text-sm text-gray-500">{formatCurrency(item.unitPrice)} c/u</p>
                         </div>
-                      ))
-                    )}
-                  </div>
-                  {tables[activeTable]?.items?.length > 0 && (
-                    <div className="p-3 border-t bg-white">
-                      <div className="flex items-center justify-between text-sm font-bold text-gray-800 mb-1">
-                        <span>Subtotal</span>
-                        <span>{formatCurrency(tables[activeTable].items.reduce((sum, i) => sum + i.unitPrice * i.quantity, 0))}</span>
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          <button
+                            onClick={() => updateQuantity(item.id, -1)}
+                            className="w-7 h-7 rounded-full bg-gray-200 hover:bg-gray-300 flex items-center justify-center text-lg font-bold text-gray-600"
+                          >−</button>
+                          <span className="w-6 text-center font-bold text-gray-800">{item.quantity}</span>
+                          <button
+                            onClick={() => updateQuantity(item.id, 1)}
+                            className="w-7 h-7 rounded-full bg-gray-200 hover:bg-gray-300 flex items-center justify-center text-lg font-bold text-gray-600"
+                          >+</button>
+                        </div>
                       </div>
-                      <div className="flex items-center justify-between text-xs text-gray-500">
-                        <span>{tables[activeTable].items.reduce((sum, i) => sum + i.quantity, 0)} productos</span>
-                      </div>
-                    </div>
+                    ))
                   )}
                 </div>
-              </div>
+              )}
+              {tables[activeTable]?.items?.length > 0 && modalTab === 'cart' && (
+                <div className="p-4 border-t bg-gray-50">
+                  <div className="flex items-center justify-between text-lg font-bold text-gray-800">
+                    <span>Subtotal</span>
+                    <span>{formatCurrency(tables[activeTable].items.reduce((sum, i) => sum + i.unitPrice * i.quantity, 0))}</span>
+                  </div>
+                </div>
+              )}
+              {tables[activeTable]?.items?.length > 0 && modalTab === 'menu' && (
+                <div className="p-3 border-t bg-gray-50 flex items-center justify-between">
+                  <span className="text-sm text-gray-600">{tables[activeTable].items.reduce((s, i) => s + i.quantity, 0)} productos</span>
+                  <span className="text-sm font-bold text-gray-800">{formatCurrency(tables[activeTable].items.reduce((sum, i) => sum + i.unitPrice * i.quantity, 0))}</span>
+                </div>
+              )}
             </div>
           </div>
         )}

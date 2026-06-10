@@ -595,7 +595,7 @@ export default function Ventas() {
                         <div className="mb-4">
                           <p className="text-sm font-medium text-gray-700 mb-2">Tamaño</p>
                           <div className="grid grid-cols-3 gap-2">
-                            {halfCategoryPizzas[0]?.sizes.map(size => (
+                            {halfCategoryPizzas.find(p => p.name === halfPizza1)?.sizes.map(size => (
                               <button
                                 key={size.label}
                                 onClick={() => setHalfSizeLabel(size.label)}
@@ -617,7 +617,8 @@ export default function Ventas() {
                       {halfPizza2 && halfSizeLabel && (
                         <button
                           onClick={() => {
-                            const size = halfCategoryPizzas[0]?.sizes.find(s => s.label === halfSizeLabel);
+                            const pizza1Data = halfCategoryPizzas.find(p => p.name === halfPizza1);
+                            const size = pizza1Data?.sizes.find(s => s.label === halfSizeLabel);
                             if (size) {
                               addItem(`1/2 ${halfPizza1} + 1/2 ${halfPizza2} (${halfSizeLabel})`, size.price);
                               setShowHalfPicker(false);
@@ -625,7 +626,7 @@ export default function Ventas() {
                           }}
                           className="w-full py-3 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 transition"
                         >
-                          Agregar — {formatCurrency(halfCategoryPizzas[0]?.sizes.find(s => s.label === halfSizeLabel)?.price || 0)}
+                          Agregar — {formatCurrency((halfCategoryPizzas.find(p => p.name === halfPizza1)?.sizes.find(s => s.label === halfSizeLabel)?.price) || 0)}
                         </button>
                       )}
                     </div>
@@ -673,13 +674,16 @@ export default function Ventas() {
                                       </button>
                                     ))}
                                     <button
-                                      onClick={() => {
-                                        setHalfPizza1(pizza.name);
-                                        setHalfPizza2('');
-                                        setHalfSizeLabel('');
-                                        setHalfCategoryPizzas(cat.pizzas);
-                                        setShowHalfPicker(true);
-                                      }}
+                                    onClick={() => {
+                                      const allPizzas = productCategories
+                                        .filter(c => c.type === 'pizza')
+                                        .flatMap(c => c.pizzas);
+                                      setHalfPizza1(pizza.name);
+                                      setHalfPizza2('');
+                                      setHalfSizeLabel('');
+                                      setHalfCategoryPizzas(allPizzas);
+                                      setShowHalfPicker(true);
+                                    }}
                                       className="w-full flex items-center justify-center px-6 py-2.5 hover:bg-yellow-50 transition text-sm border-t border-gray-100 text-yellow-700 font-semibold"
                                     >
                                       🎱 Mitad y mitad

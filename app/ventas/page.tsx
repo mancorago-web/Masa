@@ -138,23 +138,35 @@ const defaultSubRecipes: { id: string; parentId: string; name: string }[] = [
   { id: 's54', parentId: '36', name: 'Capricciosa 16 Pzas.' },
 ];
 
-// Base prices per pizza for 8 Pzas.
-const pizzaBasePrices: Record<string, number> = {
-  'Margherita': 24, 'Marinara': 24, 'Napoli': 26, 'Vegetariana': 28, 'Sorrentina': 28, 'Mediterranea': 28,
-  'Americana': 28, 'Pepperoni': 30, 'Hawaiana': 30, 'Jamón y Champiñones': 30,
-  'BBQ Chicken': 32,   'Panorama': 32, 'Italiana': 32, '4 Quesos': 34, 'Rústica': 34,
-  'Huerta & Mar': 34, 'Buscaiola': 34, 'Capricciosa': 34,
+// Precios explicitos por pizza y tamaño
+const pizzaPrices: Record<string, Record<string, number>> = {
+  'Americana':         { '8 Pzas.': 40, '12 Pzas.': 55 },
+  'Pepperoni':         { '8 Pzas.': 40, '12 Pzas.': 55 },
+  'Hawaiana':          { '8 Pzas.': 40, '12 Pzas.': 55 },
+  'Jamón y Champiñones': { '8 Pzas.': 40, '12 Pzas.': 50 },
+  'Margherita':        { '8 Pzas.': 40, '12 Pzas.': 55 },
+  'Marinara':          { '8 Pzas.': 35, '12 Pzas.': 50 },
+  'Napoli':            { '8 Pzas.': 40, '12 Pzas.': 55 },
+  'Vegetariana':       { '8 Pzas.': 45, '12 Pzas.': 60 },
+  'Sorrentina':        { '8 Pzas.': 45, '12 Pzas.': 60 },
+  'Mediterranea':      { '8 Pzas.': 45, '12 Pzas.': 60 },
+  'Panorama':          { '8 Pzas.': 50, '12 Pzas.': 65 },
+  'Italiana':          { '8 Pzas.': 55, '12 Pzas.': 70 },
+  '4 Quesos':          { '8 Pzas.': 50, '12 Pzas.': 65 },
+  'Rústica':           { '8 Pzas.': 50, '12 Pzas.': 65 },
+  'Huerta & Mar':      { '8 Pzas.': 50, '12 Pzas.': 65 },
+  'Buscaiola':         { '8 Pzas.': 50, '12 Pzas.': 65 },
+  'Capricciosa':       { '8 Pzas.': 50, '12 Pzas.': 65 },
+  'BBQ Chicken':       { '8 Pzas.': 32, '12 Pzas.': 40 },
 };
-
-const sizePrices = (base: number) => ({ '8 Pzas.': base, '12 Pzas.': Math.round(base * 1.25), '16 Pzas.': Math.round(base * 1.5) });
 
 const bebidasItems: MenuItem[] = [
   { name: 'Agua', price: 4 }, { name: 'Gaseosa', price: 6 }, { name: 'Cerveza', price: 10 }, { name: 'Vino tinto', price: 28 },
 ];
 
 const nonPizzaPrices: Record<string, number> = {
-  'Pan al ajo': 12, 'Bruschetta': 16, 'Crostini misti': 18,
-  'Spaghetti Carbonara': 28, 'Fettuccine Alfredo': 28, 'Lasagna Boloñesa': 32, 'Lasagna Vegetariana': 32, 'Berenjena Parmesana': 28,
+  'Pan al ajo': 15, 'Bruschetta': 20, 'Crostini misti': 30,
+  'Spaghetti Carbonara': 28, 'Fettuccine Alfredo': 28, 'Lasagna Boloñesa': 40, 'Lasagna Vegetariana': 40, 'Berenjena Parmesana': 40,
 };
 
 const sizeLabels = ['8 Pzas.', '12 Pzas.', '16 Pzas.'];
@@ -207,9 +219,8 @@ function buildMenu(recipes: { id: string; category: string; name: string }[], su
     if (pizzaCatSet.has(catName)) {
       const pizzas: PizzaProduct[] = [];
       for (const recipe of catRecipes) {
-        const base = pizzaBasePrices[recipe.name];
-        if (!base) continue;
-        const sizes = sizePrices(base);
+        const sizes = pizzaPrices[recipe.name];
+        if (!sizes) continue;
         const recipeSubs = subRecipes.filter(s => s.parentId === recipe.id);
         if (recipeSubs.length > 0) {
           const sizesList: SizeOption[] = [];

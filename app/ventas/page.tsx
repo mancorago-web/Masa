@@ -618,15 +618,21 @@ export default function Ventas() {
                         <button
                           onClick={() => {
                             const pizza1Data = halfCategoryPizzas.find(p => p.name === halfPizza1);
-                            const size = pizza1Data?.sizes.find(s => s.label === halfSizeLabel);
-                            if (size) {
-                              addItem(`1/2 ${halfPizza1} + 1/2 ${halfPizza2} (${halfSizeLabel})`, size.price);
+                            const pizza2Data = halfCategoryPizzas.find(p => p.name === halfPizza2);
+                            const size1 = pizza1Data?.sizes.find(s => s.label === halfSizeLabel);
+                            const size2 = pizza2Data?.sizes.find(s => s.label === halfSizeLabel);
+                            const price = Math.max(size1?.price || 0, size2?.price || 0);
+                            if (price > 0) {
+                              addItem(`1/2 ${halfPizza1} + 1/2 ${halfPizza2} (${halfSizeLabel})`, price);
                               setShowHalfPicker(false);
                             }
                           }}
                           className="w-full py-3 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 transition"
                         >
-                          Agregar — {formatCurrency((halfCategoryPizzas.find(p => p.name === halfPizza1)?.sizes.find(s => s.label === halfSizeLabel)?.price) || 0)}
+                          Agregar — {formatCurrency(Math.max(
+                            (halfCategoryPizzas.find(p => p.name === halfPizza1)?.sizes.find(s => s.label === halfSizeLabel)?.price) || 0,
+                            (halfCategoryPizzas.find(p => p.name === halfPizza2)?.sizes.find(s => s.label === halfSizeLabel)?.price) || 0
+                          ))}
                         </button>
                       )}
                     </div>

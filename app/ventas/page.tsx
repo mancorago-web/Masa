@@ -251,6 +251,11 @@ export default function Ventas() {
   const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
   const [expandedPizza, setExpandedPizza] = useState<string | null>(null);
   const [modalTab, setModalTab] = useState<'menu' | 'cart'>('menu');
+  const [showHalfPicker, setShowHalfPicker] = useState(false);
+  const [halfPizza1, setHalfPizza1] = useState('');
+  const [halfPizza2, setHalfPizza2] = useState('');
+  const [halfSizeLabel, setHalfSizeLabel] = useState('');
+  const [halfCategoryPizzas, setHalfCategoryPizzas] = useState<{ name: string; sizes: { label: string; price: number }[] }[]>([]);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<'efectivo' | 'yape' | 'pos' | null>(null);
   const [cashAmount, setCashAmount] = useState('');
@@ -546,65 +551,158 @@ export default function Ventas() {
                 </div>
               </div>
               {modalTab === 'menu' ? (
-                <div className="flex-1 overflow-y-auto p-4 space-y-2">
-                  {productCategories.map(cat => (
-                    <div key={cat.name} className="border rounded-lg overflow-hidden">
+                showHalfPicker ? (
+                  <div className="flex-1 overflow-y-auto p-4">
+                    <div className="mb-4">
                       <button
-                        onClick={() => {
-                          if (expandedCategory === cat.name) {
-                            setExpandedCategory(null);
-                            setExpandedPizza(null);
-                          } else {
-                            setExpandedCategory(cat.name);
-                            setExpandedPizza(null);
-                          }
-                        }}
-                        className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 hover:bg-gray-100 font-semibold text-left"
+                        onClick={() => setShowHalfPicker(false)}
+                        className="text-sm text-gray-500 hover:text-gray-700 mb-3"
                       >
-                        <span className="text-gray-800">{cat.name}</span>
-                        <span className="text-gray-400">{expandedCategory === cat.name ? '▼' : '▶'}</span>
+                        ← Volver al menú
                       </button>
-                      {expandedCategory === cat.name && (
-                        <div className="divide-y divide-gray-100">
-                          {cat.type === 'pizza' ? cat.pizzas.map(pizza => (
-                            <div key={pizza.name}>
+                      <h3 className="text-lg font-bold text-gray-800 mb-3">Mitad y mitad</h3>
+
+                      {/* First half (fixed) */}
+                      <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-3">
+                        <p className="text-xs text-green-600 font-medium mb-1">Primera mitad</p>
+                        <p className="font-bold text-gray-800">{halfPizza1}</p>
+                      </div>
+
+                      {/* Second half selector */}
+                      <div className="mb-3">
+                        <p className="text-sm font-medium text-gray-700 mb-2">Segunda mitad</p>
+                        <div className="grid grid-cols-2 gap-2">
+                          {halfCategoryPizzas
+                            .filter(p => p.name !== halfPizza1)
+                            .map(p => (
                               <button
-                                onClick={() => setExpandedPizza(expandedPizza === pizza.name ? null : pizza.name)}
-                                className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-gray-50 text-left"
+                                key={p.name}
+                                onClick={() => setHalfPizza2(p.name)}
+                                className={`px-3 py-2.5 rounded-lg border text-sm font-medium text-left transition ${
+                                  halfPizza2 === p.name
+                                    ? 'border-blue-500 bg-blue-50 text-blue-700'
+                                    : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
+                                }`}
                               >
-                                <span className="text-gray-800 font-medium text-sm">{pizza.name}</span>
-                                <span className="text-gray-400 text-xs">{expandedPizza === pizza.name ? '▼' : '▶'}</span>
+                                {p.name}
                               </button>
-                              {expandedPizza === pizza.name && (
-                                <div className="bg-gray-50 border-t border-gray-100">
-                                  {pizza.sizes.map(size => (
-                                    <button
-                                      key={size.label}
-                                      onClick={() => addItem(`${pizza.name} ${size.label}`, size.price)}
-                                      className="w-full flex items-center justify-between px-6 py-2.5 hover:bg-green-50 transition text-left text-sm"
-                                    >
-                                      <span className="text-gray-700">{size.label}</span>
-                                      <span className="text-green-700 font-bold">{formatCurrency(size.price)}</span>
-                                    </button>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                          )) : cat.items.map(item => (
-                            <button
-                              key={item.name}
-                              onClick={() => addItem(item.name, item.price)}
-                              className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-green-50 transition text-left"
-                            >
-                              <span className="text-gray-800 text-sm">{item.name}</span>
-                              <span className="text-green-700 font-bold text-sm">{formatCurrency(item.price)}</span>
-                            </button>
-                          ))}
+                            ))}
+                        </div>
+                      </div>
+
+                      {/* Size selector */}
+                      {halfPizza2 && (
+                        <div className="mb-4">
+                          <p className="text-sm font-medium text-gray-700 mb-2">Tamaño</p>
+                          <div className="grid grid-cols-3 gap-2">
+                            {halfCategoryPizzas[0]?.sizes.map(size => (
+                              <button
+                                key={size.label}
+                                onClick={() => setHalfSizeLabel(size.label)}
+                                className={`px-3 py-2.5 rounded-lg border text-sm font-medium transition text-center ${
+                                  halfSizeLabel === size.label
+                                    ? 'border-blue-500 bg-blue-50 text-blue-700'
+                                    : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
+                                }`}
+                              >
+                                <span className="block">{size.label}</span>
+                                <span className="block text-xs text-gray-500">{formatCurrency(size.price)}</span>
+                              </button>
+                            ))}
+                          </div>
                         </div>
                       )}
+
+                      {/* Confirm button */}
+                      {halfPizza2 && halfSizeLabel && (
+                        <button
+                          onClick={() => {
+                            const size = halfCategoryPizzas[0]?.sizes.find(s => s.label === halfSizeLabel);
+                            if (size) {
+                              addItem(`1/2 ${halfPizza1} + 1/2 ${halfPizza2} (${halfSizeLabel})`, size.price);
+                              setShowHalfPicker(false);
+                            }
+                          }}
+                          className="w-full py-3 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 transition"
+                        >
+                          Agregar — {formatCurrency(halfCategoryPizzas[0]?.sizes.find(s => s.label === halfSizeLabel)?.price || 0)}
+                        </button>
+                      )}
                     </div>
-                  ))}
-                </div>
+                  </div>
+                ) : (
+                  <div className="flex-1 overflow-y-auto p-4 space-y-2">
+                    {productCategories.map(cat => (
+                      <div key={cat.name} className="border rounded-lg overflow-hidden">
+                        <button
+                          onClick={() => {
+                            if (expandedCategory === cat.name) {
+                              setExpandedCategory(null);
+                              setExpandedPizza(null);
+                            } else {
+                              setExpandedCategory(cat.name);
+                              setExpandedPizza(null);
+                            }
+                          }}
+                          className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 hover:bg-gray-100 font-semibold text-left"
+                        >
+                          <span className="text-gray-800">{cat.name}</span>
+                          <span className="text-gray-400">{expandedCategory === cat.name ? '▼' : '▶'}</span>
+                        </button>
+                        {expandedCategory === cat.name && (
+                          <div className="divide-y divide-gray-100">
+                            {cat.type === 'pizza' ? cat.pizzas.map(pizza => (
+                              <div key={pizza.name}>
+                                <button
+                                  onClick={() => setExpandedPizza(expandedPizza === pizza.name ? null : pizza.name)}
+                                  className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-gray-50 text-left"
+                                >
+                                  <span className="text-gray-800 font-medium text-sm">{pizza.name}</span>
+                                  <span className="text-gray-400 text-xs">{expandedPizza === pizza.name ? '▼' : '▶'}</span>
+                                </button>
+                                {expandedPizza === pizza.name && (
+                                  <div className="bg-gray-50 border-t border-gray-100">
+                                    {pizza.sizes.map(size => (
+                                      <button
+                                        key={size.label}
+                                        onClick={() => addItem(`${pizza.name} ${size.label}`, size.price)}
+                                        className="w-full flex items-center justify-between px-6 py-2.5 hover:bg-green-50 transition text-left text-sm"
+                                      >
+                                        <span className="text-gray-700">{size.label}</span>
+                                        <span className="text-green-700 font-bold">{formatCurrency(size.price)}</span>
+                                      </button>
+                                    ))}
+                                    <button
+                                      onClick={() => {
+                                        setHalfPizza1(pizza.name);
+                                        setHalfPizza2('');
+                                        setHalfSizeLabel('');
+                                        setHalfCategoryPizzas(cat.pizzas);
+                                        setShowHalfPicker(true);
+                                      }}
+                                      className="w-full flex items-center justify-center px-6 py-2.5 hover:bg-yellow-50 transition text-sm border-t border-gray-100 text-yellow-700 font-semibold"
+                                    >
+                                      🎱 Mitad y mitad
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            )) : cat.items.map(item => (
+                              <button
+                                key={item.name}
+                                onClick={() => addItem(item.name, item.price)}
+                                className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-green-50 transition text-left"
+                              >
+                                <span className="text-gray-800 text-sm">{item.name}</span>
+                                <span className="text-green-700 font-bold text-sm">{formatCurrency(item.price)}</span>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )
               ) : (
                 <div className="flex-1 overflow-y-auto p-4 space-y-3">
                   {tables[activeTable]?.items?.length === 0 ? (

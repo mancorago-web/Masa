@@ -427,12 +427,12 @@ export default function Ventas() {
       const now = new Date().toLocaleString('es-PE');
       const cajaKey = 'masa-caja-chica';
       const cajaData = loadFromStorage<{ initialAmount: number; transactions: { id: string; type: string; description: string; amount: number; date: string }[] } | null>(cajaKey, null) || { initialAmount: 200, transactions: [] };
-      // Ingreso: la venta en efectivo
+      // Ingreso: el efectivo recibido del cliente
       cajaData.transactions.push({
         id: Date.now().toString() + Math.random().toString(36).slice(2, 6),
         type: 'INGRESO',
-        description: `Venta Mesa ${activeTable + 1} - Efectivo`,
-        amount: subtotal,
+        description: `Venta Mesa ${activeTable + 1} - Efectivo (recibido S/${paid.toFixed(2)})`,
+        amount: paid,
         date: now,
       });
       // Gasto: el vuelto entregado al cliente

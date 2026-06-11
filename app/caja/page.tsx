@@ -35,7 +35,10 @@ function nowStr() {
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, '0');
   const dd = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${dd}, ${d.toLocaleTimeString('es-PE')}`;
+  const hh = String(d.getHours()).padStart(2, '0');
+  const mi = String(d.getMinutes()).padStart(2, '0');
+  const ss = String(d.getSeconds()).padStart(2, '0');
+  return `${y}-${m}-${dd}, ${hh}:${mi}:${ss}`;
 }
 
 function loadFromStorage() {
@@ -165,10 +168,10 @@ export default function CajaChica() {
         if (t.date) {
           const parts = t.date.split(',');
           const dp = parts[0].trim();
-          if (/^\d{2}\/\d{2}\/\d{4}$/.test(dp)) {
+          if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(dp)) {
             const [dd, mm, yyyy] = dp.split('/');
             const tp = parts.slice(1).join(',').trim();
-            t.date = `${yyyy}-${mm}-${dd}${tp ? ', ' + tp : ''}`;
+            t.date = `${yyyy}-${mm.padStart(2, '0')}-${dd.padStart(2, '0')}${tp ? ', ' + tp : ''}`;
           }
         }
       }

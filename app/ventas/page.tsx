@@ -1,13 +1,6 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-function nowStr() {
-  const d = new Date();
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const dd = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${dd}, ${d.toLocaleTimeString('es-PE')}`;
-}
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { getDb } from "@/lib/firebase";
@@ -183,6 +176,14 @@ const initialTables: TableOrder[] = Array.from({ length: 8 }, () => ({
   status: 'libre',
   customerName: '',
 }));
+
+function nowStr() {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${dd}, ${d.toLocaleTimeString('es-PE')}`;
+}
 
 const STORAGE_KEY = 'masa-ventas-tables';
 const PAYMENTS_KEY = 'masa-ventas-payments';

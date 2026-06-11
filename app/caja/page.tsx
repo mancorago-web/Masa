@@ -27,7 +27,8 @@ const STORAGE_KEY = 'masa-caja-chica';
 const DAILY_RECORDS_KEY = 'masa-caja-chica-daily';
 
 function todayStr() {
-  return new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 function nowStr() {
   const d = new Date();
@@ -244,6 +245,17 @@ export default function CajaChica() {
       setAvailableDates(Object.keys(dailyRecordsRef.current).sort().reverse());
     }
   }, [saveDailySnapshot]);
+
+  // Reload data when localStorage changes from another tab
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === STORAGE_KEY) {
+        window.location.reload();
+      }
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, []);
 
   // Midnight auto-close: check every 30s if the date changed
   useEffect(() => {

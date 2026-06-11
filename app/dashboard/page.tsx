@@ -187,10 +187,12 @@ function computeConsumedIngredients(
   subIngredients: Record<string, RecipeIngredient[]>,
   inventory: InventoryItem[],
 ): ConsumedIngredient[] {
-  const invCost = new Map<string, number>();
+  const invMap = new Map<string, { unitCost: number; unit: string }>();
   for (const inv of inventory) {
-    if (inv.unitCost) invCost.set(inv.name.toLowerCase(), inv.unitCost);
+    if (inv.unitCost) invMap.set(inv.name.toLowerCase().trim(), { unitCost: inv.unitCost, unit: inv.unit });
   }
+
+  const getInvData = (name: string) => invMap.get(name.toLowerCase().trim()) || null;
 
   const recipeByName = new Map<string, string>();
   for (const r of recipes) recipeByName.set(r.name.toLowerCase(), r.id);
@@ -215,18 +217,19 @@ function computeConsumedIngredients(
     }
 
     for (const ing of ings) {
-      const key = ing.name.toLowerCase();
+      const key = ing.name.toLowerCase().trim();
+      const invData = getInvData(ing.name);
+      const unit = invData ? invData.unit : ing.unit;
+      const unitCost = invData ? invData.unitCost : (ing.unitPrice || 0);
+      const qty = ing.quantity * sold.qty;
+      const cost = unitCost * qty;
+
       const existing = agg.get(key);
       if (existing) {
-        existing.qty += ing.quantity * sold.qty;
-        existing.cost += (ing.cost || ing.quantity * (invCost.get(key) || 0)) * sold.qty;
+        existing.qty += qty;
+        existing.cost += cost;
       } else {
-        agg.set(key, {
-          qty: ing.quantity * sold.qty,
-          unit: ing.unit,
-          cost: (ing.cost || ing.quantity * (invCost.get(key) || 0)) * sold.qty,
-          displayName: ing.name,
-        });
+        agg.set(key, { qty, unit, cost, displayName: ing.name });
       }
     }
   }

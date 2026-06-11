@@ -6,6 +6,24 @@ import Link from "next/link";
 import { getDb } from "@/lib/firebase";
 import { useAuth } from "@/components/AuthProvider";
 
+interface InventoryItem {
+  id: string;
+  category: string;
+  name: string;
+  currentStock: number;
+  unit: string;
+  minStock: number;
+  unitCost?: number;
+}
+
+interface RecipeIngredient {
+  name: string;
+  quantity: number;
+  unit: string;
+  unitPrice: number;
+  cost: number;
+}
+
 interface OrderItem {
   id: string;
   name: string;
@@ -288,6 +306,9 @@ export default function Ventas() {
   const [paymentsHistory, setPaymentsHistory] = useState<PaymentData[]>(() => loadFromStorage(PAYMENTS_KEY, []));
   const [recipes, setRecipes] = useState(defaultRecipes);
   const [subRecipes, setSubRecipes] = useState(defaultSubRecipes);
+  const [recipeIngredients, setRecipeIngredients] = useState<Record<string, RecipeIngredient[]>>({});
+  const [subIngredients, setSubIngredients] = useState<Record<string, RecipeIngredient[]>>({});
+  const [inventory, setInventory] = useState<InventoryItem[]>([]);
 
   useEffect(() => {
     if (!authLoading && !user) router.replace("/login");
@@ -312,11 +333,14 @@ export default function Ventas() {
     if (savedSubs && Array.isArray(savedSubs)) {
       setSubRecipes(savedSubs);
     }
+    setRecipeIngredients(loadFromStorage<Record<string, RecipeIngredient[]>>('masa-recipeIngredients', {}));
+    setSubIngredients(loadFromStorage<Record<string, RecipeIngredient[]>>('masa-subIngredients', {}));
+    setInventory(loadFromStorage<InventoryItem[]>('masa-inventory', []));
 
     // Real-time Firestore listener for cross-device sync
     const db = getDb();
     if (db) {
-      const unsub = db.collection('config').doc('ventas')
+      const unsub1 = db.collection('config').doc('ventas')
         .onSnapshot((snap: any) => {
           if (!snap.exists) return;
           const data = snap.data();
@@ -337,7 +361,33 @@ export default function Ventas() {
             });
           }
         });
-      return () => unsub();
+      const unsub2 = db.collection('masa').doc('data')
+        .onSnapshot((snap: any) => {
+          if (!snap.exists) return;
+          const data = snap.data();
+          if (data.inventory && Array.isArray(data.inventory)) {
+            setInventory(prev => {
+              const incoming = JSON.stringify(data.inventory);
+              const current = JSON.stringify(prev);
+              return incoming === current ? prev : data.inventory;
+            });
+          }
+          if (data.recipeIngredients && typeof data.recipeIngredients === 'object') {
+            setRecipeIngredients(prev => {
+              const incoming = JSON.stringify(data.recipeIngredients);
+              const current = JSON.stringify(prev);
+              return incoming === current ? prev : data.recipeIngredients;
+            });
+          }
+          if (data.subIngredients && typeof data.subIngredients === 'object') {
+            setSubIngredients(prev => {
+              const incoming = JSON.stringify(data.subIngredients);
+              const current = JSON.stringify(prev);
+              return incoming === current ? prev : data.subIngredients;
+            });
+          }
+        });
+      return () => { unsub1(); unsub2(); };
     }
   }, []);
 
@@ -465,8 +515,56 @@ export default function Ventas() {
       }
     }
 
+    // Deduct inventory stock from sold items
+    const updatedInventory = deductInventoryForItems(payment.items, recipeIngredients, subIngredients, inventory);
+    if (updatedInventory.some((item, i) => item.currentStock !== inventory[i]?.currentStock)) {
+      setInventory(updatedInventory);
+      saveToStorage('masa-inventory', updatedInventory);
+      const db = getDb();
+      if (db) {
+        db.collection('masa').doc('data').set({ inventory: updatedInventory }, { merge: true }).catch(() => {});
+      }
+    }
+
     setShowPaymentModal(false);
     setShowConfirmPayment(false);
+  };
+
+  const deductInventoryForItems = (
+    items: OrderItem[],
+    ings: Record<string, RecipeIngredient[]>,
+    subIngs: Record<string, RecipeIngredient[]>,
+    inv: InventoryItem[],
+  ): InventoryItem[] => {
+    const recipeByName = new Map(recipes.map(r => [r.name.toLowerCase(), r.id]));
+    const subRecipeByName = new Map(subRecipes.map(sr => [sr.name.toLowerCase(), sr.id]));
+    const updated = inv.map(item => ({ ...item }));
+
+    for (const sold of items) {
+      const nameLower = sold.name.toLowerCase();
+      let ingredients: RecipeIngredient[] = [];
+
+      const subId = subRecipeByName.get(nameLower);
+      if (subId && subIngs[subId]) {
+        ingredients = subIngs[subId];
+      } else {
+        const recipeId = recipeByName.get(nameLower);
+        if (recipeId && ings[recipeId]) {
+          ingredients = ings[recipeId];
+        }
+      }
+
+      for (const ing of ingredients) {
+        const ingNameLower = ing.name.toLowerCase().trim();
+        const totalQty = ing.quantity * sold.quantity;
+        const idx = updated.findIndex(i => i.name.toLowerCase().trim() === ingNameLower);
+        if (idx >= 0) {
+          updated[idx] = { ...updated[idx], currentStock: Math.max(0, updated[idx].currentStock - totalQty) };
+        }
+      }
+    }
+
+    return updated;
   };
 
   const formatCurrency = (n: number) => `S/${n.toFixed(2)}`;

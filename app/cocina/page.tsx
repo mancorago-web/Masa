@@ -386,8 +386,15 @@ export default function Cocina() {
     );
   }
 
+  // Only show today's orders on main screen; past orders go to historial
+  const todayTables = tables.filter(t => {
+    const d = new Date(t.updatedAt);
+    const localDate = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    return isSameDay(localDate, todayStr());
+  });
+
   // Sort tables: pending first, then completed, collapsed to bottom
-  const sorted = [...tables].sort((a, b) => {
+  const sorted = [...todayTables].sort((a, b) => {
     const aId = a.id ?? `${a.tableNumber}-${a.round ?? 1}`;
     const bId = b.id ?? `${b.tableNumber}-${b.round ?? 1}`;
     const aCollapsed = collapsedIds.has(aId);
@@ -401,7 +408,7 @@ export default function Cocina() {
     return 0;
   });
 
-  const pendingCount = tables.reduce(
+  const pendingCount = todayTables.reduce(
     (sum, t) => sum + t.items.filter((i) => !i.completed).reduce((s, it) => s + it.quantity, 0),
     0
   );
@@ -469,7 +476,7 @@ export default function Cocina() {
 
       {/* Tables Grid */}
       <div className="container mx-auto p-4">
-        {tables.length === 0 ? (
+        {todayTables.length === 0 ? (
           <div className="text-center py-20">
             <p className="text-4xl mb-4">🍕</p>
             <p className="text-gray-400 text-lg">No hay pedidos</p>

@@ -29,6 +29,13 @@ const DAILY_RECORDS_KEY = 'masa-caja-chica-daily';
 function todayStr() {
   return new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD
 }
+function nowStr() {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${dd}, ${d.toLocaleTimeString('es-PE')}`;
+}
 
 function loadFromStorage() {
   if (typeof window === 'undefined') return null;
@@ -151,23 +158,32 @@ export default function CajaChica() {
     todayRef.current = today;
     if (saved) {
       const init = saved.initialAmount ?? defaultInitialAmount;
-      const txns = saved.transactions ?? [];
+      const txns: Transaction[] = saved.transactions ?? [];
+      // Migrate old DD/MM/YYYY dates to YYYY-MM-DD
+      for (const t of txns) {
+        if (t.date) {
+          const parts = t.date.split(',');
+          const dp = parts[0].trim();
+          if (/^\d{2}\/\d{2}\/\d{4}$/.test(dp)) {
+            const [dd, mm, yyyy] = dp.split('/');
+            const tp = parts.slice(1).join(',').trim();
+            t.date = `${yyyy}-${mm}-${dd}${tp ? ', ' + tp : ''}`;
+          }
+        }
+      }
       // Archive transactions from previous days
       const todayTxns = txns.filter((t: Transaction) => {
-        const tDate = t.date ? t.date.split(',')[0].trim() : '';
-        const tDay = tDate ? new Date(tDate).toLocaleDateString('en-CA') : '';
-        return !tDate || tDay === today;
+        const tDay = t.date ? t.date.split(',')[0].trim() : '';
+        return !tDay || tDay === today;
       });
       const olderTxns = txns.filter((t: Transaction) => {
-        const tDate = t.date ? t.date.split(',')[0].trim() : '';
-        const tDay = tDate ? new Date(tDate).toLocaleDateString('en-CA') : '';
-        return tDate && tDay !== today;
+        const tDay = t.date ? t.date.split(',')[0].trim() : '';
+        return tDay && tDay !== today;
       });
       // Save older transactions as daily records grouped by date
       const byDate: Record<string, Transaction[]> = {};
       for (const t of olderTxns) {
-        const tDate = t.date ? t.date.split(',')[0].trim() : '';
-        const tDay = tDate ? new Date(tDate).toLocaleDateString('en-CA') : '';
+        const tDay = t.date ? t.date.split(',')[0].trim() : '';
         if (tDay) {
           if (!byDate[tDay]) byDate[tDay] = [];
           byDate[tDay].push(t);
@@ -280,7 +296,7 @@ export default function CajaChica() {
         type: 'AJUSTE',
         description: diff > 0 ? `Ajuste inicial (+S/${diff.toFixed(2)})` : `Ajuste inicial (-S/${Math.abs(diff).toFixed(2)})`,
         amount: diff > 0 ? -diff : Math.abs(diff),
-        date: new Date().toLocaleString('es-PE'),
+        date: nowStr(),
       };
       if (diff > 0) t.amount = 0;
       setTransactions(prev => [t, ...prev]);
@@ -302,7 +318,7 @@ export default function CajaChica() {
       type: 'GASTO',
       description: modalDescription.trim(),
       amount,
-      date: new Date().toLocaleString('es-PE'),
+      date: nowStr(),
     };
     setTransactions(prev => [t, ...prev]);
     setShowAddModal(false);

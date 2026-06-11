@@ -1,6 +1,13 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
+function nowStr() {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${dd}, ${d.toLocaleTimeString('es-PE')}`;
+}
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { getDb } from "@/lib/firebase";
@@ -411,7 +418,7 @@ export default function Ventas() {
       method: paymentMethod!,
       amountPaid: paymentMethod === 'efectivo' ? paid : undefined,
       change: paymentMethod === 'efectivo' ? paid - subtotal : undefined,
-      date: new Date().toLocaleString('es-PE'),
+      date: nowStr(),
     };
     setPaymentsHistory(prev => {
       return [payment, ...prev];
@@ -424,7 +431,7 @@ export default function Ventas() {
 
     // Register cash movements in Caja Chica
     if (paymentMethod === 'efectivo') {
-      const now = new Date().toLocaleString('es-PE');
+      const now = nowStr();
       const cajaKey = 'masa-caja-chica';
       const cajaData = loadFromStorage<{ initialAmount: number; transactions: { id: string; type: string; description: string; amount: number; date: string }[] } | null>(cajaKey, null) || { initialAmount: 200, transactions: [] };
       // Ingreso: el efectivo recibido del cliente

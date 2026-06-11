@@ -1955,6 +1955,14 @@ export default function Inventario() {
                     </tr>
                   ))}
                 </tbody>
+                <tfoot className="bg-gray-100">
+                  <tr>
+                    <td colSpan={4} className="px-4 py-3 text-right font-bold text-gray-800">TOTAL GENERAL</td>
+                    <td className="px-4 py-3 text-right font-bold text-gray-900">
+                      S/{purchaseHistory.reduce((s, e) => s + e.totalCost, 0).toFixed(2)}
+                    </td>
+                  </tr>
+                </tfoot>
               </table>
             </div>
           </div>

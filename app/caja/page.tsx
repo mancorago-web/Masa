@@ -8,7 +8,7 @@ import { useAuth } from "@/components/AuthProvider";
 
 interface Transaction {
   id: string;
-  type: 'GASTO' | 'AJUSTE';
+  type: 'GASTO' | 'AJUSTE' | 'INGRESO';
   description: string;
   amount: number;
   date: string;
@@ -124,13 +124,14 @@ export default function CajaChica() {
 
   // Save daily record helper
   const saveDailySnapshot = useRef((date: string, init: number, txns: Transaction[]) => {
-    const activeTotal = txns.reduce((sum, t) => t.deleted ? sum : sum + t.amount, 0);
+    const totalIngresos = txns.reduce((sum, t) => t.deleted || t.type !== 'INGRESO' ? sum : sum + t.amount, 0);
+    const activeTotal = txns.reduce((sum, t) => t.deleted || t.type === 'INGRESO' ? sum : sum + t.amount, 0);
     const record: DailyRecord = {
       date,
       initialAmount: init,
       transactions: txns,
       totalExpenses: activeTotal,
-      finalBalance: init - activeTotal,
+      finalBalance: init + totalIngresos - activeTotal,
     };
     dailyRecordsRef.current = { ...dailyRecordsRef.current, [date]: record };
     saveDailyRecordsToStorage(dailyRecordsRef.current);
@@ -174,13 +175,14 @@ export default function CajaChica() {
       let updatedRecords = { ...dailyRecordsRef.current };
       for (const [date, dayTxns] of Object.entries(byDate)) {
         const dayInit = defaultInitialAmount;
-        const activeTotal = dayTxns.reduce((sum, t) => t.deleted ? sum : sum + t.amount, 0);
+        const dayIngresos = dayTxns.reduce((sum, t) => t.deleted || t.type !== 'INGRESO' ? sum : sum + t.amount, 0);
+        const dayExpenses = dayTxns.reduce((sum, t) => t.deleted || t.type === 'INGRESO' ? sum : sum + t.amount, 0);
         updatedRecords[date] = {
           date,
           initialAmount: dayInit,
           transactions: dayTxns,
-          totalExpenses: activeTotal,
-          finalBalance: dayInit - activeTotal,
+          totalExpenses: dayExpenses,
+          finalBalance: dayInit + dayIngresos - dayExpenses,
         };
         saveDailyRecordToFirestore(updatedRecords[date]);
       }
@@ -197,13 +199,14 @@ export default function CajaChica() {
         syncToFirestore(newData);
       }
       // Ensure today's record exists
-      const activeTotal = todayTxns.reduce((sum, t) => t.deleted ? sum : sum + t.amount, 0);
+      const hoyIngresos = todayTxns.reduce((sum, t) => t.deleted || t.type !== 'INGRESO' ? sum : sum + t.amount, 0);
+      const hoyExpenses = todayTxns.reduce((sum, t) => t.deleted || t.type === 'INGRESO' ? sum : sum + t.amount, 0);
       const todayRecord: DailyRecord = {
         date: today,
         initialAmount: init,
         transactions: todayTxns,
-        totalExpenses: activeTotal,
-        finalBalance: init - activeTotal,
+        totalExpenses: hoyExpenses,
+        finalBalance: init + hoyIngresos - hoyExpenses,
       };
       dailyRecordsRef.current[today] = todayRecord;
       saveDailyRecordsToStorage(dailyRecordsRef.current);
@@ -256,8 +259,9 @@ export default function CajaChica() {
     saveDailySnapshot(todayRef.current, initialAmount, transactions);
   }, [initialAmount, transactions, saveDailySnapshot]);
 
-  const totalExpenses = transactions.reduce((sum, t) => t.deleted ? sum : sum + t.amount, 0);
-  const currentBalance = initialAmount - totalExpenses;
+  const totalIngresos = transactions.reduce((sum, t) => t.deleted || t.type !== 'INGRESO' ? sum : sum + t.amount, 0);
+  const totalExpenses = transactions.reduce((sum, t) => t.deleted || t.type === 'INGRESO' ? sum : sum + t.amount, 0);
+  const currentBalance = initialAmount + totalIngresos - totalExpenses;
 
   const handleSaveInitial = () => {
     const val = parseFloat(editInitialValue as unknown as string) || 0;
@@ -376,6 +380,10 @@ export default function CajaChica() {
             )}
           </div>
           <div className="bg-white p-4 rounded-lg shadow-md">
+            <p className="text-sm text-gray-500 mb-1">Total Ingresos (Ventas)</p>
+            <p className="text-2xl font-bold text-blue-600">{formatCurrency(totalIngresos)}</p>
+          </div>
+          <div className="bg-white p-4 rounded-lg shadow-md">
             <p className="text-sm text-gray-500 mb-1">Total Gastos</p>
             <p className="text-2xl font-bold text-red-600">{formatCurrency(totalExpenses)}</p>
           </div>
@@ -418,13 +426,15 @@ export default function CajaChica() {
                     <tr key={t.id} className={`${t.deleted ? 'bg-gray-100 opacity-60' : 'hover:bg-gray-50'}`}>
                       <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{t.date}</td>
                       <td className="px-4 py-3 whitespace-nowrap">
-                        <span className={`px-2 py-1 rounded text-xs font-bold ${t.type === 'GASTO' ? 'bg-orange-100 text-orange-700' : 'bg-blue-100 text-blue-700'}`}>
-                          {t.type === 'GASTO' ? 'Gasto' : 'Ajuste'}
+                        <span className={`px-2 py-1 rounded text-xs font-bold ${t.type === 'GASTO' ? 'bg-orange-100 text-orange-700' : t.type === 'INGRESO' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>
+                          {t.type === 'GASTO' ? 'Gasto' : t.type === 'INGRESO' ? 'Venta' : 'Ajuste'}
                         </span>
                       </td>
                       <td className={`px-4 py-3 ${t.deleted ? 'text-gray-400 line-through' : 'text-gray-800'}`}>{t.description}</td>
                       <td className="px-4 py-3 text-right">
-                        <span className={`font-medium ${t.deleted ? 'text-gray-400 line-through' : 'text-red-600'}`}>-{formatCurrency(t.amount)}</span>
+                        <span className={`font-medium ${t.deleted ? 'text-gray-400 line-through' : t.type === 'INGRESO' ? 'text-green-600' : 'text-red-600'}`}>
+                          {t.type === 'INGRESO' ? '+' : '-'}{formatCurrency(t.amount)}
+                        </span>
                         {!t.deleted && (
                           <button onClick={() => handleDeleteTransaction(t.id)} className="ml-2 text-gray-400 hover:text-red-500 transition" title="Eliminar">
                             ✕
@@ -506,20 +516,24 @@ export default function CajaChica() {
                   <p className="text-gray-500 text-center py-8">Cargando...</p>
                 ) : registroRecord ? (
                   <>
-                    <div className="grid grid-cols-3 gap-3 mb-4">
-                      <div className="bg-gray-50 p-3 rounded-lg text-center">
-                        <p className="text-xs text-gray-500">Fondo Inicial</p>
-                        <p className="text-lg font-bold text-gray-800">{formatCurrency(registroRecord.initialAmount)}</p>
-                      </div>
-                      <div className="bg-gray-50 p-3 rounded-lg text-center">
-                        <p className="text-xs text-gray-500">Total Gastos</p>
-                        <p className="text-lg font-bold text-red-600">{formatCurrency(registroRecord.totalExpenses)}</p>
-                      </div>
-                      <div className="bg-gray-50 p-3 rounded-lg text-center">
-                        <p className="text-xs text-gray-500">Saldo Final</p>
-                        <p className={`text-lg font-bold ${registroRecord.finalBalance >= 0 ? 'text-green-600' : 'text-red-600'}`}>{formatCurrency(registroRecord.finalBalance)}</p>
-                      </div>
-                    </div>
+                        <div className="grid grid-cols-4 gap-3 mb-4">
+                          <div className="bg-gray-50 p-3 rounded-lg text-center">
+                            <p className="text-xs text-gray-500">Fondo Inicial</p>
+                            <p className="text-lg font-bold text-gray-800">{formatCurrency(registroRecord.initialAmount)}</p>
+                          </div>
+                          <div className="bg-gray-50 p-3 rounded-lg text-center">
+                            <p className="text-xs text-gray-500">Ingresos</p>
+                            <p className="text-lg font-bold text-blue-600">{formatCurrency(registroRecord.transactions.reduce((s, t) => t.deleted || t.type !== 'INGRESO' ? s : s + t.amount, 0))}</p>
+                          </div>
+                          <div className="bg-gray-50 p-3 rounded-lg text-center">
+                            <p className="text-xs text-gray-500">Total Gastos</p>
+                            <p className="text-lg font-bold text-red-600">{formatCurrency(registroRecord.totalExpenses)}</p>
+                          </div>
+                          <div className="bg-gray-50 p-3 rounded-lg text-center">
+                            <p className="text-xs text-gray-500">Saldo Final</p>
+                            <p className={`text-lg font-bold ${registroRecord.finalBalance >= 0 ? 'text-green-600' : 'text-red-600'}`}>{formatCurrency(registroRecord.finalBalance)}</p>
+                          </div>
+                        </div>
                     {registroRecord.transactions.length === 0 ? (
                       <p className="text-gray-500 text-center py-4">Sin movimientos este día.</p>
                     ) : (
@@ -538,12 +552,12 @@ export default function CajaChica() {
                               <tr key={t.id} className={t.deleted ? 'bg-gray-100 opacity-60' : ''}>
                                 <td className="px-4 py-2 text-gray-600 whitespace-nowrap">{t.date}</td>
                                 <td className="px-4 py-2 whitespace-nowrap">
-                                  <span className={`px-2 py-1 rounded text-xs font-bold ${t.type === 'GASTO' ? 'bg-orange-100 text-orange-700' : 'bg-blue-100 text-blue-700'}`}>
-                                    {t.type === 'GASTO' ? 'Gasto' : 'Ajuste'}
+                                  <span className={`px-2 py-1 rounded text-xs font-bold ${t.type === 'GASTO' ? 'bg-orange-100 text-orange-700' : t.type === 'INGRESO' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>
+                                    {t.type === 'GASTO' ? 'Gasto' : t.type === 'INGRESO' ? 'Venta' : 'Ajuste'}
                                   </span>
                                 </td>
                                 <td className={`px-4 py-2 ${t.deleted ? 'text-gray-400 line-through' : 'text-gray-800'}`}>{t.description}</td>
-                                <td className={`px-4 py-2 text-right font-medium ${t.deleted ? 'text-gray-400 line-through' : 'text-red-600'}`}>-{formatCurrency(t.amount)}</td>
+                                <td className={`px-4 py-2 text-right font-medium ${t.deleted ? 'text-gray-400 line-through' : t.type === 'INGRESO' ? 'text-green-600' : 'text-red-600'}`}>{t.type === 'INGRESO' ? '+' : '-'}{formatCurrency(t.amount)}</td>
                               </tr>
                             ))}
                           </tbody>

@@ -421,6 +421,39 @@ export default function Ventas() {
       updated[activeTable] = { items: [], status: 'libre', customerName: '' };
       return updated;
     });
+
+    // Register cash movements in Caja Chica
+    if (paymentMethod === 'efectivo') {
+      const now = new Date().toLocaleString('es-PE');
+      const cajaKey = 'masa-caja-chica';
+      const cajaData = loadFromStorage<{ initialAmount: number; transactions: { id: string; type: string; description: string; amount: number; date: string }[] } | null>(cajaKey, null) || { initialAmount: 200, transactions: [] };
+      // Ingreso: la venta en efectivo
+      cajaData.transactions.push({
+        id: Date.now().toString() + Math.random().toString(36).slice(2, 6),
+        type: 'INGRESO',
+        description: `Venta Mesa ${activeTable + 1} - Efectivo`,
+        amount: subtotal,
+        date: now,
+      });
+      // Gasto: el vuelto entregado al cliente
+      const cambio = paid - subtotal;
+      if (cambio > 0) {
+        cajaData.transactions.push({
+          id: Date.now().toString() + Math.random().toString(36).slice(2, 6),
+          type: 'GASTO',
+          description: `Vuelto Mesa ${activeTable + 1}`,
+          amount: cambio,
+          date: now,
+        });
+      }
+      saveToStorage(cajaKey, cajaData);
+      // Sync to Firestore
+      const db = getDb();
+      if (db) {
+        db.collection('config').doc('cajaChica').set(cajaData, { merge: true }).catch(() => {});
+      }
+    }
+
     setShowPaymentModal(false);
     setShowConfirmPayment(false);
   };

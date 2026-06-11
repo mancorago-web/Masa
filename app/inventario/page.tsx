@@ -126,6 +126,7 @@ export default function Inventario() {
   const [expandedCategories, setExpandedCategories] = useState<string[]>([]);
   const [expandedRecipeCategories, setExpandedRecipeCategories] = useState<string[]>([]);
   const [expandedDatosCategories, setExpandedDatosCategories] = useState<string[]>([]);
+  const [expandedComprasCategories, setExpandedComprasCategories] = useState<string[]>([]);
   const [expandedRecipeDetails, setExpandedRecipeDetails] = useState<string[]>([]);
   const [editingRecipeId, setEditingRecipeId] = useState<string | null>(null);
   const [editingSubRecipeId, setEditingSubRecipeId] = useState<string | null>(null);
@@ -1028,6 +1029,12 @@ export default function Inventario() {
     );
   };
 
+  const toggleComprasCategory = (category: string) => {
+    setExpandedComprasCategories(prev =>
+      prev.includes(category) ? prev.filter(c => c !== category) : [...prev, category]
+    );
+  };
+
   const toggleRecipeCategory = (category: string) => {
     setExpandedRecipeCategories(prev =>
       prev.includes(category) ? prev.filter(c => c !== category) : [...prev, category]
@@ -1305,6 +1312,12 @@ export default function Inventario() {
               className={`px-4 py-2 rounded-lg ${activeTab === 'datos' ? 'bg-green-500 text-white' : 'bg-white text-gray-700'}`}
             >
               Datos
+            </button>
+            <button
+              onClick={() => setActiveTab('compras')}
+              className={`px-4 py-2 rounded-lg ${activeTab === 'compras' ? 'bg-green-500 text-white' : 'bg-white text-gray-700'}`}
+            >
+              Compras
             </button>
           </div>
         </div>
@@ -1755,6 +1768,90 @@ export default function Inventario() {
               </div>
             ))}
             </div>
+          </div>
+        )}
+
+        {activeTab === 'compras' && (
+          <div>
+            <div className="flex justify-between items-center mb-4">
+              <div className="text-sm text-gray-500">
+                Productos con stock por debajo del mínimo — se actualiza automáticamente
+              </div>
+              <div className="flex gap-4 text-sm font-semibold">
+                {(() => {
+                  const allItems = inventory.filter(i => i.currentStock < i.minStock);
+                  const totalItems = allItems.length;
+                  const totalCost = allItems.reduce((s, i) => s + (i.unitCost ? (i.minStock - i.currentStock) * i.unitCost : 0), 0);
+                  return (
+                    <>
+                      <span className="text-orange-700">{totalItems} producto(s) por comprar</span>
+                      {totalCost > 0 && <span className="text-gray-900">Total estimado: S/{totalCost.toFixed(2)}</span>}
+                    </>
+                  );
+                })()}
+              </div>
+            </div>
+            {categories.filter(cat => inventory.some(item => item.category === cat && item.currentStock < item.minStock)).length === 0 ? (
+              <div className="bg-white rounded-lg shadow-md p-8 text-center">
+                <p className="text-green-600 text-lg font-semibold">✓ Todos los productos tienen stock suficiente</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {categories.filter(cat => inventory.some(item => item.category === cat && item.currentStock < item.minStock)).map((category) => {
+                  const itemsToBuy = inventory.filter(item => item.category === category && item.currentStock < item.minStock);
+                  return (
+                    <div key={category} className="bg-white rounded-lg shadow-md overflow-hidden">
+                      <button
+                        onClick={() => toggleComprasCategory(category)}
+                        className="w-full px-6 py-4 flex justify-between items-center bg-orange-50 hover:bg-orange-100 transition-colors"
+                      >
+                        <h2 className="text-lg font-bold text-orange-900">{category}</h2>
+                        <span className="text-orange-700">
+                          {expandedComprasCategories.includes(category) ? '▼' : '▶'}
+                        </span>
+                      </button>
+
+                      {expandedComprasCategories.includes(category) && (
+                        <div className="overflow-x-auto">
+                          <table className="w-full">
+                            <thead className="bg-gray-50">
+                              <tr>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Producto</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stock Actual</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stock Mínimo</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cant. a Comprar</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unidad</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Costo Unit.</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Costo Total</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Proveedor</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-200">
+                              {itemsToBuy.map((item) => {
+                                const qtyToBuy = item.minStock - item.currentStock;
+                                const totalCost = item.unitCost ? qtyToBuy * item.unitCost : null;
+                                return (
+                                  <tr key={item.id} className="hover:bg-orange-50">
+                                    <td className="px-6 py-4 text-sm font-medium text-gray-900">{item.name}</td>
+                                    <td className="px-6 py-4 text-sm text-red-600 font-semibold">{item.currentStock}</td>
+                                    <td className="px-6 py-4 text-sm text-gray-700">{item.minStock}</td>
+                                    <td className="px-6 py-4 text-sm font-bold text-orange-700">{qtyToBuy}</td>
+                                    <td className="px-6 py-4 text-sm text-gray-500">{item.unit}</td>
+                                    <td className="px-6 py-4 text-sm text-gray-700">{item.unitCost ? `S/${item.unitCost.toFixed(2)}` : '—'}</td>
+                                    <td className="px-6 py-4 text-sm font-semibold text-gray-900">{totalCost !== null ? `S/${totalCost.toFixed(2)}` : '—'}</td>
+                                    <td className="px-6 py-4 text-sm text-gray-700">{item.supplier || '—'}</td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
 

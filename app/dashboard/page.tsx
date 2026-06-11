@@ -61,6 +61,14 @@ interface DailyTotals {
   paymentBreakdown: { efectivo: number; yape: number; pos: number };
 }
 
+interface ConsumedIngredient {
+  name: string;
+  totalQty: number;
+  unit: string;
+  unitCost: number;
+  totalCost: number;
+}
+
 interface DailySnapshot {
   date: string;
   totals: DailyTotals;
@@ -169,6 +177,69 @@ function computeTotals(payments: PaymentData[], soldItems: SoldItem[]): DailyTot
     paymentBreakdown[p.method] += p.subtotal;
   }
   return { revenue, tips, itemsSold, totalCost, totalMargin, paymentBreakdown };
+}
+
+function computeConsumedIngredients(
+  soldItems: SoldItem[],
+  recipes: { id: string; category: string; name: string }[],
+  subRecipes: { id: string; parentId: string; name: string }[],
+  recipeIngredients: Record<string, RecipeIngredient[]>,
+  subIngredients: Record<string, RecipeIngredient[]>,
+  inventory: InventoryItem[],
+): ConsumedIngredient[] {
+  const invCost = new Map<string, number>();
+  for (const inv of inventory) {
+    if (inv.unitCost) invCost.set(inv.name.toLowerCase(), inv.unitCost);
+  }
+
+  const recipeByName = new Map<string, string>();
+  for (const r of recipes) recipeByName.set(r.name.toLowerCase(), r.id);
+
+  const subRecipeByName = new Map<string, string>();
+  for (const sr of subRecipes) subRecipeByName.set(sr.name.toLowerCase(), sr.id);
+
+  const agg = new Map<string, { qty: number; unit: string; cost: number; displayName: string }>();
+
+  for (const sold of soldItems) {
+    const nameLower = sold.name.toLowerCase();
+    let ings: RecipeIngredient[] = [];
+
+    const subId = subRecipeByName.get(nameLower);
+    if (subId && subIngredients[subId]) {
+      ings = subIngredients[subId];
+    } else {
+      const recipeId = recipeByName.get(nameLower);
+      if (recipeId && recipeIngredients[recipeId]) {
+        ings = recipeIngredients[recipeId];
+      }
+    }
+
+    for (const ing of ings) {
+      const key = ing.name.toLowerCase();
+      const existing = agg.get(key);
+      if (existing) {
+        existing.qty += ing.quantity * sold.qty;
+        existing.cost += (ing.cost || ing.quantity * (invCost.get(key) || 0)) * sold.qty;
+      } else {
+        agg.set(key, {
+          qty: ing.quantity * sold.qty,
+          unit: ing.unit,
+          cost: (ing.cost || ing.quantity * (invCost.get(key) || 0)) * sold.qty,
+          displayName: ing.name,
+        });
+      }
+    }
+  }
+
+  return Array.from(agg.entries())
+    .map(([_, val]) => ({
+      name: val.displayName,
+      totalQty: parseFloat(val.qty.toFixed(3)),
+      unit: val.unit,
+      unitCost: val.qty > 0 ? val.cost / val.qty : 0,
+      totalCost: val.cost,
+    }))
+    .sort((a, b) => b.totalCost - a.totalCost);
 }
 
 export default function Dashboard() {
@@ -319,6 +390,10 @@ export default function Dashboard() {
     if (!isToday) return [];
     return computeSoldItems(filteredPayments, recipes, subRecipes, recipeIngredients, subIngredients, inventory);
   }, [filteredPayments, recipes, subRecipes, recipeIngredients, subIngredients, inventory, isToday, snapshotData]);
+
+  const consumedIngredients = useMemo(() => {
+    return computeConsumedIngredients(soldItems, recipes, subRecipes, recipeIngredients, subIngredients, inventory);
+  }, [soldItems, recipes, subRecipes, recipeIngredients, subIngredients, inventory]);
 
   const totals = useMemo(() => {
     if (!isToday && snapshotData) return snapshotData.totals;
@@ -488,6 +563,45 @@ export default function Dashboard() {
                     <td className={`px-3 py-2 text-right ${totals.totalMargin >= 40 ? 'text-green-700' : totals.totalMargin >= 20 ? 'text-yellow-600' : 'text-red-600'}`}>
                       {totals.totalMargin.toFixed(1)}%
                     </td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          )}
+        </div>
+
+        {/* Consumed Ingredients Detail */}
+        <div className="bg-white rounded-lg shadow-md p-4 mb-4">
+          <h2 className="font-bold text-gray-800 mb-3">Detalle de Insumos Consumidos</h2>
+          {consumedIngredients.length === 0 ? (
+            <p className="text-gray-400 text-sm">Sin insumos registrados para esta fecha.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-3 py-2 text-left font-medium text-gray-600">Insumo</th>
+                    <th className="px-3 py-2 text-right font-medium text-gray-600">Cant. Consumida</th>
+                    <th className="px-3 py-2 text-left font-medium text-gray-600">Unidad</th>
+                    <th className="px-3 py-2 text-right font-medium text-gray-600">Costo Unit.</th>
+                    <th className="px-3 py-2 text-right font-medium text-gray-600">Costo Total</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {consumedIngredients.map(ing => (
+                    <tr key={ing.name} className="hover:bg-gray-50">
+                      <td className="px-3 py-2 text-gray-800">{ing.name}</td>
+                      <td className="px-3 py-2 text-right">{ing.totalQty}</td>
+                      <td className="px-3 py-2 text-gray-600">{ing.unit}</td>
+                      <td className="px-3 py-2 text-right text-gray-700">{formatCurrency(ing.unitCost)}</td>
+                      <td className="px-3 py-2 text-right font-semibold text-red-600">{formatCurrency(ing.totalCost)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot className="bg-gray-50 font-bold">
+                  <tr>
+                    <td colSpan={4} className="px-3 py-2 text-gray-800">TOTAL INSUMOS</td>
+                    <td className="px-3 py-2 text-right text-red-600">{formatCurrency(consumedIngredients.reduce((s, i) => s + i.totalCost, 0))}</td>
                   </tr>
                 </tfoot>
               </table>

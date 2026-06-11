@@ -298,8 +298,8 @@ export default function Dashboard() {
             });
           }
         });
-      // Also listen for inventory/recipes updates
-      const unsub2 = db.collection('config').doc('datosGenerales')
+      // Also listen for inventory/recipes updates (written by inventario & ventas to masa/data)
+      const unsub2 = db.collection('masa').doc('data')
         .onSnapshot((snap: any) => {
           if (!snap.exists) return;
           const data = snap.data();
@@ -315,6 +315,27 @@ export default function Dashboard() {
               const incoming = JSON.stringify(data.recipes);
               const current = JSON.stringify(prev);
               return incoming === current ? prev : data.recipes;
+            });
+          }
+          if (data.subRecipes && Array.isArray(data.subRecipes)) {
+            setSubRecipes(prev => {
+              const incoming = JSON.stringify(data.subRecipes);
+              const current = JSON.stringify(prev);
+              return incoming === current ? prev : data.subRecipes;
+            });
+          }
+          if (data.recipeIngredients && typeof data.recipeIngredients === 'object') {
+            setRecipeIngredients(prev => {
+              const incoming = JSON.stringify(data.recipeIngredients);
+              const current = JSON.stringify(prev);
+              return incoming === current ? prev : data.recipeIngredients;
+            });
+          }
+          if (data.subIngredients && typeof data.subIngredients === 'object') {
+            setSubIngredients(prev => {
+              const incoming = JSON.stringify(data.subIngredients);
+              const current = JSON.stringify(prev);
+              return incoming === current ? prev : data.subIngredients;
             });
           }
         });

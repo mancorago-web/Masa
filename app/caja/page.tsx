@@ -119,6 +119,7 @@ export default function CajaChica() {
   const todayRef = useRef(todayStr());
   const initialAmountRef = useRef(initialAmount);
   const transactionsRef = useRef(transactions);
+  const isFirstRender = useRef(true);
   initialAmountRef.current = initialAmount;
   transactionsRef.current = transactions;
 
@@ -252,6 +253,10 @@ export default function CajaChica() {
   }, [saveDailySnapshot]);
 
   useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
     const data = { initialAmount, transactions };
     saveToStorage(data);
     syncToFirestore(data);

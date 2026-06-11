@@ -95,7 +95,9 @@ function todayStr() {
 
 function parsePaymentDate(dateStr: string) {
   try {
-    const parts = dateStr.split(',')[0].trim().split('/');
+    const dp = dateStr.split(',')[0].trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dp)) return dp;
+    const parts = dp.split('/');
     if (parts.length === 3) return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
   } catch {}
   return '';

@@ -1912,9 +1912,9 @@ export default function Inventario() {
                                 return (
                                   <tr key={item.id} className="hover:bg-orange-50">
                                     <td className="px-6 py-4 text-sm font-medium text-gray-900">{item.name}</td>
-                                    <td className="px-6 py-4 text-sm text-red-600 font-semibold">{item.currentStock}</td>
-                                    <td className="px-6 py-4 text-sm text-gray-700">{item.minStock}</td>
-                                    <td className="px-6 py-4 text-sm font-bold text-orange-700">{qtyToBuy}</td>
+                                    <td className="px-6 py-4 text-sm text-red-600 font-semibold">{item.currentStock.toFixed(2)}</td>
+                                    <td className="px-6 py-4 text-sm text-gray-700">{item.minStock.toFixed(2)}</td>
+                                    <td className="px-6 py-4 text-sm font-bold text-orange-700">{qtyToBuy.toFixed(2)}</td>
                                     <td className="px-6 py-4 text-sm text-gray-500">{item.unit}</td>
                                     <td className="px-6 py-4 text-sm text-gray-700">{item.unitCost ? `S/${item.unitCost.toFixed(2)}` : '—'}</td>
                                     <td className="px-6 py-4 text-sm font-semibold text-gray-900">{totalCost !== null ? `S/${totalCost.toFixed(2)}` : '—'}</td>
@@ -2030,7 +2030,7 @@ export default function Inventario() {
                         <tr key={itemId} className="hover:bg-orange-50">
                           <td className="px-4 py-3 font-medium text-gray-900">{item.name}</td>
                           <td className="px-4 py-3 text-gray-500">{item.unit}</td>
-                          <td className="px-4 py-3 text-right text-red-600 font-semibold">{item.currentStock}</td>
+                          <td className="px-4 py-3 text-right text-red-600 font-semibold">{item.currentStock.toFixed(2)}</td>
                           <td className="px-4 py-3 text-right">
                             <input
                               type="number"

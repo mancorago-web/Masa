@@ -1099,6 +1099,8 @@ export default function Inventario() {
       return item;
     });
     setInventory(updated);
+    localStorage.setItem('masa-inventory', JSON.stringify(updated));
+    syncToFirestore({ inventory: updated });
     setPurchaseHistory(prev => [...entries, ...prev]);
     setShowPurchaseModal(false);
   };

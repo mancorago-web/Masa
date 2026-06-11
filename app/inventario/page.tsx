@@ -158,6 +158,8 @@ export default function Inventario() {
   purchaseHistoryRef.current = purchaseHistory;
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);
   const [purchaseForm, setPurchaseForm] = useState<Record<string, { qty: number; unitCost: number }>>({});
+  const [dateFilterStart, setDateFilterStart] = useState('');
+  const [dateFilterEnd, setDateFilterEnd] = useState('');
 
   // Auto-save purchase history
   useEffect(() => {
@@ -1935,38 +1937,67 @@ export default function Inventario() {
         {activeTab === 'compras' && purchaseHistory.length > 0 && (
           <div className="mt-6">
             <h3 className="text-lg font-bold text-gray-800 mb-3">Historial de compras</h3>
-            <div className="bg-white rounded-lg shadow-md overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-4 py-3 text-left font-medium text-gray-600">Fecha</th>
-                    <th className="px-4 py-3 text-left font-medium text-gray-600">Producto</th>
-                    <th className="px-4 py-3 text-right font-medium text-gray-600">Cantidad</th>
-                    <th className="px-4 py-3 text-right font-medium text-gray-600">Costo Unit.</th>
-                    <th className="px-4 py-3 text-right font-medium text-gray-600">Total</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {purchaseHistory.slice(0, 50).map(entry => (
-                    <tr key={entry.id} className="hover:bg-gray-50">
-                      <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{entry.date}</td>
-                      <td className="px-4 py-3 text-gray-900">{entry.itemName}</td>
-                      <td className="px-4 py-3 text-right text-gray-700">{entry.quantity} {entry.unit}</td>
-                      <td className="px-4 py-3 text-right text-gray-700">S/{entry.unitCost.toFixed(2)}</td>
-                      <td className="px-4 py-3 text-right font-semibold text-gray-900">S/{entry.totalCost.toFixed(2)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-                <tfoot className="bg-gray-100">
-                  <tr>
-                    <td colSpan={4} className="px-4 py-3 text-right font-bold text-gray-800">TOTAL GENERAL</td>
-                    <td className="px-4 py-3 text-right font-bold text-gray-900">
-                      S/{purchaseHistory.reduce((s, e) => s + e.totalCost, 0).toFixed(2)}
-                    </td>
-                  </tr>
-                </tfoot>
-              </table>
+
+            <div className="bg-white rounded-lg shadow-md p-4 mb-4">
+              <div className="flex items-end gap-4 flex-wrap">
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Desde</label>
+                  <input type="date" value={dateFilterStart} onChange={e => setDateFilterStart(e.target.value)} className="border border-gray-300 rounded px-3 py-2 text-sm" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Hasta</label>
+                  <input type="date" value={dateFilterEnd} onChange={e => setDateFilterEnd(e.target.value)} className="border border-gray-300 rounded px-3 py-2 text-sm" />
+                </div>
+                <button onClick={() => { setDateFilterStart(''); setDateFilterEnd(''); }} className="bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded text-sm font-medium">Limpiar</button>
+              </div>
             </div>
+
+            {(() => {
+              const filtered = purchaseHistory.filter(entry => {
+                const d = entry.date.slice(0, 10);
+                if (dateFilterStart && d < dateFilterStart) return false;
+                if (dateFilterEnd && d > dateFilterEnd) return false;
+                return true;
+              });
+              const totalFiltered = filtered.reduce((s, e) => s + e.totalCost, 0);
+              return (
+                <div className="bg-white rounded-lg shadow-md overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-4 py-3 text-left font-medium text-gray-600">Fecha</th>
+                        <th className="px-4 py-3 text-left font-medium text-gray-600">Producto</th>
+                        <th className="px-4 py-3 text-right font-medium text-gray-600">Cantidad</th>
+                        <th className="px-4 py-3 text-right font-medium text-gray-600">Costo Unit.</th>
+                        <th className="px-4 py-3 text-right font-medium text-gray-600">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200">
+                      {filtered.slice(0, 200).map(entry => (
+                        <tr key={entry.id} className="hover:bg-gray-50">
+                          <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{entry.date}</td>
+                          <td className="px-4 py-3 text-gray-900">{entry.itemName}</td>
+                          <td className="px-4 py-3 text-right text-gray-700">{entry.quantity} {entry.unit}</td>
+                          <td className="px-4 py-3 text-right text-gray-700">S/{entry.unitCost.toFixed(2)}</td>
+                          <td className="px-4 py-3 text-right font-semibold text-gray-900">S/{entry.totalCost.toFixed(2)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot className="bg-gray-100">
+                      <tr>
+                        <td colSpan={4} className="px-4 py-3 text-right font-bold text-gray-800">
+                          {dateFilterStart || dateFilterEnd ? 'TOTAL FILTRADO' : 'TOTAL GENERAL'}
+                        </td>
+                        <td className="px-4 py-3 text-right font-bold text-gray-900">
+                          S/{totalFiltered.toFixed(2)}
+                        </td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                  {filtered.length === 0 && <p className="text-center text-gray-400 py-6">No hay registros en ese rango de fechas.</p>}
+                </div>
+              );
+            })()}
           </div>
         )}
 

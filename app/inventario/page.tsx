@@ -32,6 +32,18 @@ interface RecipeIngredient {
   cost: number;
 }
 
+interface PurchaseEntry {
+  id: string;
+  date: string;
+  itemId: string;
+  itemName: string;
+  category: string;
+  quantity: number;
+  unitCost: number;
+  totalCost: number;
+  unit: string;
+}
+
 const initialInventory: InventoryItem[] = [
   { id: '1', category: 'BASE', name: 'Harina', currentStock: 10000, unit: 'Gramos', minStock: 10000 },
   { id: '2', category: 'BASE', name: 'Tomate (salsa)', currentStock: 1, unit: 'Caja', minStock: 1 },
@@ -135,6 +147,23 @@ export default function Inventario() {
   const [showDatosSaved, setShowDatosSaved] = useState(false);
   const [isEditingDatos, setIsEditingDatos] = useState(false);
   const [expandedSubRecipeDetails, setExpandedSubRecipeDetails] = useState<string[]>([]);
+  const [purchaseHistory, setPurchaseHistory] = useState<PurchaseEntry[]>(() => {
+    if (typeof window === 'undefined') return [];
+    try {
+      const saved = localStorage.getItem('masa-compras-history');
+      return saved ? JSON.parse(saved) : [];
+    } catch { return []; }
+  });
+  const purchaseHistoryRef = useRef(purchaseHistory);
+  purchaseHistoryRef.current = purchaseHistory;
+  const [showPurchaseModal, setShowPurchaseModal] = useState(false);
+  const [purchaseForm, setPurchaseForm] = useState<Record<string, { qty: number; unitCost: number }>>({});
+
+  // Auto-save purchase history
+  useEffect(() => {
+    localStorage.setItem('masa-compras-history', JSON.stringify(purchaseHistory));
+    syncToFirestore({ comprasHistory: purchaseHistory });
+  }, [purchaseHistory]);
 
   useEffect(() => {
     if (!authLoading && !user) router.replace("/login");
@@ -1035,6 +1064,45 @@ export default function Inventario() {
     );
   };
 
+  const openPurchaseModal = () => {
+    const form: Record<string, { qty: number; unitCost: number }> = {};
+    for (const item of inventory) {
+      if (item.currentStock < item.minStock) {
+        form[item.id] = { qty: item.minStock - item.currentStock, unitCost: item.unitCost || 0 };
+      }
+    }
+    setPurchaseForm(form);
+    setShowPurchaseModal(true);
+  };
+
+  const confirmPurchase = () => {
+    const now = new Date();
+    const dateStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+    const entries: PurchaseEntry[] = [];
+    const updated = inventory.map(item => {
+      const formData = purchaseForm[item.id];
+      if (formData && formData.qty > 0) {
+        const totalCost = formData.qty * formData.unitCost;
+        entries.push({
+          id: Date.now().toString() + Math.random().toString(36).slice(2, 6),
+          date: dateStr,
+          itemId: item.id,
+          itemName: item.name,
+          category: item.category,
+          quantity: formData.qty,
+          unitCost: formData.unitCost,
+          totalCost,
+          unit: item.unit,
+        });
+        return { ...item, currentStock: item.currentStock + formData.qty };
+      }
+      return item;
+    });
+    setInventory(updated);
+    setPurchaseHistory(prev => [...entries, ...prev]);
+    setShowPurchaseModal(false);
+  };
+
   const toggleRecipeCategory = (category: string) => {
     setExpandedRecipeCategories(prev =>
       prev.includes(category) ? prev.filter(c => c !== category) : [...prev, category]
@@ -1777,18 +1845,25 @@ export default function Inventario() {
               <div className="text-sm text-gray-500">
                 Productos con stock por debajo del mínimo — se actualiza automáticamente
               </div>
-              <div className="flex gap-4 text-sm font-semibold">
-                {(() => {
-                  const allItems = inventory.filter(i => i.currentStock < i.minStock);
-                  const totalItems = allItems.length;
-                  const totalCost = allItems.reduce((s, i) => s + (i.unitCost ? (i.minStock - i.currentStock) * i.unitCost : 0), 0);
-                  return (
-                    <>
-                      <span className="text-orange-700">{totalItems} producto(s) por comprar</span>
-                      {totalCost > 0 && <span className="text-gray-900">Total estimado: S/{totalCost.toFixed(2)}</span>}
-                    </>
-                  );
-                })()}
+              <div className="flex items-center gap-4">
+                <div className="flex gap-4 text-sm font-semibold">
+                  {(() => {
+                    const allItems = inventory.filter(i => i.currentStock < i.minStock);
+                    const totalItems = allItems.length;
+                    const totalCost = allItems.reduce((s, i) => s + (i.unitCost ? (i.minStock - i.currentStock) * i.unitCost : 0), 0);
+                    return (
+                      <>
+                        <span className="text-orange-700">{totalItems} producto(s) por comprar</span>
+                        {totalCost > 0 && <span className="text-gray-900">Total estimado: S/{totalCost.toFixed(2)}</span>}
+                      </>
+                    );
+                  })()}
+                </div>
+                {inventory.some(i => i.currentStock < i.minStock) && (
+                  <button onClick={openPurchaseModal} className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 font-bold text-sm">
+                    Registrar compras
+                  </button>
+                )}
               </div>
             </div>
             {categories.filter(cat => inventory.some(item => item.category === cat && item.currentStock < item.minStock)).length === 0 ? (
@@ -1852,6 +1927,115 @@ export default function Inventario() {
                 })}
               </div>
             )}
+          </div>
+        )}
+
+        {activeTab === 'compras' && purchaseHistory.length > 0 && (
+          <div className="mt-6">
+            <h3 className="text-lg font-bold text-gray-800 mb-3">Historial de compras</h3>
+            <div className="bg-white rounded-lg shadow-md overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-4 py-3 text-left font-medium text-gray-600">Fecha</th>
+                    <th className="px-4 py-3 text-left font-medium text-gray-600">Producto</th>
+                    <th className="px-4 py-3 text-right font-medium text-gray-600">Cantidad</th>
+                    <th className="px-4 py-3 text-right font-medium text-gray-600">Costo Unit.</th>
+                    <th className="px-4 py-3 text-right font-medium text-gray-600">Total</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {purchaseHistory.slice(0, 50).map(entry => (
+                    <tr key={entry.id} className="hover:bg-gray-50">
+                      <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{entry.date}</td>
+                      <td className="px-4 py-3 text-gray-900">{entry.itemName}</td>
+                      <td className="px-4 py-3 text-right text-gray-700">{entry.quantity} {entry.unit}</td>
+                      <td className="px-4 py-3 text-right text-gray-700">S/{entry.unitCost.toFixed(2)}</td>
+                      <td className="px-4 py-3 text-right font-semibold text-gray-900">S/{entry.totalCost.toFixed(2)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* Purchase Modal */}
+        {showPurchaseModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg w-full max-w-3xl shadow-xl max-h-[90vh] flex flex-col">
+              <div className="flex items-center justify-between p-4 border-b">
+                <h2 className="text-lg font-bold">Registrar compras</h2>
+                <button onClick={() => setShowPurchaseModal(false)} className="text-gray-500 hover:text-gray-700 text-xl font-bold">✕</button>
+              </div>
+              <div className="overflow-y-auto p-4 flex-1">
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-4 py-2 text-left font-medium text-gray-600">Producto</th>
+                      <th className="px-4 py-2 text-left font-medium text-gray-600">Unidad</th>
+                      <th className="px-4 py-2 text-right font-medium text-gray-600">Stock Actual</th>
+                      <th className="px-4 py-2 text-right font-medium text-gray-600">Cant. a comprar</th>
+                      <th className="px-4 py-2 text-right font-medium text-gray-600">Costo Unit. (S/)</th>
+                      <th className="px-4 py-2 text-right font-medium text-gray-600">Total (S/)</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {Object.entries(purchaseForm).map(([itemId, formData]) => {
+                      const item = inventory.find(i => i.id === itemId);
+                      if (!item) return null;
+                      const total = formData.qty * formData.unitCost;
+                      return (
+                        <tr key={itemId} className="hover:bg-orange-50">
+                          <td className="px-4 py-3 font-medium text-gray-900">{item.name}</td>
+                          <td className="px-4 py-3 text-gray-500">{item.unit}</td>
+                          <td className="px-4 py-3 text-right text-red-600 font-semibold">{item.currentStock}</td>
+                          <td className="px-4 py-3 text-right">
+                            <input
+                              type="number"
+                              min="0"
+                              step="any"
+                              value={formData.qty}
+                              onChange={e => {
+                                const val = parseFloat(e.target.value) || 0;
+                                setPurchaseForm(prev => ({ ...prev, [itemId]: { ...prev[itemId], qty: val } }));
+                              }}
+                              className="w-20 text-right border border-gray-300 rounded px-2 py-1"
+                            />
+                          </td>
+                          <td className="px-4 py-3 text-right">
+                            <input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              value={formData.unitCost}
+                              onChange={e => {
+                                const val = parseFloat(e.target.value) || 0;
+                                setPurchaseForm(prev => ({ ...prev, [itemId]: { ...prev[itemId], unitCost: val } }));
+                              }}
+                              className="w-24 text-right border border-gray-300 rounded px-2 py-1"
+                            />
+                          </td>
+                          <td className="px-4 py-3 text-right font-semibold text-gray-900">S/{total.toFixed(2)}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              <div className="flex justify-end gap-3 p-4 border-t">
+                {(() => {
+                  const total = Object.values(purchaseForm).reduce((s, f) => s + f.qty * f.unitCost, 0);
+                  return <span className="text-lg font-bold text-gray-900 mr-auto">Total: S/{total.toFixed(2)}</span>;
+                })()}
+                <button onClick={() => setShowPurchaseModal(false)} className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-bold">
+                  Cancelar
+                </button>
+                <button onClick={confirmPurchase} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-bold">
+                  Confirmar compras
+                </button>
+              </div>
+            </div>
           </div>
         )}
 

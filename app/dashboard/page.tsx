@@ -287,7 +287,12 @@ export default function Dashboard() {
           if (!snap.exists) return;
           const data = snap.data();
           if (data.payments && Array.isArray(data.payments)) {
-            setPayments(data.payments);
+            setPayments(prev => {
+              if (data.payments.length < prev.length) return prev;
+              const incoming = JSON.stringify(data.payments);
+              const current = JSON.stringify(prev);
+              return incoming === current ? prev : data.payments;
+            });
           }
         });
       // Also listen for inventory/recipes updates (written by inventario & ventas to masa/data)

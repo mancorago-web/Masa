@@ -393,6 +393,12 @@ export default function Ventas() {
 
   const productCategories = useMemo(() => buildMenu(recipes, subRecipes), [recipes, subRecipes]);
 
+  // On mount: retry sync of any payments that failed to reach Firestore
+  useEffect(() => {
+    const stored = loadFromStorage<PaymentData[]>(PAYMENTS_KEY, []);
+    if (stored.length > 0) syncToFirestore({ payments: stored });
+  }, []);
+
   useEffect(() => {
     saveToStorage(STORAGE_KEY, tables);
     syncToFirestore({ tables });

@@ -258,10 +258,7 @@ export default function Dashboard() {
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [selectedDate, setSelectedDate] = useState('');
   const [loading, setLoading] = useState(true);
-  const [snapshotData, setSnapshotData] = useState<DailySnapshot | null>(null);
   const lastSavedDate = useRef('');
-
-  const isToday = selectedDate === todayStr();
 
   useEffect(() => {
     if (!authLoading && !user) router.replace("/login");
@@ -345,16 +342,6 @@ export default function Dashboard() {
     setLoading(false);
   }, []);
 
-  // When selectedDate changes to a non-today date, try loading snapshot
-  useEffect(() => {
-    if (!selectedDate || isToday) {
-      setSnapshotData(null);
-      return;
-    }
-    const saved = loadFromStorage<DailySnapshot | null>(SNAPSHOT_PREFIX + selectedDate, null);
-    setSnapshotData(saved);
-  }, [selectedDate, isToday]);
-
   // Auto-save snapshot every 30s and on midnight
   useEffect(() => {
     if (loading) return;
@@ -406,25 +393,20 @@ export default function Dashboard() {
 
   const filteredPayments = useMemo(() => {
     if (!selectedDate) return [];
-    if (isToday) return payments.filter(p => !p.deleted && parsePaymentDate(p.date) === selectedDate);
-    // For past dates, return empty — we use snapshot
-    return [];
-  }, [payments, selectedDate, isToday]);
+    return payments.filter(p => !p.deleted && parsePaymentDate(p.date) === selectedDate);
+  }, [payments, selectedDate]);
 
   const soldItems = useMemo(() => {
-    if (!isToday && snapshotData) return snapshotData.soldItems;
-    if (!isToday) return [];
     return computeSoldItems(filteredPayments, recipes, subRecipes, recipeIngredients, subIngredients, inventory);
-  }, [filteredPayments, recipes, subRecipes, recipeIngredients, subIngredients, inventory, isToday, snapshotData]);
+  }, [filteredPayments, recipes, subRecipes, recipeIngredients, subIngredients, inventory]);
 
   const consumedIngredients = useMemo(() => {
     return computeConsumedIngredients(soldItems, recipes, subRecipes, recipeIngredients, subIngredients, inventory);
   }, [soldItems, recipes, subRecipes, recipeIngredients, subIngredients, inventory]);
 
   const totals = useMemo(() => {
-    if (!isToday && snapshotData) return snapshotData.totals;
     return computeTotals(filteredPayments, soldItems);
-  }, [filteredPayments, soldItems, isToday, snapshotData]);
+  }, [filteredPayments, soldItems]);
 
   if (loading) {
     return (

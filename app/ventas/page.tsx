@@ -65,11 +65,17 @@ interface PizzaProduct {
   sizes: SizeOption[];
 }
 
+interface MenuItemGroup {
+  name: string;
+  items: MenuItem[];
+}
+
 interface MenuCategory {
   name: string;
-  type: 'simple' | 'pizza';
+  type: 'pizza' | 'simple' | 'grouped';
   items: MenuItem[];
   pizzas: PizzaProduct[];
+  groups?: MenuItemGroup[];
 }
 
 const SALES_CATEGORIES = ['ENTRADAS', 'PIZZAS CLÁSICAS', 'PIZZAS VEGETARIANAS', 'PIZZAS ESPECIALES', 'PASTAS RELLENAS', 'PASTAS'];
@@ -178,8 +184,51 @@ const pizzaPrices: Record<string, Record<string, number>> = {
   'BBQ Chicken':       { '8 Pzas.': 32, '12 Pzas.': 40 },
 };
 
-const bebidasItems: MenuItem[] = [
-  { name: 'Agua', price: 4 }, { name: 'Gaseosa', price: 6 }, { name: 'Cerveza', price: 10 }, { name: 'Vino tinto', price: 28 },
+const bebidasGroups: MenuItemGroup[] = [
+  {
+    name: 'Limonadas',
+    items: [
+      { name: 'Limonada Hierba Buena', price: 13 },
+      { name: 'Limonada Kion', price: 13 },
+      { name: 'Limonada Clásica', price: 13 },
+      { name: 'Jarra de Limonada', price: 30 },
+    ],
+  },
+  {
+    name: 'Bebidas',
+    items: [
+      { name: 'Maracuyá', price: 13 },
+      { name: 'Mango', price: 13 },
+      { name: 'Gaseosa 500 ml', price: 8 },
+      { name: 'Botella de agua', price: 6 },
+      { name: 'Gaseosa 1.5 L', price: 15 },
+    ],
+  },
+  {
+    name: 'Cervezas',
+    items: [
+      { name: 'Cerveza Pilsen', price: 13 },
+      { name: 'Cerveza Cusqueña', price: 13 },
+      { name: 'Cerveza Corona', price: 14 },
+    ],
+  },
+  {
+    name: 'Infusiones',
+    items: [
+      { name: 'Té / Manzanilla / Anís', price: 5 },
+    ],
+  },
+  {
+    name: 'Vinos y Sangrías',
+    items: [
+      { name: 'Sangría 1L', price: 70 },
+      { name: 'Sangría 1/2L', price: 40 },
+      { name: 'Vino por copa', price: 25 },
+      { name: 'Aperol Spritz', price: 35 },
+      { name: 'Chilcano clásico', price: 35 },
+      { name: 'Chilcano de Maracuyá', price: 35 },
+    ],
+  },
 ];
 
 const nonPizzaPrices: Record<string, number> = {
@@ -280,7 +329,7 @@ function buildMenu(recipes: { id: string; category: string; name: string }[], su
     }
   }
 
-  categories.push({ name: 'Bebidas', type: 'simple', items: bebidasItems, pizzas: [] });
+  categories.push({ name: 'Bebidas', type: 'grouped', items: [], pizzas: [], groups: bebidasGroups });
   return categories;
 }
 
@@ -867,6 +916,20 @@ export default function Ventas() {
                                     </button>
                                   </div>
                                 )}
+                              </div>
+                            )) : cat.type === 'grouped' && cat.groups ? cat.groups.map(group => (
+                              <div key={group.name}>
+                                <div className="px-4 py-1.5 bg-gray-100 text-xs font-bold text-gray-500 uppercase tracking-wider">{group.name}</div>
+                                {group.items.map(item => (
+                                  <button
+                                    key={item.name}
+                                    onClick={() => addItem(item.name, item.price)}
+                                    className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-green-50 transition text-left"
+                                  >
+                                    <span className="text-gray-800 text-sm">{item.name}</span>
+                                    <span className="text-green-700 font-bold text-sm">{formatCurrency(item.price)}</span>
+                                  </button>
+                                ))}
                               </div>
                             )) : cat.items.map(item => (
                               <button

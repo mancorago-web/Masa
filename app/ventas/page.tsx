@@ -364,6 +364,7 @@ export default function Ventas() {
   const [showConfirmPayment, setShowConfirmPayment] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [historyDate, setHistoryDate] = useState('');
+  const [syncedMessage, setSyncedMessage] = useState('');
   const [paymentsHistory, setPaymentsHistory] = useState<PaymentData[]>(() => loadFromStorage(PAYMENTS_KEY, []));
   const [recipes, setRecipes] = useState(defaultRecipes);
   const [subRecipes, setSubRecipes] = useState(defaultSubRecipes);
@@ -655,6 +656,14 @@ export default function Ventas() {
     setShowHistory(true);
   };
 
+  const handleResync = async () => {
+    const stored = loadFromStorage<PaymentData[]>(PAYMENTS_KEY, []);
+    if (stored.length === 0) { setSyncedMessage('No hay pagos locales'); setTimeout(() => setSyncedMessage(''), 2000); return; }
+    await syncToFirestore({ payments: stored });
+    setSyncedMessage(`Sincronizados ${stored.length} pago(s)`);
+    setTimeout(() => setSyncedMessage(''), 3000);
+  };
+
   const filteredPayments = useMemo(() => {
     if (!historyDate) return [];
     return paymentsHistory.filter(p => parsePaymentDate(p.date) === historyDate);
@@ -668,10 +677,20 @@ export default function Ventas() {
             ← Volver al menú
           </Link>
           <h1 className="text-xl md:text-2xl font-bold">Ventas</h1>
-          <button onClick={openHistory} className="text-blue-600 hover:underline text-sm md:text-base">
-            Historial
-          </button>
+          <div className="flex items-center gap-2">
+            <button onClick={handleResync} className="text-xs bg-gray-200 hover:bg-gray-300 px-2 py-1 rounded text-gray-700 font-medium">
+              ↻ Sincronizar
+            </button>
+            <button onClick={openHistory} className="text-blue-600 hover:underline text-sm md:text-base">
+              Historial
+            </button>
+          </div>
         </div>
+        {syncedMessage && (
+          <div className="mb-2 text-sm text-green-700 bg-green-100 border border-green-200 rounded px-3 py-1.5 text-center">
+            {syncedMessage}
+          </div>
+        )}
 
         {/* Table Tabs */}
         <div className="flex gap-1 md:gap-2 mb-4 overflow-x-auto">

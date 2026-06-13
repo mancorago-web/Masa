@@ -116,19 +116,15 @@ export default function Cocina() {
               const incoming = JSON.stringify(data.tables);
               const current = JSON.stringify(prev);
               if (incoming === current) return prev;
-              // Merge: keep local completed flags, accept new items from remote
+              // Merge: prefer remote (Firestore is source of truth), keep new local-only items
               const prevMap = new Map(prev.map((t) => [t.id ?? `${t.tableNumber}-1`, t]));
               const merged = data.tables.map((t: KitchenTable) => {
                 const key = t.id ?? `${t.tableNumber}-1`;
                 const local = prevMap.get(key);
                 if (!local) return { ...t, round: t.round ?? 1, id: t.id ?? `${t.tableNumber}-${t.round ?? 1}` };
-                // Preserve completed status for items that exist locally
-                const localItems = new Map(local.items.map((i) => [i.id, i]));
-                const mergedItems = t.items.map((item) => {
-                  const localItem = localItems.get(item.id);
-                  if (localItem) return localItem;
-                  return item;
-                });
+                const remoteItems = new Map(t.items.map((i) => [i.id, i]));
+                // Keep local items not in remote (e.g., toggling loading state), but prefer remote for overlapping
+                const mergedItems = local.items.map((item) => remoteItems.get(item.id) ?? item);
                 return { ...t, items: mergedItems };
               });
               return merged;
@@ -322,10 +318,11 @@ export default function Cocina() {
     return null;
   };
 
-  const toggleItem = (tableNumber: number, itemId: string) => {
+  const toggleItem = (tableId: string, itemId: string) => {
     setTables((prev) =>
       prev.map((t) => {
-        if (t.tableNumber !== tableNumber) return t;
+        const tid = t.id ?? `${t.tableNumber}-${t.round ?? 1}`;
+        if (tid !== tableId) return t;
         return {
           ...t,
           items: t.items.map((item) =>
@@ -540,7 +537,7 @@ export default function Cocina() {
                         {table.items.map((item) => (
                           <li key={item.id}>
                             <button
-                              onClick={() => toggleItem(table.tableNumber, item.id)}
+                              onClick={() => toggleItem(tableId, item.id)}
                               className={`w-full text-left px-3 py-2.5 rounded-lg flex items-center justify-between transition-all ${
                                 item.completed
                                   ? "bg-green-200 text-green-800"

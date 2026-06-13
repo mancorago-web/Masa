@@ -41,6 +41,13 @@ export default function RootLayout({
         <meta name="theme-color" content="#16a34a" />
         <script src="https://www.gstatic.com/firebasejs/12.13.0/firebase-app-compat.js"></script>
         <script src="https://www.gstatic.com/firebasejs/12.13.0/firebase-firestore-compat.js"></script>
+        <script dangerouslySetInnerHTML={{ __html: `
+          if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then(function(regs) {
+              for (var i = 0; i < regs.length; i++) { regs[i].unregister(); }
+            });
+          }
+        `}} />
       </head>
       <body className={inter.className}>
         <ServiceWorkerRegistration />

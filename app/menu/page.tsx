@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { useEffect } from "react";
 import { useAuth } from "@/components/AuthProvider";
 import { hasAccess, ROLE_LABELS } from "@/lib/auth";
 
@@ -25,6 +26,10 @@ export default function Menu() {
     router.push("/login");
   };
 
+  useEffect(() => {
+    if (!loading && !user) router.replace("/login");
+  }, [user, loading, router]);
+
   if (loading) {
     return (
       <main className="min-h-screen bg-gray-100 flex items-center justify-center">
@@ -33,10 +38,7 @@ export default function Menu() {
     );
   }
 
-  if (!user) {
-    router.replace("/login");
-    return null;
-  }
+  if (!user) return null;
 
   const visibleItems = menuItems.filter((item) => hasAccess(user, item.key));
 

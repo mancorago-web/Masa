@@ -51,6 +51,7 @@ function loadFromStorage() {
 }
 
 function saveToStorage(data: unknown) {
+  if (typeof window === 'undefined') return;
   localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
 }
 
@@ -64,6 +65,7 @@ function loadDailyRecordsFromStorage(): Record<string, DailyRecord> {
 }
 
 function saveDailyRecordsToStorage(records: Record<string, DailyRecord>) {
+  if (typeof window === 'undefined') return;
   localStorage.setItem(DAILY_RECORDS_KEY, JSON.stringify(records));
 }
 
@@ -114,7 +116,7 @@ export default function CajaChica() {
   const [modalAmount, setModalAmount] = useState('');
   const [savedMessage, setSavedMessage] = useState(false);
   const [showRegistro, setShowRegistro] = useState(false);
-  const [registroDate, setRegistroDate] = useState(todayStr());
+  const [registroDate, setRegistroDate] = useState('');
   const [registroRecord, setRegistroRecord] = useState<DailyRecord | null>(null);
   const [availableDates, setAvailableDates] = useState<string[]>([]);
   const [loadingRecords, setLoadingRecords] = useState(false);

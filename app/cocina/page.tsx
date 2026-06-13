@@ -48,6 +48,7 @@ function loadTables(): KitchenTable[] {
 }
 
 function saveTablesToStorage(tables: KitchenTable[]) {
+  if (typeof window === 'undefined') return;
   localStorage.setItem(STORAGE_KEY, JSON.stringify(tables));
 }
 
@@ -79,7 +80,7 @@ export default function Cocina() {
   const [tables, setTables] = useState<KitchenTable[]>([]);
   const [notifications, setNotifications] = useState<{ id: number; text: string }[]>([]);
   const [showHistory, setShowHistory] = useState(false);
-  const [historyDate, setHistoryDate] = useState(todayStr());
+  const [historyDate, setHistoryDate] = useState('');
   const [historySnapshots, setHistorySnapshots] = useState<
     { date: string; tables: KitchenTable[] }[]
   >([]);
@@ -429,9 +430,11 @@ export default function Cocina() {
           </span>
           <button
             onClick={() => {
+              const today = todayStr();
+              setHistoryDate(today);
               setShowHistory(true);
               // Load snapshot for selected date
-              const snap = loadHistoryForDate(historyDate);
+              const snap = loadHistoryForDate(today);
               if (snap) {
                 setHistorySnapshots((prev) => {
                   const existing = prev.find((s) => s.date === historyDate);

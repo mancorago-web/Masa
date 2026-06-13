@@ -31,6 +31,7 @@ function loadFromStorage<T>(key: string, fallback: T): T {
 }
 
 function saveToStorage(key: string, data: unknown) {
+  if (typeof window === 'undefined') return;
   localStorage.setItem(key, JSON.stringify(data));
 }
 

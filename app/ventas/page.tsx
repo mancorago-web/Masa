@@ -261,6 +261,7 @@ const STORAGE_KEY = 'masa-ventas-tables';
 const PAYMENTS_KEY = 'masa-ventas-payments';
 
 function saveToStorage(key: string, data: unknown) {
+  if (typeof window === 'undefined') return;
   localStorage.setItem(key, JSON.stringify(data));
 }
 

@@ -457,8 +457,21 @@ export default function Ventas() {
 
   // On mount: retry sync of any payments that failed to reach Firestore
   useEffect(() => {
-    const stored = loadFromStorage<PaymentData[]>(PAYMENTS_KEY, []);
-    if (stored.length > 0) syncToFirestore({ payments: stored });
+    (async () => {
+      const local = loadFromStorage<PaymentData[]>(PAYMENTS_KEY, []);
+      if (local.length === 0) return;
+      const db = getDb();
+      let remote: PaymentData[] = [];
+      if (db) {
+        try {
+          const snap = await db.collection('config').doc('ventas').get();
+          if (snap.exists) { const d = snap.data(); if (d.payments && Array.isArray(d.payments)) remote = d.payments; }
+        } catch (_) {}
+      }
+      const seen = new Set(local.map(p => p.id));
+      const merged = local.length > remote.length ? [...local, ...remote.filter(p => !seen.has(p.id))] : local;
+      syncToFirestore({ payments: merged });
+    })();
   }, []);
 
   useEffect(() => {
@@ -657,10 +670,20 @@ export default function Ventas() {
   };
 
   const handleResync = async () => {
-    const stored = loadFromStorage<PaymentData[]>(PAYMENTS_KEY, []);
-    if (stored.length === 0) { setSyncedMessage('No hay pagos locales'); setTimeout(() => setSyncedMessage(''), 2000); return; }
-    await syncToFirestore({ payments: stored });
-    setSyncedMessage(`Sincronizados ${stored.length} pago(s)`);
+    const local = loadFromStorage<PaymentData[]>(PAYMENTS_KEY, []);
+    if (local.length === 0) { setSyncedMessage('No hay pagos locales'); setTimeout(() => setSyncedMessage(''), 2000); return; }
+    const db = getDb();
+    let remote: PaymentData[] = [];
+    if (db) {
+      try {
+        const snap = await db.collection('config').doc('ventas').get();
+        if (snap.exists) { const d = snap.data(); if (d.payments && Array.isArray(d.payments)) remote = d.payments; }
+      } catch (_) {}
+    }
+    const seen = new Set(local.map(p => p.id));
+    const merged = [...local, ...remote.filter(p => !seen.has(p.id))];
+    await syncToFirestore({ payments: merged });
+    setSyncedMessage(`Sincronizados ${merged.length} pago(s)`);
     setTimeout(() => setSyncedMessage(''), 3000);
   };
 

@@ -189,11 +189,13 @@ const nonPizzaPrices: Record<string, number> = {
 
 const sizeLabels = ['8 Pzas.', '12 Pzas.', '16 Pzas.'];
 
-const initialTables: TableOrder[] = Array.from({ length: 8 }, () => ({
+const initialTables: TableOrder[] = Array.from({ length: 10 }, () => ({
   items: [],
   status: 'libre',
   customerName: '',
 }));
+const DELIVERY_INDEX = 9;
+const tableName = (i: number) => i === DELIVERY_INDEX ? 'DELIVERY' : `Mesa ${i + 1}`;
 
 function nowStr() {
   const d = new Date();
@@ -344,7 +346,7 @@ export default function Ventas() {
         .onSnapshot((snap: any) => {
           if (!snap.exists) return;
           const data = snap.data();
-          if (data.tables && Array.isArray(data.tables) && data.tables.length === 8) {
+          if (data.tables && Array.isArray(data.tables) && data.tables.length === 10) {
             setTables(prev => {
               const incoming = JSON.stringify(data.tables);
               const current = JSON.stringify(prev);
@@ -498,7 +500,7 @@ export default function Ventas() {
       cajaData.transactions.push({
         id: Date.now().toString() + Math.random().toString(36).slice(2, 6),
         type: 'INGRESO',
-        description: `Venta Mesa ${activeTable + 1} - Efectivo (recibido S/${paid.toFixed(2)})`,
+        description: `Venta ${tableName(activeTable)} - Efectivo (recibido S/${paid.toFixed(2)})`,
         amount: paid,
         date: now,
       });
@@ -508,7 +510,7 @@ export default function Ventas() {
         cajaData.transactions.push({
           id: Date.now().toString() + Math.random().toString(36).slice(2, 6),
           type: 'GASTO',
-          description: `Vuelto Mesa ${activeTable + 1}`,
+          description: `Vuelto ${tableName(activeTable)}`,
           amount: cambio,
           date: now,
         });
@@ -621,7 +623,7 @@ export default function Ventas() {
               onClick={() => setActiveTable(i)}
               className={`px-3 md:px-5 py-2 rounded-t-lg font-bold text-sm md:text-base whitespace-nowrap transition ${i === activeTable ? 'bg-white text-gray-800 shadow-md border-t-2 border-x-2 border-green-500' : t.status === 'ocupado' ? 'bg-orange-100 text-orange-700' : 'bg-gray-200 text-gray-500'}`}
             >
-              Mesa {i + 1} {t.status === 'ocupado' && `(${t.items.reduce((s, it) => s + it.quantity, 0)})`}
+              {tableName(i)} {t.status === 'ocupado' && `(${t.items.reduce((s, it) => s + it.quantity, 0)})`}
             </button>
           ))}
         </div>
@@ -631,8 +633,8 @@ export default function Ventas() {
           {/* Table Header */}
           <div className="flex flex-col md:flex-row md:items-center justify-between mb-4 gap-2">
             <div>
-              <h2 className="text-lg md:text-xl font-bold">Mesa {activeTable + 1}</h2>
-              <p className="text-sm text-gray-500">{activeOrder.status === 'ocupado' ? activeOrder.items.length + ' productos' : 'Mesa libre'}</p>
+              <h2 className="text-lg md:text-xl font-bold">{tableName(activeTable)}</h2>
+              <p className="text-sm text-gray-500">{activeOrder.status === 'ocupado' ? activeOrder.items.length + ' productos' : activeTable === DELIVERY_INDEX ? 'Delivery' : 'Mesa libre'}</p>
             </div>
             <div className="flex gap-2">
               <button onClick={() => { setShowProductMenu(true); setModalTab('menu'); }} className="px-4 py-2 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 text-sm">
@@ -700,7 +702,7 @@ export default function Ventas() {
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-lg w-full max-w-2xl shadow-xl max-h-[85vh] flex flex-col">
               <div className="flex items-center justify-between p-4 border-b">
-                <h2 className="text-lg font-bold">Mesa {activeTable + 1}</h2>
+                <h2 className="text-lg font-bold">{tableName(activeTable)}</h2>
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => setModalTab(modalTab === 'menu' ? 'cart' : 'menu')}
@@ -923,7 +925,7 @@ export default function Ventas() {
         {showPaymentModal && !showConfirmPayment && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-lg w-full max-w-md shadow-xl p-6">
-              <h2 className="text-xl font-bold mb-2">Cobrar Mesa {activeTable + 1}</h2>
+              <h2 className="text-xl font-bold mb-2">Cobrar {tableName(activeTable)}</h2>
               <p className="text-3xl font-bold text-center mb-6">{formatCurrency(subtotal)}</p>
 
               <div className="space-y-3 mb-6">
@@ -1010,7 +1012,7 @@ export default function Ventas() {
             <div className="bg-white rounded-lg w-full max-w-md shadow-xl p-6 text-center">
               <div className="text-5xl mb-4">✅</div>
               <h2 className="text-xl font-bold mb-2">Pago Confirmado</h2>
-              <p className="text-gray-600 mb-1">Mesa {activeTable + 1} — {paymentMethod === 'efectivo' ? 'Efectivo' : paymentMethod === 'yape' ? 'Yape' : 'Tarjeta/POS'}</p>
+              <p className="text-gray-600 mb-1">{tableName(activeTable)} — {paymentMethod === 'efectivo' ? 'Efectivo' : paymentMethod === 'yape' ? 'Yape' : 'Tarjeta/POS'}</p>
               <p className="text-2xl font-bold mb-1">{formatCurrency(subtotal)}</p>
               {parseFloat(tipAmount) > 0 && (
                 <p className="text-green-700 font-semibold mb-1">Propina: {formatCurrency(parseFloat(tipAmount))}</p>

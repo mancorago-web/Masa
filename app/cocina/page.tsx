@@ -273,8 +273,10 @@ export default function Cocina() {
     };
   }, []);
 
-  // Auto-save on change
+  // Auto-save on change (skip first render to avoid overwrite)
+  const firstSyncRef = useRef(true);
   useEffect(() => {
+    if (firstSyncRef.current) { firstSyncRef.current = false; return; }
     if (tables.length > 0) {
       saveTablesToStorage(tables);
       syncToFirestore(tables);

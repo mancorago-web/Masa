@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { getDb } from "@/lib/firebase";
@@ -479,7 +479,9 @@ export default function Ventas() {
     syncToFirestore({ tables });
   }, [tables]);
 
+  const isFirstPaymentSync = useRef(true);
   useEffect(() => {
+    if (isFirstPaymentSync.current) { isFirstPaymentSync.current = false; return; }
     saveToStorage(PAYMENTS_KEY, paymentsHistory);
     syncToFirestore({ payments: paymentsHistory });
   }, [paymentsHistory]);

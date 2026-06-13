@@ -456,11 +456,10 @@ export default function Ventas() {
 
   const productCategories = useMemo(() => buildMenu(recipes, subRecipes), [recipes, subRecipes]);
 
-  // On mount: retry sync of any payments that failed to reach Firestore
+  // On mount: merge local + remote payments and sync to Firestore
   useEffect(() => {
     (async () => {
       const local = loadFromStorage<PaymentData[]>(PAYMENTS_KEY, []);
-      if (local.length === 0) return;
       const db = getDb();
       let remote: PaymentData[] = [];
       if (db) {
@@ -469,9 +468,14 @@ export default function Ventas() {
           if (snap.exists) { const d = snap.data(); if (d.payments && Array.isArray(d.payments)) remote = d.payments; }
         } catch (_) {}
       }
-      const seen = new Set(local.map(p => p.id));
-      const merged = local.length > remote.length ? [...local, ...remote.filter(p => !seen.has(p.id))] : local;
-      syncToFirestore({ payments: merged });
+      // Always merge both: prefer remote (Firestore is source of truth),
+      // then add any local-only payments (unsynced)
+      const remoteMap = new Map(remote.map(p => [p.id, p]));
+      const merged = [...remote, ...local.filter(p => !remoteMap.has(p.id))];
+      // Only write if there's new local data to add
+      if (merged.length !== remote.length) {
+        syncToFirestore({ payments: merged });
+      }
     })();
   }, []);
 
@@ -683,8 +687,8 @@ export default function Ventas() {
         if (snap.exists) { const d = snap.data(); if (d.payments && Array.isArray(d.payments)) remote = d.payments; }
       } catch (_) {}
     }
-    const seen = new Set(local.map(p => p.id));
-    const merged = [...local, ...remote.filter(p => !seen.has(p.id))];
+    const remoteMap = new Map(remote.map(p => [p.id, p]));
+    const merged = [...remote, ...local.filter(p => !remoteMap.has(p.id))];
     await syncToFirestore({ payments: merged });
     setSyncedMessage(`Sincronizados ${merged.length} pago(s)`);
     setTimeout(() => setSyncedMessage(''), 3000);

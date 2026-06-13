@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { getDb } from "@/lib/firebase";
@@ -68,7 +68,7 @@ export default function Facturas() {
     () => loadFromStorage<Invoice[]>(STORAGE_KEY, [])
   );
   const [showForm, setShowForm] = useState(false);
-  const [filterDate, setFilterDate] = useState(todayStr());
+  const [filterDate, setFilterDate] = useState('');
   const [form, setForm] = useState(emptyForm);
 
   useEffect(() => {
@@ -80,6 +80,7 @@ export default function Facturas() {
 
   // Load from Firestore on mount + real-time listener
   useEffect(() => {
+    setFilterDate(todayStr());
     const cached = loadFromStorage<Invoice[]>(STORAGE_KEY, []);
     if (cached.length > 0) setInvoices(cached);
 
@@ -103,8 +104,10 @@ export default function Facturas() {
     return () => unsub();
   }, []);
 
-  // Auto-save to localStorage + Firestore
+  // Auto-save to localStorage + Firestore (skip first render to avoid overwrite)
+  const isFirstInvoiceSync = useRef(true);
   useEffect(() => {
+    if (isFirstInvoiceSync.current) { isFirstInvoiceSync.current = false; return; }
     saveToStorage(STORAGE_KEY, invoices);
     syncToFirestore({ invoices });
   }, [invoices]);

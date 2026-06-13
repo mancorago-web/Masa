@@ -276,8 +276,10 @@ function loadFromStorage<T>(key: string, fallback: T): T {
 async function syncToFirestore(data: Record<string, unknown>) {
   const db = getDb();
   if (!db) return;
+  const cleaned = JSON.parse(JSON.stringify(data));
+  if (Object.keys(cleaned).length === 0) return;
   try {
-    await db.collection('config').doc('ventas').set(data, { merge: true });
+    await db.collection('config').doc('ventas').set(cleaned, { merge: true });
   } catch (e) {
     console.error('Firestore sync error:', e);
   }
@@ -535,8 +537,7 @@ export default function Ventas() {
       subtotal,
       tip,
       method: paymentMethod!,
-      amountPaid: paymentMethod === 'efectivo' ? paid : undefined,
-      change: paymentMethod === 'efectivo' ? paid - subtotal : undefined,
+      ...(paymentMethod === 'efectivo' ? { amountPaid: paid, change: paid - subtotal } : {}),
       date: nowStr(),
     };
     setPaymentsHistory(prev => {

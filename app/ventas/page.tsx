@@ -287,7 +287,15 @@ function buildMenu(recipes: { id: string; category: string; name: string }[], su
 export default function Ventas() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
-  const [tables, setTables] = useState<TableOrder[]>(() => loadFromStorage(STORAGE_KEY, initialTables));
+  const [tables, setTables] = useState<TableOrder[]>(() => {
+    const stored = loadFromStorage<TableOrder[]>(STORAGE_KEY, initialTables);
+    if (stored.length < 10) {
+      const padded = [...stored];
+      while (padded.length < 10) padded.push({ items: [], status: 'libre', customerName: '' });
+      return padded;
+    }
+    return stored;
+  });
   const [activeTable, setActiveTable] = useState(0);
   const [showProductMenu, setShowProductMenu] = useState(false);
   const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
@@ -346,7 +354,7 @@ export default function Ventas() {
         .onSnapshot((snap: any) => {
           if (!snap.exists) return;
           const data = snap.data();
-          if (data.tables && Array.isArray(data.tables) && data.tables.length === 10) {
+          if (data.tables && Array.isArray(data.tables) && data.tables.length >= 10) {
             setTables(prev => {
               const incoming = JSON.stringify(data.tables);
               const current = JSON.stringify(prev);

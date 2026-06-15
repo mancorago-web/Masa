@@ -86,6 +86,23 @@ export default function Facturas() {
 
     const db = getDb();
     if (!db) return;
+
+    // On mount: merge local + remote by ID (like Ventas), write to Firestore if needed
+    (async () => {
+      const local = loadFromStorage<Invoice[]>(STORAGE_KEY, []);
+      if (local.length === 0) return;
+      let remote: Invoice[] = [];
+      try {
+        const snap = await db.collection('config').doc('facturas').get();
+        if (snap.exists) { const d = snap.data(); if (d.invoices && Array.isArray(d.invoices)) remote = d.invoices; }
+      } catch (_) {}
+      const remoteMap = new Map(remote.map(p => [p.id, p]));
+      const merged = [...remote, ...local.filter(p => !remoteMap.has(p.id))];
+      if (merged.length !== remote.length) {
+        syncToFirestore({ invoices: merged });
+      }
+    })();
+
     const unsub = db
       .collection("config")
       .doc("facturas")
@@ -94,7 +111,6 @@ export default function Facturas() {
         const data = snap.data();
         if (data.invoices && Array.isArray(data.invoices)) {
           setInvoices((prev) => {
-            if (data.invoices.length < prev.length) return prev;
             const incoming = JSON.stringify(data.invoices);
             const current = JSON.stringify(prev);
             return incoming === current ? prev : data.invoices;

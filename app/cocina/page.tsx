@@ -37,6 +37,8 @@ interface TableOrder {
 const STORAGE_KEY = "masa-kitchen-tables";
 const FIRESTORE_DOC = "config";
 const FIRESTORE_FIELD = "cocina";
+const DELIVERY_NUMBER = 10;
+const tableName = (n: number) => n === DELIVERY_NUMBER ? 'DELIVERY' : `Mesa ${n}`;
 
 function loadTables(): KitchenTable[] {
   if (typeof window === "undefined") return [];
@@ -239,7 +241,7 @@ export default function Cocina() {
                 }
 
                 notifs.push(
-                  `Mesa ${tableNum}: ${newItems
+                  `${tableName(tableNum)}: ${newItems
                     .map((it) => `${it.name} x${it.quantity}`)
                     .join(", ")}`
                 );
@@ -511,7 +513,7 @@ export default function Cocina() {
                   >
                     <div className="flex items-center gap-2">
                       <h2 className={`font-bold ${isCollapsed ? "text-base" : "text-xl"}`}>
-                        Mesa {table.tableNumber}
+                        {tableName(table.tableNumber)}
                         {table.round && table.round > 1 && (
                           <span className={`font-normal text-gray-500 ml-2 ${isCollapsed ? "text-sm" : "text-base"}`}>
                             Pedido {table.round}
@@ -575,7 +577,7 @@ export default function Cocina() {
                       {/* Table status */}
                       {allDone ? (
                         <p className="text-center text-green-600 text-sm font-semibold mt-3">
-                          ✅ Mesa completa
+                          {table.tableNumber === DELIVERY_NUMBER ? "✅ Delivery listo" : "✅ Mesa completa"}
                         </p>
                       ) : (
                         <p className="text-center text-gray-400 text-xs mt-3">
@@ -634,7 +636,7 @@ export default function Cocina() {
                       }`}
                     >
                       <div className="font-bold mb-2">
-                        Mesa {table.tableNumber}
+                        {tableName(table.tableNumber)}
                         {table.round && table.round > 1 && (
                           <span className="font-normal text-gray-500 ml-1">
                             Pedido {table.round}

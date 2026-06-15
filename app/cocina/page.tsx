@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { getDb } from "@/lib/firebase";
@@ -81,9 +81,7 @@ export default function Cocina() {
   const [notifications, setNotifications] = useState<{ id: number; text: string }[]>([]);
   const [showHistory, setShowHistory] = useState(false);
   const [historyDate, setHistoryDate] = useState('');
-  const [historySnapshots, setHistorySnapshots] = useState<
-    { date: string; tables: KitchenTable[] }[]
-  >([]);
+  const [historyFromFirestore, setHistoryFromFirestore] = useState<Record<string, KitchenTable[]>>({});
   const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set());
   const prevTablesRef = useRef<string>("");
   const firstLoad = useRef(true);
@@ -283,42 +281,56 @@ export default function Cocina() {
     }
   }, [tables]);
 
-  // Daily snapshot at midnight for history
+  // Real-time listener for Firestore history (tables archived from past days)
   useEffect(() => {
-    const saveSnapshot = () => {
-      const date = todayStr();
-      const current = tablesRef.current;
-      if (current.length === 0) return;
-      setHistorySnapshots((prev) => {
-        const existing = prev.find((s) => s.date === date);
-        if (existing) {
-          return prev.map((s) =>
-            s.date === date ? { ...s, tables: current } : s
-          );
-        }
-        return [...prev, { date, tables: current }];
+    const db = getDb();
+    if (!db) return;
+    const unsub = db.collection('config').doc('cocinaHistory')
+      .onSnapshot((snap: any) => {
+        if (!snap.exists) return;
+        const data = snap.data();
+        if (data) setHistoryFromFirestore(data as Record<string, KitchenTable[]>);
       });
-      localStorage.setItem(
-        `masa-kitchen-snapshot-${date}`,
-        JSON.stringify(current)
-      );
-    };
-
-    // Save snapshot every 30s
-    const interval = setInterval(saveSnapshot, 30000);
-    return () => clearInterval(interval);
+    return () => unsub();
   }, []);
 
-  // Load history snapshot on demand
-  const loadHistoryForDate = (date: string) => {
-    const cached = localStorage.getItem(`masa-kitchen-snapshot-${date}`);
-    if (cached) {
-      try {
-        return JSON.parse(cached) as KitchenTable[];
-      } catch {}
+  // Archive completed tables from previous days into Firestore history
+  // (runs only when tables change and we detect past-date tables)
+  const lastArchiveDate = useRef('');
+  useEffect(() => {
+    if (firstSyncRef.current) return;
+    const today = todayStr();
+    if (lastArchiveDate.current === today) return;
+    const pastTables = tables.filter(t => !isSameDay(t.updatedAt, today) && t.items.every(i => i.completed));
+    if (pastTables.length === 0) return;
+    lastArchiveDate.current = today;
+    const byDate: Record<string, KitchenTable[]> = {};
+    for (const t of pastTables) {
+      const d = t.updatedAt.slice(0, 10);
+      if (!byDate[d]) byDate[d] = [];
+      byDate[d].push(t);
     }
-    return null;
-  };
+    const db = getDb();
+    if (!db) return;
+    for (const [date, dateTables] of Object.entries(byDate)) {
+      db.collection('config').doc('cocinaHistory').set({ [date]: dateTables }, { merge: true })
+        .catch(() => {});
+    }
+  }, [tables]);
+
+  // Load history: for dates before today, check Firestore history first,
+  // then fall back to filtering the live tables array
+  const historyTables = useMemo(() => {
+    if (!historyDate) return [];
+    const today = todayStr();
+    if (historyDate !== today) {
+      // For past dates, check Firestore history first
+      const archived = historyFromFirestore[historyDate];
+      if (archived) return archived;
+    }
+    // Fall back to filtering live tables by date
+    return tables.filter(t => isSameDay(t.updatedAt, historyDate));
+  }, [historyDate, historyFromFirestore, tables]);
 
   const toggleItem = (tableId: string, itemId: string) => {
     setTables((prev) =>
@@ -429,18 +441,8 @@ export default function Cocina() {
           </span>
           <button
             onClick={() => {
-              const today = todayStr();
-              setHistoryDate(today);
+              setHistoryDate(todayStr());
               setShowHistory(true);
-              // Load snapshot for selected date
-              const snap = loadHistoryForDate(today);
-              if (snap) {
-                setHistorySnapshots((prev) => {
-                  const existing = prev.find((s) => s.date === historyDate);
-                  if (existing) return prev;
-                  return [...prev, { date: historyDate, tables: snap }];
-                });
-              }
             }}
             className="text-sm bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700"
           >
@@ -610,85 +612,53 @@ export default function Cocina() {
               <input
                 type="date"
                 value={historyDate}
-                onChange={(e) => {
-                  setHistoryDate(e.target.value);
-                  const snap = loadHistoryForDate(e.target.value);
-                  if (snap) {
-                    setHistorySnapshots((prev) => {
-                      const existing = prev.find(
-                        (s) => s.date === e.target.value
-                      );
-                      if (existing) return prev;
-                      return [
-                        ...prev,
-                        { date: e.target.value, tables: snap },
-                      ];
-                    });
-                  }
-                }}
+                onChange={(e) => setHistoryDate(e.target.value)}
                 className="border rounded px-3 py-2 w-full max-w-xs"
               />
             </div>
 
             <div className="flex-1 overflow-y-auto p-4">
-              {(() => {
-                const snap = historySnapshots.find(
-                  (s) => s.date === historyDate
-                );
-                const displayTables = snap
-                  ? snap.tables
-                  : loadHistoryForDate(historyDate);
-                if (
-                  !displayTables ||
-                  (Array.isArray(displayTables) && displayTables.length === 0)
-                ) {
-                  return (
-                    <p className="text-center text-gray-400 py-10">
-                      No hay pedidos para esta fecha
-                    </p>
-                  );
-                }
-                const tablesData = Array.isArray(displayTables)
-                  ? displayTables
-                  : [];
-                return (
-                  <div className="space-y-3">
-                    {tablesData.map((table) => (
-                      <div
-                        key={table.id ?? `${table.tableNumber}-${table.round ?? 1}`}
-                        className={`rounded-lg border p-3 ${
-                          table.items.every((i) => i.completed)
-                            ? "bg-green-50 border-green-200"
-                            : "bg-white border-gray-200"
-                        }`}
-                      >
-                        <div className="font-bold mb-2">
-                          Mesa {table.tableNumber}
-                          {table.round && table.round > 1 && (
-                            <span className="font-normal text-gray-500 ml-1">
-                              Pedido {table.round}
-                            </span>
-                          )}
-                        </div>
-                        <div className="flex flex-wrap gap-2">
-                          {table.items.map((item) => (
-                            <span
-                              key={item.id}
-                              className={`text-sm px-2 py-0.5 rounded ${
-                                item.completed
-                                  ? "bg-green-100 text-green-700 line-through"
-                                  : "bg-gray-100 text-gray-700"
-                              }`}
-                            >
-                              {item.name} x{item.quantity}
-                            </span>
-                          ))}
-                        </div>
+              {historyTables.length === 0 ? (
+                <p className="text-center text-gray-400 py-10">
+                  No hay pedidos para esta fecha
+                </p>
+              ) : (
+                <div className="space-y-3">
+                  {historyTables.map((table) => (
+                    <div
+                      key={table.id ?? `${table.tableNumber}-${table.round ?? 1}`}
+                      className={`rounded-lg border p-3 ${
+                        table.items.every((i) => i.completed)
+                          ? "bg-green-50 border-green-200"
+                          : "bg-white border-gray-200"
+                      }`}
+                    >
+                      <div className="font-bold mb-2">
+                        Mesa {table.tableNumber}
+                        {table.round && table.round > 1 && (
+                          <span className="font-normal text-gray-500 ml-1">
+                            Pedido {table.round}
+                          </span>
+                        )}
                       </div>
-                    ))}
-                  </div>
-                );
-              })()}
+                      <div className="flex flex-wrap gap-2">
+                        {table.items.map((item) => (
+                          <span
+                            key={item.id}
+                            className={`text-sm px-2 py-0.5 rounded ${
+                              item.completed
+                                ? "bg-green-100 text-green-700 line-through"
+                                : "bg-gray-100 text-gray-700"
+                            }`}
+                          >
+                            {item.name} x{item.quantity}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>

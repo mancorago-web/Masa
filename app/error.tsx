@@ -10,13 +10,10 @@ export default function Error({
   reset: () => void;
 }) {
   useEffect(() => {
-    if (
-      error.message?.includes("chunk") ||
-      error.message?.includes("loading") ||
-      error.message?.includes("ChunkLoadError")
-    ) {
-      location.reload();
-    }
+    console.error("App error:", error.message, error.digest);
+    // Auto-reload after 2s for any error (chunk, network, etc.)
+    const t = setTimeout(() => location.reload(), 2000);
+    return () => clearTimeout(t);
   }, [error]);
 
   return (
@@ -25,13 +22,13 @@ export default function Error({
         <div className="text-5xl mb-4">🔄</div>
         <h1 className="text-2xl font-bold text-gray-800 mb-2">Error de carga</h1>
         <p className="text-gray-600 mb-6">
-          Hubo un problema al cargar la aplicación. Intenta recargar la página.
+          Hubo un problema al cargar la aplicación. Recargando...
         </p>
         <button
           onClick={() => reset()}
           className="px-6 py-3 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 transition"
         >
-          Reintentar
+          Reintentar ahora
         </button>
       </div>
     </div>

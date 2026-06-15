@@ -1,4 +1,5 @@
 let db: any = null;
+let waiting: Array<() => void> = [];
 
 export function getDb() {
   if (db) return db;
@@ -20,5 +21,13 @@ export function getDb() {
       })
     : firebase.apps[0];
   db = app.firestore();
+  // Notify any waiters
+  waiting.forEach(fn => fn());
+  waiting = [];
   return db;
+}
+
+export function onDbReady(cb: () => void) {
+  if (db) { cb(); return; }
+  waiting.push(cb);
 }

@@ -42,20 +42,25 @@ export default function RootLayout({
         <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
         <meta http-equiv="Pragma" content="no-cache" />
         <meta http-equiv="Expires" content="0" />
-        <script src="https://www.gstatic.com/firebasejs/12.13.0/firebase-app-compat.js"></script>
-        <script src="https://www.gstatic.com/firebasejs/12.13.0/firebase-firestore-compat.js"></script>
+        <script src="https://www.gstatic.com/firebasejs/12.13.0/firebase-app-compat.js" async></script>
+        <script src="https://www.gstatic.com/firebasejs/12.13.0/firebase-firestore-compat.js" async></script>
         <script dangerouslySetInnerHTML={{ __html: `
           if ('serviceWorker' in navigator) {
             navigator.serviceWorker.getRegistrations().then(function(regs) {
               for (var i = 0; i < regs.length; i++) { regs[i].unregister(); }
             });
           }
-          // Auto-reload on chunk load errors (old build after deploy)
           window.addEventListener('error', function(e) {
             if (e.target && (e.target.tagName === 'SCRIPT' || e.target.tagName === 'LINK')) {
               location.reload();
             }
           }, true);
+          // Catch chunk load errors that happen before React mounts
+          window.__NEXT_PRELOAD_ERRORS = [];
+          var origPush = Array.prototype.push;
+          window.addEventListener('DOMContentLoaded', function() {
+            if (window.__NEXT_PRELOAD_ERRORS.length > 0) location.reload();
+          });
         `}} />
       </head>
       <body className={inter.className}>

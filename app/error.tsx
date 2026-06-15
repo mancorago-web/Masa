@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect } from "react";
+
 export default function Error({
   error,
   reset,
@@ -7,6 +9,16 @@ export default function Error({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  useEffect(() => {
+    if (
+      error.message?.includes("chunk") ||
+      error.message?.includes("loading") ||
+      error.message?.includes("ChunkLoadError")
+    ) {
+      location.reload();
+    }
+  }, [error]);
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100">
       <div className="bg-white rounded-lg shadow-xl p-8 max-w-md text-center">

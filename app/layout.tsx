@@ -39,6 +39,9 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-title" content="MASA" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="theme-color" content="#16a34a" />
+        <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+        <meta http-equiv="Pragma" content="no-cache" />
+        <meta http-equiv="Expires" content="0" />
         <script src="https://www.gstatic.com/firebasejs/12.13.0/firebase-app-compat.js"></script>
         <script src="https://www.gstatic.com/firebasejs/12.13.0/firebase-firestore-compat.js"></script>
         <script dangerouslySetInnerHTML={{ __html: `
@@ -47,6 +50,12 @@ export default function RootLayout({
               for (var i = 0; i < regs.length; i++) { regs[i].unregister(); }
             });
           }
+          // Auto-reload on chunk load errors (old build after deploy)
+          window.addEventListener('error', function(e) {
+            if (e.target && (e.target.tagName === 'SCRIPT' || e.target.tagName === 'LINK')) {
+              location.reload();
+            }
+          }, true);
         `}} />
       </head>
       <body className={inter.className}>

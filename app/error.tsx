@@ -11,8 +11,8 @@ export default function Error({
 }) {
   useEffect(() => {
     console.error("App error:", error.message, error.digest);
-    // Auto-reload after 2s for any error (chunk, network, etc.)
-    const t = setTimeout(() => location.reload(), 2000);
+    // Auto-reload after 4s with cache-busting
+    const t = setTimeout(() => { location.href = location.pathname + '?t=' + Date.now(); }, 4000);
     return () => clearTimeout(t);
   }, [error]);
 
@@ -21,8 +21,11 @@ export default function Error({
       <div className="bg-white rounded-lg shadow-xl p-8 max-w-md text-center">
         <div className="text-5xl mb-4">🔄</div>
         <h1 className="text-2xl font-bold text-gray-800 mb-2">Error de carga</h1>
-        <p className="text-gray-600 mb-6">
-          Hubo un problema al cargar la aplicación. Recargando...
+        <p className="text-gray-600 mb-4">
+          Hubo un problema al cargar la aplicación.
+        </p>
+        <p className="text-sm text-red-600 mb-6 bg-red-50 rounded p-2 break-words">
+          {error.message}
         </p>
         <button
           onClick={() => reset()}

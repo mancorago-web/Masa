@@ -52,14 +52,13 @@ export default function RootLayout({
           }
           window.addEventListener('error', function(e) {
             if (e.target && (e.target.tagName === 'SCRIPT' || e.target.tagName === 'LINK')) {
-              location.reload();
+              location.href = location.pathname + '?t=' + Date.now();
             }
           }, true);
           // Catch chunk load errors that happen before React mounts
           window.__NEXT_PRELOAD_ERRORS = [];
-          var origPush = Array.prototype.push;
           window.addEventListener('DOMContentLoaded', function() {
-            if (window.__NEXT_PRELOAD_ERRORS.length > 0) location.reload();
+            if (window.__NEXT_PRELOAD_ERRORS.length > 0) location.href = location.pathname + '?t=' + Date.now();
           });
         `}} />
       </head>

@@ -404,7 +404,8 @@ export default function Ventas() {
 
   useEffect(() => {
     if (user?.role === "togo") setActiveTable(TOGO_INDEX);
-  }, [user]);
+    if (user?.role === "waiter" && activeTable === TOGO_INDEX) setActiveTable(0);
+  }, [user, activeTable]);
 
   if (authLoading) return <main className="min-h-screen bg-gray-100 flex items-center justify-center"><p className="text-gray-400">Cargando...</p></main>;
   if (!user) return null;
@@ -755,6 +756,7 @@ export default function Ventas() {
         <div className="flex gap-1 md:gap-2 mb-4 overflow-x-auto">
           {tables.map((t, i) => {
             if (user?.role === "togo" && i !== TOGO_INDEX) return null;
+            if (user?.role === "waiter" && i === TOGO_INDEX) return null;
             return (
             <button
               key={i}

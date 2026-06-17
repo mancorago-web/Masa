@@ -110,48 +110,11 @@ export async function printTicket(data: TicketData) {
 }
 
 export function printReceipt(data: ReceiptData) {
-  const now = new Date().toLocaleString('es-PE', {
-    hour: '2-digit', minute: '2-digit',
-    day: '2-digit', month: '2-digit', year: 'numeric',
-  });
-
-  const subtotal = data.items.reduce((s, i) => s + i.quantity * i.unitPrice, 0);
-  const col1 = 24;
-  const col2 = 8;
-
-  let body = '';
-  body += '='.repeat(32) + '\n';
-  body += '        MASA PIZZERIA\n';
-  body += '      Comprobante de Venta\n';
-  body += '='.repeat(32) + '\n';
-  body += '\n';
-  body += 'Mesa: ' + data.tableName + '\n';
-  body += 'Fecha: ' + now + '\n';
-  body += '\n';
-  body += '-'.repeat(32) + '\n';
-  body += 'Cant  Producto            Importe\n';
-  body += '-'.repeat(32) + '\n';
-  for (const item of data.items) {
-    const line = item.quantity + 'x ' + item.name;
-    const priceStr = 'S/ ' + (item.quantity * item.unitPrice).toFixed(2);
-    const padded = line.padEnd(col1, ' ').slice(0, col1);
-    body += padded + priceStr.padStart(col2) + '\n';
-  }
-  body += '-'.repeat(32) + '\n';
-  body += 'SUBTOTAL'.padEnd(col1) + ('S/ ' + subtotal.toFixed(2)).padStart(col2) + '\n';
-  body += '='.repeat(32) + '\n';
-  body += '\n';
-  body += 'Total:'.padEnd(col1) + ('S/ ' + subtotal.toFixed(2)).padStart(col2) + '\n';
-  body += '\n';
-  body += '='.repeat(32) + '\n';
-  body += '  Gracias por su preferencia!\n';
-  body += '='.repeat(32) + '\n';
-  body += '\n\n\n';
-
-  buildIframePrint(body);
+  const lines = buildReceiptLines(data);
+  printReceiptImage(lines);
 }
 
-export function printReceiptText(data: ReceiptData) {
+function buildReceiptLines(data: ReceiptData): string[] {
   const now = new Date().toLocaleString('es-PE', {
     hour: '2-digit', minute: '2-digit',
     day: '2-digit', month: '2-digit', year: 'numeric',
@@ -160,44 +123,97 @@ export function printReceiptText(data: ReceiptData) {
   const subtotal = data.items.reduce((s, i) => s + i.quantity * i.unitPrice, 0);
   const col1 = 24;
   const col2 = 8;
+  const lines: string[] = [];
 
-  let text = '';
-  text += '='.repeat(32) + '\n';
-  text += '        MASA PIZZERIA\n';
-  text += '      Comprobante de Venta\n';
-  text += '='.repeat(32) + '\n';
-  text += '\n';
-  text += 'Mesa: ' + data.tableName + '\n';
-  text += 'Fecha: ' + now + '\n';
-  text += '\n';
-  text += '-'.repeat(32) + '\n';
-  text += 'Cant  Producto            Importe\n';
-  text += '-'.repeat(32) + '\n';
+  lines.push('='.repeat(32));
+  lines.push('        MASA PIZZERIA');
+  lines.push('      Comprobante de Venta');
+  lines.push('='.repeat(32));
+  lines.push('');
+  lines.push('Mesa: ' + data.tableName);
+  lines.push('Fecha: ' + now);
+  lines.push('');
+  lines.push('-'.repeat(32));
+  lines.push('Cant  Producto            Importe');
+  lines.push('-'.repeat(32));
   for (const item of data.items) {
     const line = item.quantity + 'x ' + item.name;
     const priceStr = 'S/ ' + (item.quantity * item.unitPrice).toFixed(2);
     const padded = line.padEnd(col1, ' ').slice(0, col1);
-    text += padded + priceStr.padStart(col2) + '\n';
+    lines.push(padded + priceStr.padStart(col2));
   }
-  text += '-'.repeat(32) + '\n';
-  text += 'SUBTOTAL'.padEnd(col1) + ('S/ ' + subtotal.toFixed(2)).padStart(col2) + '\n';
-  text += '='.repeat(32) + '\n';
-  text += '\n';
-  text += 'Total:'.padEnd(col1) + ('S/ ' + subtotal.toFixed(2)).padStart(col2) + '\n';
-  text += '\n';
-  text += '='.repeat(32) + '\n';
-  text += '  Gracias por su preferencia!\n';
-  text += '='.repeat(32) + '\n';
-  text += '\n\n\n';
+  lines.push('-'.repeat(32));
+  lines.push('SUBTOTAL'.padEnd(col1) + ('S/ ' + subtotal.toFixed(2)).padStart(col2));
+  lines.push('='.repeat(32));
+  lines.push('');
+  lines.push('Total:'.padEnd(col1) + ('S/ ' + subtotal.toFixed(2)).padStart(col2));
+  lines.push('');
+  lines.push('='.repeat(32));
+  lines.push('  Gracias por su preferencia!');
+  lines.push('='.repeat(32));
+  lines.push('');
+  lines.push('');
+  lines.push('');
 
-  const blob = new Blob([text], { type: 'text/plain' });
-  const url = URL.createObjectURL(blob);
-  const w = window.open(url, '_blank');
-  if (!w) {
-    // Fallback: try navigator share
-    if (navigator.share) {
-      navigator.share({ title: 'Ticket MASA', text }).catch(() => {});
-    }
+  return lines;
+}
+
+function printReceiptImage(lines: string[]) {
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+  if (!ctx) { buildIframePrint(lines.join('\n')); return; }
+
+  const fontSize = 12;
+  const fontFamily = 'Courier New, Courier, monospace';
+  ctx.font = fontSize + 'px ' + fontFamily;
+  ctx.textBaseline = 'top';
+
+  const charWidth = ctx.measureText('A').width;
+  const lineHeight = fontSize * 1.3;
+  const cols = 32;
+  const width = charWidth * cols + 16;
+  const height = lines.length * lineHeight + 12;
+
+  canvas.width = Math.ceil(width * 2);
+  canvas.height = Math.ceil(height * 2);
+  canvas.style.width = Math.ceil(width) + 'px';
+  canvas.style.height = Math.ceil(height) + 'px';
+
+  ctx.scale(2, 2);
+
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, width, height);
+  ctx.font = fontSize + 'px ' + fontFamily;
+  ctx.textBaseline = 'top';
+  ctx.fillStyle = '#000000';
+
+  for (let i = 0; i < lines.length; i++) {
+    ctx.fillText(lines[i], 4, 4 + i * lineHeight);
   }
-  setTimeout(() => URL.revokeObjectURL(url), 5000);
+
+  const dataUrl = canvas.toDataURL('image/png');
+
+  const html = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Ticket - MASA</title><style>@page{margin:0;size:80mm 297mm;}*{margin:0;padding:0;}body{text-align:center;}img{width:72mm;height:auto;}</style></head><body><img src="' + dataUrl + '" /></body></html>';
+
+  const iframe = document.createElement('iframe');
+  iframe.style.position = 'absolute';
+  iframe.style.width = '0';
+  iframe.style.height = '0';
+  iframe.style.border = 'none';
+  iframe.style.opacity = '0';
+  iframe.style.pointerEvents = 'none';
+  document.body.appendChild(iframe);
+  const doc = iframe.contentWindow?.document;
+  if (!doc) { document.body.removeChild(iframe); return; }
+  doc.open();
+  doc.write(html);
+  doc.close();
+
+  setTimeout(() => {
+    iframe.contentWindow?.focus();
+    iframe.contentWindow?.print();
+    setTimeout(() => {
+      document.body.removeChild(iframe);
+    }, 1000);
+  }, 300);
 }

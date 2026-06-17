@@ -23,8 +23,8 @@ export interface ReceiptData {
   items: ReceiptItem[];
 }
 
-function buildIframePrint(body: string): void {
-  const html = `<!DOCTYPE html>
+function getReceiptHtml(body: string): string {
+  return `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
@@ -49,6 +49,10 @@ function buildIframePrint(body: string): void {
 </head>
 <body><pre>${body}</pre></body>
 </html>`;
+}
+
+function buildIframePrint(body: string): void {
+  const html = getReceiptHtml(body);
 
   const iframe = document.createElement('iframe');
   iframe.style.position = 'fixed';
@@ -114,6 +118,17 @@ export async function printTicket(data: TicketData) {
 export function printReceipt(data: ReceiptData) {
   const lines = buildReceiptLines(data);
   buildIframePrint(lines.join('\n'));
+}
+
+export function printReceiptPopup(data: ReceiptData) {
+  const lines = buildReceiptLines(data);
+  const html = getReceiptHtml(lines.join('\n'));
+  const w = window.open('', '_blank', 'width=400,height=600');
+  if (!w) return;
+  w.document.write(html);
+  w.document.close();
+  w.focus();
+  setTimeout(() => { w.print(); setTimeout(() => w.close(), 1000); }, 500);
 }
 
 function buildReceiptLines(data: ReceiptData): string[] {

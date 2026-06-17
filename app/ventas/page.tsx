@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { getDb } from "@/lib/firebase";
 import { useAuth } from "@/components/AuthProvider";
-import { printReceipt } from "@/lib/printTicket";
+import { printReceipt, printReceiptPopup } from "@/lib/printTicket";
 
 interface InventoryItem {
   id: string;
@@ -876,7 +876,16 @@ export default function Ventas() {
                   >
                     Pedido {tables[activeTable]?.items?.length > 0 && `(${tables[activeTable].items.reduce((s, i) => s + i.quantity, 0)})`}
                   </button>
-                  <button onClick={() => setShowProductMenu(false)} className="text-gray-500 hover:text-gray-700 text-xl font-bold">✕</button>
+                  <button onClick={() => {
+                    setShowProductMenu(false);
+                    const order = tables[activeTable];
+                    if (order?.status === 'ocupado' && order.items.length > 0) {
+                      printReceiptPopup({
+                        tableName: tableName(activeTable),
+                        items: order.items.map(i => ({ name: i.name, quantity: i.quantity, unitPrice: i.unitPrice })),
+                      });
+                    }
+                  }} className="text-gray-500 hover:text-gray-700 text-xl font-bold">✕</button>
                 </div>
               </div>
               {modalTab === 'menu' ? (

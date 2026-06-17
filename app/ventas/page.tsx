@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { getDb } from "@/lib/firebase";
 import { useAuth } from "@/components/AuthProvider";
-import { showReceiptPopup, shareReceipt } from "@/lib/printTicket";
+import { showReceiptPopup, shareReceipt, printTicket } from "@/lib/printTicket";
 
 interface InventoryItem {
   id: string;
@@ -809,6 +809,21 @@ export default function Ventas() {
                   className="px-4 py-2 bg-gray-800 text-white font-bold rounded-lg hover:bg-gray-700 text-sm"
                 >
                   Imprimir
+                </button>
+              )}
+              {activeOrder.status === 'ocupado' && activeOrder.items.length > 0 && (
+                <button
+                  onClick={() => printTicket({
+                    tableName: tableName(activeTable),
+                    items: activeOrder.items.map(i => ({ name: i.name, quantity: i.quantity })),
+                    date: new Date().toLocaleString('es-PE', {
+                      hour: '2-digit', minute: '2-digit',
+                      day: '2-digit', month: '2-digit', year: 'numeric',
+                    }),
+                  })}
+                  className="px-4 py-2 bg-orange-600 text-white font-bold rounded-lg hover:bg-orange-700 text-sm"
+                >
+                  Cocina
                 </button>
               )}
             </div>

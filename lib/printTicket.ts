@@ -120,18 +120,49 @@ export function printReceipt(data: ReceiptData) {
   buildIframePrint(lines.join('\n'));
 }
 
-export function printReceiptPopup(data: ReceiptData) {
+export function showReceiptPopup(data: ReceiptData) {
   const lines = buildReceiptLines(data);
-  const html = getReceiptHtml(lines.join('\n'));
-  const w = window.open('', '_blank', 'width=400,height=600');
+  const body = lines.join('\n');
+  const html = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Comprobante - MASA</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Courier New', monospace; padding: 16px; max-width: 400px; margin: 0 auto; }
+    pre { font-size: 12px; line-height: 1.3; white-space: pre; }
+    .btn { display: block; width: 100%; padding: 14px; margin: 12px 0; font-size: 18px; font-weight: bold; border: none; border-radius: 8px; cursor: pointer; text-align: center; }
+    .btn-print { background: #2563eb; color: white; }
+    .btn-close { background: #6b7280; color: white; }
+    @media print { .no-print { display: none; } }
+  </style>
+</head>
+<body>
+  <pre>${body}</pre>
+  <button class="btn btn-print no-print" onclick="window.print()">Imprimir</button>
+  <button class="btn btn-close no-print" onclick="window.close()">Cerrar</button>
+</body>
+</html>`;
+  const w = window.open('', '_blank', 'width=400,height=700');
   if (!w) return;
   w.document.write(html);
   w.document.close();
   w.focus();
-  setTimeout(() => { w.print(); setTimeout(() => w.close(), 1000); }, 500);
 }
 
-function buildReceiptLines(data: ReceiptData): string[] {
+export async function shareReceipt(data: ReceiptData) {
+  const lines = buildReceiptLines(data);
+  const text = lines.join('\n');
+  if (navigator.share) {
+    await navigator.share({ title: 'Comprobante - MASA', text });
+  } else {
+    showReceiptPopup(data);
+  }
+}
+
+export function buildReceiptLines(data: ReceiptData): string[] {
   const now = new Date().toLocaleString('es-PE', {
     hour: '2-digit', minute: '2-digit',
     day: '2-digit', month: '2-digit', year: 'numeric',

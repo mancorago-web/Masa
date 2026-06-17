@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { getDb } from "@/lib/firebase";
 import { useAuth } from "@/components/AuthProvider";
-import { printReceipt, printReceiptPopup } from "@/lib/printTicket";
+import { printReceipt, showReceiptPopup, shareReceipt } from "@/lib/printTicket";
 
 interface InventoryItem {
   id: string;
@@ -811,6 +811,17 @@ export default function Ventas() {
                   Imprimir
                 </button>
               )}
+              {activeOrder.status === 'ocupado' && activeOrder.items.length > 0 && typeof navigator !== 'undefined' && 'share' in navigator && (
+                <button
+                  onClick={() => shareReceipt({
+                    tableName: tableName(activeTable),
+                    items: activeOrder.items.map(i => ({ name: i.name, quantity: i.quantity, unitPrice: i.unitPrice })),
+                  })}
+                  className="px-4 py-2 bg-green-700 text-white font-bold rounded-lg hover:bg-green-600 text-sm"
+                >
+                  Compartir
+                </button>
+              )}
             </div>
           </div>
 
@@ -876,11 +887,11 @@ export default function Ventas() {
                   >
                     Pedido {tables[activeTable]?.items?.length > 0 && `(${tables[activeTable].items.reduce((s, i) => s + i.quantity, 0)})`}
                   </button>
-                  <button onClick={() => {
+                  <button onClick={async () => {
                     setShowProductMenu(false);
                     const order = tables[activeTable];
                     if (order?.status === 'ocupado' && order.items.length > 0) {
-                      printReceiptPopup({
+                      await shareReceipt({
                         tableName: tableName(activeTable),
                         items: order.items.map(i => ({ name: i.name, quantity: i.quantity, unitPrice: i.unitPrice })),
                       });

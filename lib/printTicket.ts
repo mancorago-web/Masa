@@ -113,7 +113,7 @@ export async function printTicket(data: TicketData) {
 
 export function printReceipt(data: ReceiptData) {
   const lines = buildReceiptLines(data);
-  printReceiptImage(lines);
+  buildIframePrint(lines.join('\n'));
 }
 
 function buildReceiptLines(data: ReceiptData): string[] {
@@ -158,77 +158,4 @@ function buildReceiptLines(data: ReceiptData): string[] {
   lines.push('');
 
   return lines;
-}
-
-function printReceiptImage(lines: string[]) {
-  const canvas = document.createElement('canvas');
-  const ctx = canvas.getContext('2d');
-  if (!ctx) { buildIframePrint(lines.join('\n')); return; }
-
-  const fontSize = 12;
-  const fontFamily = 'Courier New, Courier, monospace';
-  ctx.font = fontSize + 'px ' + fontFamily;
-  ctx.textBaseline = 'top';
-
-  const charWidth = ctx.measureText('A').width;
-  const lineHeight = fontSize * 1.3;
-  const cols = 32;
-  const width = charWidth * cols + 16;
-  const height = lines.length * lineHeight + 12;
-
-  canvas.width = Math.ceil(width * 2);
-  canvas.height = Math.ceil(height * 2);
-  canvas.style.width = Math.ceil(width) + 'px';
-  canvas.style.height = Math.ceil(height) + 'px';
-
-  ctx.scale(2, 2);
-
-  ctx.fillStyle = '#ffffff';
-  ctx.fillRect(0, 0, width, height);
-  ctx.font = fontSize + 'px ' + fontFamily;
-  ctx.textBaseline = 'top';
-  ctx.fillStyle = '#000000';
-
-  for (let i = 0; i < lines.length; i++) {
-    ctx.fillText(lines[i], 4, 4 + i * lineHeight);
-  }
-
-  const dataUrl = canvas.toDataURL('image/png');
-
-  const html = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Ticket - MASA</title><style>@page{margin:0;size:80mm 297mm;}*{margin:0;padding:0;}body{text-align:center;}img{width:72mm;height:auto;}</style></head><body><img id="ticket" src="' + dataUrl + '" /></body></html>';
-
-  const iframe = document.createElement('iframe');
-  iframe.style.position = 'fixed';
-  iframe.style.left = '-9999px';
-  iframe.style.top = '0';
-  iframe.style.width = '400px';
-  iframe.style.height = '600px';
-  iframe.style.border = 'none';
-  iframe.style.opacity = '0';
-  iframe.style.pointerEvents = 'none';
-  document.body.appendChild(iframe);
-  const doc = iframe.contentWindow?.document;
-  if (!doc) { document.body.removeChild(iframe); return; }
-  doc.open();
-  doc.write(html);
-  doc.close();
-
-  const img = doc.getElementById('ticket') as HTMLImageElement | null;
-  if (img) {
-    img.onload = () => {
-      setTimeout(() => {
-        iframe.contentWindow?.focus();
-        iframe.contentWindow?.print();
-      }, 200);
-    };
-  } else {
-    setTimeout(() => {
-      iframe.contentWindow?.focus();
-      iframe.contentWindow?.print();
-    }, 500);
-  }
-
-  setTimeout(() => {
-    document.body.removeChild(iframe);
-  }, 5000);
 }

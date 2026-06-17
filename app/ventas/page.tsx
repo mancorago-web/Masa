@@ -402,6 +402,10 @@ export default function Ventas() {
     if (!authLoading && !user) router.replace("/login");
   }, [user, authLoading, router]);
 
+  useEffect(() => {
+    if (user?.role === "togo") setActiveTable(TOGO_INDEX);
+  }, [user]);
+
   if (authLoading) return <main className="min-h-screen bg-gray-100 flex items-center justify-center"><p className="text-gray-400">Cargando...</p></main>;
   if (!user) return null;
 
@@ -749,7 +753,9 @@ export default function Ventas() {
 
         {/* Table Tabs */}
         <div className="flex gap-1 md:gap-2 mb-4 overflow-x-auto">
-          {tables.map((t, i) => (
+          {tables.map((t, i) => {
+            if (user?.role === "togo" && i !== TOGO_INDEX) return null;
+            return (
             <button
               key={i}
               onClick={() => setActiveTable(i)}
@@ -757,7 +763,7 @@ export default function Ventas() {
             >
               {tableName(i)} {t.status === 'ocupado' && `(${t.items.reduce((s, it) => s + it.quantity, 0)})`}
             </button>
-          ))}
+          )})}
         </div>
 
         {/* Main Content */}
@@ -766,7 +772,7 @@ export default function Ventas() {
           <div className="flex flex-col md:flex-row md:items-center justify-between mb-4 gap-2">
             <div>
               <h2 className="text-lg md:text-xl font-bold">{tableName(activeTable)}</h2>
-              <p className="text-sm text-gray-500">{activeOrder.status === 'ocupado' ? activeOrder.items.length + ' productos' : activeTable === DELIVERY_INDEX ? 'Delivery' : 'Mesa libre'}</p>
+              <p className="text-sm text-gray-500">{activeOrder.status === 'ocupado' ? activeOrder.items.length + ' productos' : activeTable === DELIVERY_INDEX ? 'Delivery' : activeTable === TOGO_INDEX ? 'To Go' : 'Mesa libre'}</p>
             </div>
             <div className="flex gap-2">
               <button onClick={() => { setShowProductMenu(true); setModalTab('menu'); }} className="px-4 py-2 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 text-sm">

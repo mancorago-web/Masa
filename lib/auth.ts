@@ -1,6 +1,6 @@
 import { getDb } from "./firebase";
 
-export type UserRole = "admin" | "manager" | "waiter" | "kitchen";
+export type UserRole = "admin" | "manager" | "waiter" | "kitchen" | "togo";
 
 export interface AppUser {
   id: string;
@@ -23,6 +23,7 @@ export const ROLE_LABELS: Record<UserRole, string> = {
   manager: "Gerente",
   waiter: "Mesero",
   kitchen: "Cocina",
+  togo: "Mesero 2",
 };
 
 const PAGE_PERMISSIONS: Record<UserRole, string[]> = {
@@ -30,6 +31,7 @@ const PAGE_PERMISSIONS: Record<UserRole, string[]> = {
   manager: ["inventario", "caja", "ventas", "dashboard", "facturas", "planillas"],
   waiter: ["ventas", "facturas"],
   kitchen: ["inventario", "cocina", "caja"],
+  togo: ["ventas"],
 };
 
 export async function hashPassword(password: string): Promise<string> {

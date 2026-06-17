@@ -91,7 +91,7 @@ export default function GestionUsuarios() {
     );
   }
 
-  const roles: UserRole[] = ["admin", "manager", "waiter", "kitchen"];
+  const roles: UserRole[] = ["admin", "manager", "waiter", "kitchen", "togo"];
 
   return (
     <main className="min-h-screen bg-gray-100 p-4">

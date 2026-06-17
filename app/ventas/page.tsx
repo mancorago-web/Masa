@@ -107,7 +107,6 @@ const defaultRecipes: { id: string; category: string; name: string }[] = [
   { id: '12', category: 'PASTAS', name: 'Spaghetti Carbonara' },
   { id: '13', category: 'PASTAS', name: 'Fettuccine Alfredo' },
   { id: '56', category: 'PROMOCIONES', name: 'Lasagna 2x1' },
-  { id: '57', category: 'PROMOCIONES', name: 'Pizza Personal + Bebida' },
 ];
 
 const defaultSubRecipes: { id: string; parentId: string; name: string }[] = [
@@ -236,7 +235,7 @@ const bebidasGroups: MenuItemGroup[] = [
 const nonPizzaPrices: Record<string, number> = {
   'Pan al ajo': 15, 'Bruschetta': 20, 'Crostini misti': 30,
   'Spaghetti Carbonara': 28, 'Fettuccine Alfredo': 28, 'Lasagna Boloñesa': 40, 'Lasagna Vegetariana': 40, 'Berenjena Parmesana': 40,
-  'Lasagna 2x1': 40, 'Pizza Personal + Bebida': 25,
+  'Lasagna 2x1': 50,
 };
 
 const sizeLabels = ['8 Pzas.', '12 Pzas.', '16 Pzas.'];

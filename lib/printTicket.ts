@@ -165,7 +165,7 @@ export function showReceiptPopup(data: ReceiptData) {
 
 export async function shareReceipt(data: ReceiptData) {
   const lines = buildReceiptLines(data);
-  const text = lines.join('\n');
+  const text = '\f' + lines.join('\n');
   if (navigator.share) {
     await navigator.share({ title: 'Comprobante - MASA', text });
   } else {

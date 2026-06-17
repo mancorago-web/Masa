@@ -121,32 +121,83 @@ export function printReceipt(data: ReceiptData) {
 
   let body = '';
   body += '='.repeat(32) + '\n';
-  body += '        MASA PIZZERÍA\n';
+  body += '        MASA PIZZERIA\n';
   body += '      Comprobante de Venta\n';
   body += '='.repeat(32) + '\n';
   body += '\n';
-  body += `Mesa: ${data.tableName}\n`;
-  body += `Fecha: ${now}\n`;
+  body += 'Mesa: ' + data.tableName + '\n';
+  body += 'Fecha: ' + now + '\n';
   body += '\n';
   body += '-'.repeat(32) + '\n';
   body += 'Cant  Producto            Importe\n';
   body += '-'.repeat(32) + '\n';
   for (const item of data.items) {
-    const line = `${item.quantity}x ${item.name}`;
-    const priceStr = `S/${(item.quantity * item.unitPrice).toFixed(2)}`;
+    const line = item.quantity + 'x ' + item.name;
+    const priceStr = 'S/ ' + (item.quantity * item.unitPrice).toFixed(2);
     const padded = line.padEnd(col1, ' ').slice(0, col1);
-    body += `${padded}${priceStr.padStart(col2)}\n`;
+    body += padded + priceStr.padStart(col2) + '\n';
   }
   body += '-'.repeat(32) + '\n';
-  body += `${'SUBTOTAL'.padEnd(col1)}${`S/${subtotal.toFixed(2)}`.padStart(col2)}\n`;
+  body += 'SUBTOTAL'.padEnd(col1) + ('S/ ' + subtotal.toFixed(2)).padStart(col2) + '\n';
   body += '='.repeat(32) + '\n';
   body += '\n';
-  body += `${'Total:'.padEnd(col1)}${`S/${subtotal.toFixed(2)}`.padStart(col2)}\n`;
+  body += 'Total:'.padEnd(col1) + ('S/ ' + subtotal.toFixed(2)).padStart(col2) + '\n';
   body += '\n';
   body += '='.repeat(32) + '\n';
-  body += '  ¡Gracias por su preferencia!\n';
+  body += '  Gracias por su preferencia!\n';
   body += '='.repeat(32) + '\n';
   body += '\n\n\n';
 
   buildIframePrint(body);
+}
+
+export function printReceiptText(data: ReceiptData) {
+  const now = new Date().toLocaleString('es-PE', {
+    hour: '2-digit', minute: '2-digit',
+    day: '2-digit', month: '2-digit', year: 'numeric',
+  });
+
+  const subtotal = data.items.reduce((s, i) => s + i.quantity * i.unitPrice, 0);
+  const col1 = 24;
+  const col2 = 8;
+
+  let text = '';
+  text += '='.repeat(32) + '\n';
+  text += '        MASA PIZZERIA\n';
+  text += '      Comprobante de Venta\n';
+  text += '='.repeat(32) + '\n';
+  text += '\n';
+  text += 'Mesa: ' + data.tableName + '\n';
+  text += 'Fecha: ' + now + '\n';
+  text += '\n';
+  text += '-'.repeat(32) + '\n';
+  text += 'Cant  Producto            Importe\n';
+  text += '-'.repeat(32) + '\n';
+  for (const item of data.items) {
+    const line = item.quantity + 'x ' + item.name;
+    const priceStr = 'S/ ' + (item.quantity * item.unitPrice).toFixed(2);
+    const padded = line.padEnd(col1, ' ').slice(0, col1);
+    text += padded + priceStr.padStart(col2) + '\n';
+  }
+  text += '-'.repeat(32) + '\n';
+  text += 'SUBTOTAL'.padEnd(col1) + ('S/ ' + subtotal.toFixed(2)).padStart(col2) + '\n';
+  text += '='.repeat(32) + '\n';
+  text += '\n';
+  text += 'Total:'.padEnd(col1) + ('S/ ' + subtotal.toFixed(2)).padStart(col2) + '\n';
+  text += '\n';
+  text += '='.repeat(32) + '\n';
+  text += '  Gracias por su preferencia!\n';
+  text += '='.repeat(32) + '\n';
+  text += '\n\n\n';
+
+  const blob = new Blob([text], { type: 'text/plain' });
+  const url = URL.createObjectURL(blob);
+  const w = window.open(url, '_blank');
+  if (!w) {
+    // Fallback: try navigator share
+    if (navigator.share) {
+      navigator.share({ title: 'Ticket MASA', text }).catch(() => {});
+    }
+  }
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
 }

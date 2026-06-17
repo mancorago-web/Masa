@@ -51,9 +51,11 @@ function buildIframePrint(body: string): void {
 </html>`;
 
   const iframe = document.createElement('iframe');
-  iframe.style.position = 'absolute';
-  iframe.style.width = '0';
-  iframe.style.height = '0';
+  iframe.style.position = 'fixed';
+  iframe.style.left = '-9999px';
+  iframe.style.top = '0';
+  iframe.style.width = '400px';
+  iframe.style.height = '600px';
   iframe.style.border = 'none';
   iframe.style.opacity = '0';
   iframe.style.pointerEvents = 'none';
@@ -69,8 +71,8 @@ function buildIframePrint(body: string): void {
     iframe.contentWindow?.print();
     setTimeout(() => {
       document.body.removeChild(iframe);
-    }, 1000);
-  }, 300);
+    }, 2000);
+  }, 500);
 }
 
 export async function printTicket(data: TicketData) {
@@ -193,12 +195,14 @@ function printReceiptImage(lines: string[]) {
 
   const dataUrl = canvas.toDataURL('image/png');
 
-  const html = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Ticket - MASA</title><style>@page{margin:0;size:80mm 297mm;}*{margin:0;padding:0;}body{text-align:center;}img{width:72mm;height:auto;}</style></head><body><img src="' + dataUrl + '" /></body></html>';
+  const html = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Ticket - MASA</title><style>@page{margin:0;size:80mm 297mm;}*{margin:0;padding:0;}body{text-align:center;}img{width:72mm;height:auto;}</style></head><body><img id="ticket" src="' + dataUrl + '" /></body></html>';
 
   const iframe = document.createElement('iframe');
-  iframe.style.position = 'absolute';
-  iframe.style.width = '0';
-  iframe.style.height = '0';
+  iframe.style.position = 'fixed';
+  iframe.style.left = '-9999px';
+  iframe.style.top = '0';
+  iframe.style.width = '400px';
+  iframe.style.height = '600px';
   iframe.style.border = 'none';
   iframe.style.opacity = '0';
   iframe.style.pointerEvents = 'none';
@@ -209,11 +213,22 @@ function printReceiptImage(lines: string[]) {
   doc.write(html);
   doc.close();
 
-  setTimeout(() => {
-    iframe.contentWindow?.focus();
-    iframe.contentWindow?.print();
+  const img = doc.getElementById('ticket') as HTMLImageElement | null;
+  if (img) {
+    img.onload = () => {
+      setTimeout(() => {
+        iframe.contentWindow?.focus();
+        iframe.contentWindow?.print();
+      }, 200);
+    };
+  } else {
     setTimeout(() => {
-      document.body.removeChild(iframe);
-    }, 1000);
-  }, 300);
+      iframe.contentWindow?.focus();
+      iframe.contentWindow?.print();
+    }, 500);
+  }
+
+  setTimeout(() => {
+    document.body.removeChild(iframe);
+  }, 5000);
 }

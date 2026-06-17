@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { getDb } from "@/lib/firebase";
 import { useAuth } from "@/components/AuthProvider";
-import { showReceiptPopup, shareReceipt, printTicket } from "@/lib/printTicket";
+import { showReceiptPopup, shareReceipt, printTicket, shareTicket } from "@/lib/printTicket";
 
 interface InventoryItem {
   id: string;
@@ -813,7 +813,7 @@ export default function Ventas() {
               )}
               {activeOrder.status === 'ocupado' && activeOrder.items.length > 0 && (
                 <button
-                  onClick={() => printTicket({
+                  onClick={() => shareTicket({
                     tableName: tableName(activeTable),
                     items: activeOrder.items.map(i => ({ name: i.name, quantity: i.quantity })),
                     date: new Date().toLocaleString('es-PE', {

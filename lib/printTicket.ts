@@ -163,6 +163,39 @@ export function showReceiptPopup(data: ReceiptData) {
   w.focus();
 }
 
+export async function shareTicket(data: TicketData) {
+  const now = new Date().toLocaleString('es-PE', {
+    hour: '2-digit', minute: '2-digit',
+    day: '2-digit', month: '2-digit', year: 'numeric',
+  });
+
+  let body = '';
+  body += '='.repeat(32) + '\n';
+  body += '         MASA PIZZERÍA\n';
+  body += '         TICKET COCINA\n';
+  body += '='.repeat(32) + '\n';
+  body += '\n';
+  body += `Mesa: ${data.tableName}\n`;
+  if (data.round && data.round > 1) body += `Pedido: #${data.round}\n`;
+  body += '\n';
+  body += '-'.repeat(32) + '\n';
+  for (const item of data.items) {
+    body += `${item.quantity}x ${item.name}\n`;
+  }
+  body += '-'.repeat(32) + '\n';
+  body += '\n';
+  body += `${now}\n`;
+  body += '='.repeat(32) + '\n';
+  body += '\n\n\n';
+
+  const text = '\f' + body;
+  if (navigator.share) {
+    await navigator.share({ title: 'Ticket Cocina - MASA', text });
+  } else {
+    buildIframePrint(body);
+  }
+}
+
 export async function shareReceipt(data: ReceiptData) {
   const lines = buildReceiptLines(data);
   const text = '\f' + lines.join('\n');

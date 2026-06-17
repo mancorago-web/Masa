@@ -36,9 +36,7 @@ export function printTicket(data: TicketData) {
   body += '================================\n';
   body += '\n\n\n';
 
-  const w = window.open('', '_blank', 'width=300,height=600');
-  if (!w) return false;
-  w.document.write(`<!DOCTYPE html>
+  const html = `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
@@ -61,9 +59,27 @@ export function printTicket(data: TicketData) {
   </style>
 </head>
 <body>${body}</body>
-</html>`);
-  w.document.close();
-  w.focus();
-  setTimeout(() => { w.print(); w.close(); }, 500);
-  return true;
+</html>`;
+
+  const iframe = document.createElement('iframe');
+  iframe.style.position = 'absolute';
+  iframe.style.width = '0';
+  iframe.style.height = '0';
+  iframe.style.border = 'none';
+  iframe.style.opacity = '0';
+  iframe.style.pointerEvents = 'none';
+  document.body.appendChild(iframe);
+  const doc = iframe.contentWindow?.document;
+  if (!doc) { document.body.removeChild(iframe); return; }
+  doc.open();
+  doc.write(html);
+  doc.close();
+
+  setTimeout(() => {
+    iframe.contentWindow?.focus();
+    iframe.contentWindow?.print();
+    setTimeout(() => {
+      document.body.removeChild(iframe);
+    }, 1000);
+  }, 300);
 }

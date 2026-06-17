@@ -603,22 +603,6 @@ export default function Cocina() {
                           Toca cada plato al terminarlo
                         </p>
                       )}
-                      <div className="flex justify-center mt-3">
-                        <button
-                          onClick={() => printTicket({
-                            tableName: tableName(table.tableNumber),
-                            round: table.round,
-                            items: table.items,
-                            date: new Date().toLocaleString('es-PE', {
-                              hour: '2-digit', minute: '2-digit',
-                              day: '2-digit', month: '2-digit',
-                            }),
-                          })}
-                          className="px-4 py-2 bg-gray-800 text-white text-sm font-semibold rounded-lg hover:bg-gray-700 transition"
-                        >
-                          🖨 Imprimir Ticket
-                        </button>
-                      </div>
                     </div>
                   )}
                 </div>

@@ -31,23 +31,23 @@ function buildIframePrint(body: string): void {
   <title>Ticket - MASA</title>
   <style>
     @page { margin: 0; size: 80mm 297mm; }
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
+    * { margin: 0; padding: 0; }
+    pre {
       font-family: 'Courier New', Courier, monospace;
-      font-size: 12px;
+      font-size: 10px;
+      line-height: 1.15;
       width: 72mm;
       margin: 0 auto;
-      padding: 6px 3px;
-      white-space: pre-wrap;
-      line-height: 1.3;
+      padding: 4px 2px;
+      white-space: pre;
     }
     @media print {
-      body { width: 72mm; }
+      pre { width: 72mm; }
       @page { margin: 0; size: 80mm 297mm; }
     }
   </style>
 </head>
-<body>${body}</body>
+<body><pre>${body}</pre></body>
 </html>`;
 
   const iframe = document.createElement('iframe');

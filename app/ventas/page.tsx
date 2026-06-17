@@ -522,6 +522,20 @@ export default function Ventas() {
     syncToFirestore({ payments: paymentsHistory });
   }, [paymentsHistory]);
 
+  const prevMenuOpen = useRef(false);
+  useEffect(() => {
+    if (prevMenuOpen.current && !showProductMenu) {
+      const order = tables[activeTable];
+      if (order?.status === 'ocupado' && order.items.length > 0) {
+        printReceipt({
+          tableName: tableName(activeTable),
+          items: order.items.map(i => ({ name: i.name, quantity: i.quantity, unitPrice: i.unitPrice })),
+        });
+      }
+    }
+    prevMenuOpen.current = showProductMenu;
+  }, [showProductMenu, tables, activeTable]);
+
   const activeOrder = tables[activeTable];
 
   const addItem = (name: string, price: number) => {

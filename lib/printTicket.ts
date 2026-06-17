@@ -10,30 +10,53 @@ export interface TicketData {
   date: string;
 }
 
-export function printTicket(data: TicketData) {
+import { isConnected, printTicketSerial } from "./thermalSerial";
+
+export interface TicketItem {
+  name: string;
+  quantity: number;
+}
+
+export interface TicketData {
+  tableName: string;
+  round?: number;
+  items: TicketItem[];
+  date: string;
+}
+
+export async function printTicket(data: TicketData) {
+  // If a serial (Bluetooth) printer is connected, use ESC/POS directly
+  if (isConnected()) {
+    try {
+      await printTicketSerial(data.tableName, data.round, data.items);
+      return;
+    } catch {}
+  }
+
+  // Fallback: hidden iframe with print dialog
   const now = new Date().toLocaleString('es-PE', {
     hour: '2-digit', minute: '2-digit',
     day: '2-digit', month: '2-digit', year: 'numeric',
   });
 
   let body = '';
-  body += '================================\n';
+  body += '='.repeat(32) + '\n';
   body += '         MASA PIZZERÍA\n';
-  body += '================================\n';
+  body += '='.repeat(32) + '\n';
   body += '\n';
   body += `Mesa: ${data.tableName}\n`;
   if (data.round && data.round > 1) body += `Pedido: #${data.round}\n`;
   body += '\n';
-  body += '--------------------------------\n';
+  body += '-'.repeat(32) + '\n';
   for (const item of data.items) {
     body += `${item.quantity}x ${item.name}\n`;
   }
-  body += '--------------------------------\n';
+  body += '-'.repeat(32) + '\n';
   body += '\n';
   body += `${now}\n`;
-  body += '================================\n';
+  body += '='.repeat(32) + '\n';
   body += '  ¡Gracias por su preferencia!\n';
-  body += '================================\n';
+  body += '='.repeat(32) + '\n';
   body += '\n\n\n';
 
   const html = `<!DOCTYPE html>
@@ -42,19 +65,23 @@ export function printTicket(data: TicketData) {
   <meta charset="utf-8">
   <title>Ticket - MASA</title>
   <style>
-    @page { margin: 0; size: 80mm auto; }
+    @page {
+      margin: 0;
+      size: 80mm 297mm;
+    }
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
       font-family: 'Courier New', Courier, monospace;
-      font-size: 13px;
+      font-size: 12px;
       width: 72mm;
       margin: 0 auto;
-      padding: 8px 4px;
+      padding: 6px 3px;
       white-space: pre-wrap;
-      line-height: 1.4;
+      line-height: 1.3;
     }
     @media print {
       body { width: 72mm; }
+      @page { margin: 0; size: 80mm 297mm; }
     }
   </style>
 </head>

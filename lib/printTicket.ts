@@ -122,7 +122,8 @@ export function printReceipt(data: ReceiptData) {
 
 export function showReceiptPopup(data: ReceiptData) {
   const lines = buildReceiptLines(data);
-  const body = lines.join('\n');
+  const text = lines.join('\n');
+  const encoded = encodeURIComponent(text);
   const html = `<!DOCTYPE html>
 <html>
 <head>
@@ -133,16 +134,26 @@ export function showReceiptPopup(data: ReceiptData) {
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: 'Courier New', monospace; padding: 16px; max-width: 400px; margin: 0 auto; }
     pre { font-size: 12px; line-height: 1.3; white-space: pre; }
-    .btn { display: block; width: 100%; padding: 14px; margin: 12px 0; font-size: 18px; font-weight: bold; border: none; border-radius: 8px; cursor: pointer; text-align: center; }
-    .btn-print { background: #2563eb; color: white; }
+    .btn { display: block; width: 100%; padding: 14px; margin: 12px 0; font-size: 18px; border: none; border-radius: 8px; cursor: pointer; text-align: center; font-weight: bold; }
+    .btn-share { background: #2563eb; color: white; }
     .btn-close { background: #6b7280; color: white; }
-    @media print { .no-print { display: none; } }
   </style>
 </head>
 <body>
-  <pre>${body}</pre>
-  <button class="btn btn-print no-print" onclick="window.print()">Imprimir</button>
-  <button class="btn btn-close no-print" onclick="window.close()">Cerrar</button>
+  <pre>${text}</pre>
+  <button class="btn btn-share" id="shareBtn">Compartir en ESC POS</button>
+  <button class="btn btn-close" onclick="window.close()">Cerrar</button>
+  <script>
+    document.getElementById('shareBtn').onclick = async function() {
+      try {
+        if (navigator.share) {
+          await navigator.share({ title: 'Comprobante - MASA', text: decodeURIComponent('${encoded}') });
+        } else {
+          alert('Compartir no disponible en este navegador. Use el boton Cerrar.');
+        }
+      } catch(e) { if (e.name !== 'AbortError') alert('Error al compartir'); }
+    };
+  </script>
 </body>
 </html>`;
   const w = window.open('', '_blank', 'width=400,height=700');

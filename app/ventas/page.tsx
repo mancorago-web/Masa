@@ -802,24 +802,13 @@ export default function Ventas() {
               )}
               {activeOrder.status === 'ocupado' && activeOrder.items.length > 0 && (
                 <button
-                  onClick={() => showReceiptPopup({
+                  onClick={() => shareReceipt({
                     tableName: tableName(activeTable),
                     items: activeOrder.items.map(i => ({ name: i.name, quantity: i.quantity, unitPrice: i.unitPrice })),
                   })}
                   className="px-4 py-2 bg-gray-800 text-white font-bold rounded-lg hover:bg-gray-700 text-sm"
                 >
                   Imprimir
-                </button>
-              )}
-              {activeOrder.status === 'ocupado' && activeOrder.items.length > 0 && typeof navigator !== 'undefined' && 'share' in navigator && (
-                <button
-                  onClick={() => shareReceipt({
-                    tableName: tableName(activeTable),
-                    items: activeOrder.items.map(i => ({ name: i.name, quantity: i.quantity, unitPrice: i.unitPrice })),
-                  })}
-                  className="px-4 py-2 bg-green-700 text-white font-bold rounded-lg hover:bg-green-600 text-sm"
-                >
-                  Compartir
                 </button>
               )}
             </div>

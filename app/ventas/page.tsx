@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { getDb } from "@/lib/firebase";
 import { useAuth } from "@/components/AuthProvider";
-import { printReceipt, showReceiptPopup, shareReceipt } from "@/lib/printTicket";
+import { showReceiptPopup, shareReceipt } from "@/lib/printTicket";
 
 interface InventoryItem {
   id: string;
@@ -527,7 +527,7 @@ export default function Ventas() {
     if (prevMenuOpen.current && !showProductMenu) {
       const order = tables[activeTable];
       if (order?.status === 'ocupado' && order.items.length > 0) {
-        printReceipt({
+        showReceiptPopup({
           tableName: tableName(activeTable),
           items: order.items.map(i => ({ name: i.name, quantity: i.quantity, unitPrice: i.unitPrice })),
         });
@@ -802,7 +802,7 @@ export default function Ventas() {
               )}
               {activeOrder.status === 'ocupado' && activeOrder.items.length > 0 && (
                 <button
-                  onClick={() => printReceipt({
+                  onClick={() => showReceiptPopup({
                     tableName: tableName(activeTable),
                     items: activeOrder.items.map(i => ({ name: i.name, quantity: i.quantity, unitPrice: i.unitPrice })),
                   })}

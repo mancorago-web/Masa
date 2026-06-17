@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { getDb } from "@/lib/firebase";
 import { useAuth } from "@/components/AuthProvider";
+import { printTicket } from "@/lib/printTicket";
 
 interface KitchenItem {
   id: string;
@@ -208,8 +209,9 @@ export default function Cocina() {
                 hasNew = true;
                 const tableNum = i + 1;
 
+                let roundNumber: number;
+
                 if (isNewRound) {
-                  // Find highest existing round for this table
                   const existingRounds = updated
                     .filter((t) => t.tableNumber === tableNum)
                     .map((t) => t.round || 1);
@@ -217,6 +219,7 @@ export default function Cocina() {
                     existingRounds.length > 0
                       ? Math.max(...existingRounds) + 1
                       : 1;
+                  roundNumber = newRound;
                   updated.push({
                     id: `${tableNum}-${newRound}-${Date.now()}`,
                     tableNumber: tableNum,
@@ -225,15 +228,15 @@ export default function Cocina() {
                     updatedAt: now,
                   });
                 } else {
-                  // Append to the latest round for this table
                   const existing = updated
                     .filter((t) => t.tableNumber === tableNum)
                     .sort((a, b) => (b.round || 1) - (a.round || 1))[0];
                   if (existing) {
+                    roundNumber = existing.round;
                     existing.items.push(...newItems);
                     existing.updatedAt = now;
                   } else {
-                    // No existing entry — create one
+                    roundNumber = 1;
                     updated.push({
                       id: `${tableNum}-1-${Date.now()}`,
                       tableNumber: tableNum,
@@ -249,6 +252,18 @@ export default function Cocina() {
                     .map((it) => `${it.name} x${it.quantity}`)
                     .join(", ")}`
                 );
+
+                setTimeout(() => {
+                  printTicket({
+                    tableName: tableName(tableNum),
+                    round: roundNumber,
+                    items: newItems,
+                    date: new Date().toLocaleString('es-PE', {
+                      hour: '2-digit', minute: '2-digit',
+                      day: '2-digit', month: '2-digit',
+                    }),
+                  });
+                }, 300);
               }
             }
 
@@ -588,6 +603,22 @@ export default function Cocina() {
                           Toca cada plato al terminarlo
                         </p>
                       )}
+                      <div className="flex justify-center mt-3">
+                        <button
+                          onClick={() => printTicket({
+                            tableName: tableName(table.tableNumber),
+                            round: table.round,
+                            items: table.items,
+                            date: new Date().toLocaleString('es-PE', {
+                              hour: '2-digit', minute: '2-digit',
+                              day: '2-digit', month: '2-digit',
+                            }),
+                          })}
+                          className="px-4 py-2 bg-gray-800 text-white text-sm font-semibold rounded-lg hover:bg-gray-700 transition"
+                        >
+                          🖨 Imprimir Ticket
+                        </button>
+                      </div>
                     </div>
                   )}
                 </div>

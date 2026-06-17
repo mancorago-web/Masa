@@ -5,8 +5,6 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { getDb } from "@/lib/firebase";
 import { useAuth } from "@/components/AuthProvider";
-import { printTicket } from "@/lib/printTicket";
-import { isSerialSupported, connectSerial, isConnected, disconnectSerial } from "@/lib/thermalSerial";
 
 interface KitchenItem {
   id: string;
@@ -88,7 +86,6 @@ export default function Cocina() {
   const [tables, setTables] = useState<KitchenTable[]>([]);
   const [notifications, setNotifications] = useState<{ id: number; text: string }[]>([]);
   const [showHistory, setShowHistory] = useState(false);
-  const [printerConnected, setPrinterConnected] = useState(false);
   const [historyDate, setHistoryDate] = useState('');
   const [historyFromFirestore, setHistoryFromFirestore] = useState<Record<string, KitchenTable[]>>({});
   const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set());
@@ -254,18 +251,6 @@ export default function Cocina() {
                     .map((it) => `${it.name} x${it.quantity}`)
                     .join(", ")}`
                 );
-
-                setTimeout(() => {
-                  printTicket({
-                    tableName: tableName(tableNum),
-                    round: roundNumber,
-                    items: newItems,
-                    date: new Date().toLocaleString('es-PE', {
-                      hour: '2-digit', minute: '2-digit',
-                      day: '2-digit', month: '2-digit',
-                    }),
-                  });
-                }, 300);
               }
             }
 
@@ -471,27 +456,6 @@ export default function Cocina() {
           >
             Historial
           </button>
-          {isSerialSupported() && (
-            <button
-              onClick={async () => {
-                if (isConnected()) {
-                  await disconnectSerial();
-                  setPrinterConnected(false);
-                } else {
-                  const ok = await connectSerial();
-                  setPrinterConnected(ok);
-                }
-              }}
-              className={`text-sm px-3 py-1 rounded font-semibold ${
-                printerConnected
-                  ? 'bg-green-600 text-white hover:bg-green-700'
-                  : 'bg-gray-600 text-white hover:bg-gray-700'
-              }`}
-              title={printerConnected ? 'Desconectar impresora' : 'Conectar impresora Bluetooth'}
-            >
-              {printerConnected ? '🖨 Conectado' : '🖨 Conectar'}
-            </button>
-          )}
         </div>
       </header>
 

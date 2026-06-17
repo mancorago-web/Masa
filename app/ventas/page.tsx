@@ -106,8 +106,6 @@ const defaultRecipes: { id: string; category: string; name: string }[] = [
   { id: '39', category: 'PASTAS RELLENAS', name: 'Berenjena Parmesana' },
   { id: '12', category: 'PASTAS', name: 'Spaghetti Carbonara' },
   { id: '13', category: 'PASTAS', name: 'Fettuccine Alfredo' },
-  { id: '54', category: 'PROMOCIONES', name: 'Pizza 2x1 (8 Pzas.)' },
-  { id: '55', category: 'PROMOCIONES', name: 'Pizza 2x1 (12 Pzas.)' },
   { id: '56', category: 'PROMOCIONES', name: 'Lasagna 2x1' },
   { id: '57', category: 'PROMOCIONES', name: 'Pizza Personal + Bebida' },
 ];
@@ -238,7 +236,7 @@ const bebidasGroups: MenuItemGroup[] = [
 const nonPizzaPrices: Record<string, number> = {
   'Pan al ajo': 15, 'Bruschetta': 20, 'Crostini misti': 30,
   'Spaghetti Carbonara': 28, 'Fettuccine Alfredo': 28, 'Lasagna Boloñesa': 40, 'Lasagna Vegetariana': 40, 'Berenjena Parmesana': 40,
-  'Pizza 2x1 (8 Pzas.)': 40, 'Pizza 2x1 (12 Pzas.)': 55, 'Lasagna 2x1': 40, 'Pizza Personal + Bebida': 25,
+  'Lasagna 2x1': 40, 'Pizza Personal + Bebida': 25,
 };
 
 const sizeLabels = ['8 Pzas.', '12 Pzas.', '16 Pzas.'];
@@ -326,6 +324,25 @@ function buildMenu(recipes: { id: string; category: string; name: string }[], su
         }
       }
       categories.push({ name: displayName, type: 'pizza', items: [], pizzas });
+    } else if (catName === 'PROMOCIONES') {
+      // Build promotions as grouped category with dynamic pizza 2x1 sub-group
+      const groups: MenuItemGroup[] = [];
+      // Pizzas 2x1: all PIZZAS CLÁSICAS at 8 Pzas. price
+      const classicRecipes = recipes.filter(r => r.category === 'PIZZAS CLÁSICAS');
+      const pizzaItems: MenuItem[] = [];
+      for (const recipe of classicRecipes) {
+        const price = pizzaPrices[recipe.name]?.['8 Pzas.'];
+        if (price) pizzaItems.push({ name: `${recipe.name} 2x1 (8 Pzas.)`, price });
+      }
+      if (pizzaItems.length > 0) groups.push({ name: 'Pizzas 2x1 (8 Pzas.)', items: pizzaItems });
+      // Other promotions from PROMOCIONES recipes
+      const otherItems: MenuItem[] = [];
+      for (const recipe of catRecipes) {
+        const price = nonPizzaPrices[recipe.name];
+        if (price) otherItems.push({ name: recipe.name, price });
+      }
+      if (otherItems.length > 0) groups.push({ name: 'Ofertas', items: otherItems });
+      if (groups.length > 0) categories.push({ name: 'Promociones', type: 'grouped', items: [], pizzas: [], groups });
     } else {
       const items: MenuItem[] = [];
       const seen = new Set<string>();

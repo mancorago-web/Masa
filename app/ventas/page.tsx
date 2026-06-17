@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { getDb } from "@/lib/firebase";
 import { useAuth } from "@/components/AuthProvider";
+import { printReceipt } from "@/lib/printTicket";
 
 interface InventoryItem {
   id: string;
@@ -783,6 +784,17 @@ export default function Ventas() {
               {activeOrder.status === 'ocupado' && (
                 <button onClick={openPayment} className="px-4 py-2 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 text-sm">
                   Cobrar
+                </button>
+              )}
+              {activeOrder.status === 'ocupado' && activeOrder.items.length > 0 && (
+                <button
+                  onClick={() => printReceipt({
+                    tableName: tableName(activeTable),
+                    items: activeOrder.items.map(i => ({ name: i.name, quantity: i.quantity, unitPrice: i.unitPrice })),
+                  })}
+                  className="px-4 py-2 bg-gray-800 text-white font-bold rounded-lg hover:bg-gray-700 text-sm"
+                >
+                  Imprimir
                 </button>
               )}
             </div>

@@ -1,15 +1,3 @@
-export interface TicketItem {
-  name: string;
-  quantity: number;
-}
-
-export interface TicketData {
-  tableName: string;
-  round?: number;
-  items: TicketItem[];
-  date: string;
-}
-
 import { isConnected, printTicketSerial } from "./thermalSerial";
 
 export interface TicketItem {
@@ -24,51 +12,25 @@ export interface TicketData {
   date: string;
 }
 
-export async function printTicket(data: TicketData) {
-  // If a serial (Bluetooth) printer is connected, use ESC/POS directly
-  if (isConnected()) {
-    try {
-      await printTicketSerial(data.tableName, data.round, data.items);
-      return;
-    } catch {}
-  }
+export interface ReceiptItem {
+  name: string;
+  quantity: number;
+  unitPrice: number;
+}
 
-  // Fallback: hidden iframe with print dialog
-  const now = new Date().toLocaleString('es-PE', {
-    hour: '2-digit', minute: '2-digit',
-    day: '2-digit', month: '2-digit', year: 'numeric',
-  });
+export interface ReceiptData {
+  tableName: string;
+  items: ReceiptItem[];
+}
 
-  let body = '';
-  body += '='.repeat(32) + '\n';
-  body += '         MASA PIZZERÍA\n';
-  body += '='.repeat(32) + '\n';
-  body += '\n';
-  body += `Mesa: ${data.tableName}\n`;
-  if (data.round && data.round > 1) body += `Pedido: #${data.round}\n`;
-  body += '\n';
-  body += '-'.repeat(32) + '\n';
-  for (const item of data.items) {
-    body += `${item.quantity}x ${item.name}\n`;
-  }
-  body += '-'.repeat(32) + '\n';
-  body += '\n';
-  body += `${now}\n`;
-  body += '='.repeat(32) + '\n';
-  body += '  ¡Gracias por su preferencia!\n';
-  body += '='.repeat(32) + '\n';
-  body += '\n\n\n';
-
+function buildIframePrint(body: string): void {
   const html = `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
   <title>Ticket - MASA</title>
   <style>
-    @page {
-      margin: 0;
-      size: 80mm 297mm;
-    }
+    @page { margin: 0; size: 80mm 297mm; }
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
       font-family: 'Courier New', Courier, monospace;
@@ -109,4 +71,82 @@ export async function printTicket(data: TicketData) {
       document.body.removeChild(iframe);
     }, 1000);
   }, 300);
+}
+
+export async function printTicket(data: TicketData) {
+  if (isConnected()) {
+    try {
+      await printTicketSerial(data.tableName, data.round, data.items);
+      return;
+    } catch {}
+  }
+
+  const now = new Date().toLocaleString('es-PE', {
+    hour: '2-digit', minute: '2-digit',
+    day: '2-digit', month: '2-digit', year: 'numeric',
+  });
+
+  let body = '';
+  body += '='.repeat(32) + '\n';
+  body += '         MASA PIZZERÍA\n';
+  body += '='.repeat(32) + '\n';
+  body += '\n';
+  body += `Mesa: ${data.tableName}\n`;
+  if (data.round && data.round > 1) body += `Pedido: #${data.round}\n`;
+  body += '\n';
+  body += '-'.repeat(32) + '\n';
+  for (const item of data.items) {
+    body += `${item.quantity}x ${item.name}\n`;
+  }
+  body += '-'.repeat(32) + '\n';
+  body += '\n';
+  body += `${now}\n`;
+  body += '='.repeat(32) + '\n';
+  body += '  ¡Gracias por su preferencia!\n';
+  body += '='.repeat(32) + '\n';
+  body += '\n\n\n';
+
+  buildIframePrint(body);
+}
+
+export function printReceipt(data: ReceiptData) {
+  const now = new Date().toLocaleString('es-PE', {
+    hour: '2-digit', minute: '2-digit',
+    day: '2-digit', month: '2-digit', year: 'numeric',
+  });
+
+  const subtotal = data.items.reduce((s, i) => s + i.quantity * i.unitPrice, 0);
+  const col1 = 24;
+  const col2 = 8;
+
+  let body = '';
+  body += '='.repeat(32) + '\n';
+  body += '        MASA PIZZERÍA\n';
+  body += '      Comprobante de Venta\n';
+  body += '='.repeat(32) + '\n';
+  body += '\n';
+  body += `Mesa: ${data.tableName}\n`;
+  body += `Fecha: ${now}\n`;
+  body += '\n';
+  body += '-'.repeat(32) + '\n';
+  body += 'Cant  Producto            Importe\n';
+  body += '-'.repeat(32) + '\n';
+  for (const item of data.items) {
+    const line = `${item.quantity}x ${item.name}`;
+    const priceStr = `S/${(item.quantity * item.unitPrice).toFixed(2)}`;
+    const padded = line.padEnd(col1, ' ').slice(0, col1);
+    body += `${padded}${priceStr.padStart(col2)}\n`;
+  }
+  body += '-'.repeat(32) + '\n';
+  body += `${'SUBTOTAL'.padEnd(col1)}${`S/${subtotal.toFixed(2)}`.padStart(col2)}\n`;
+  body += '='.repeat(32) + '\n';
+  body += '\n';
+  body += `${'Total:'.padEnd(col1)}${`S/${subtotal.toFixed(2)}`.padStart(col2)}\n`;
+  body += '\n';
+  body += '='.repeat(32) + '\n';
+  body += '  ¡Gracias por su preferencia!\n';
+  body += '='.repeat(32) + '\n';
+  body += '\n\n\n';
+
+  buildIframePrint(body);
 }

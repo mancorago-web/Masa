@@ -38,7 +38,11 @@ const STORAGE_KEY = "masa-kitchen-tables";
 const FIRESTORE_DOC = "config";
 const FIRESTORE_FIELD = "cocina";
 const DELIVERY_NUMBER = 10;
-const tableName = (n: number) => n === DELIVERY_NUMBER ? 'DELIVERY' : `Mesa ${n}`;
+const TOGO_NUMBER = 11;
+const tableName = (n: number) =>
+  n === DELIVERY_NUMBER ? 'DELIVERY' :
+  n === TOGO_NUMBER ? 'TO GO' :
+  `Mesa ${n}`;
 
 function loadTables(): KitchenTable[] {
   if (typeof window === "undefined") return [];
@@ -577,7 +581,7 @@ export default function Cocina() {
                       {/* Table status */}
                       {allDone ? (
                         <p className="text-center text-green-600 text-sm font-semibold mt-3">
-                          {table.tableNumber === DELIVERY_NUMBER ? "✅ Delivery listo" : "✅ Mesa completa"}
+                          {table.tableNumber === DELIVERY_NUMBER ? "✅ Delivery listo" : table.tableNumber === TOGO_NUMBER ? "✅ To Go listo" : "✅ Mesa completa"}
                         </p>
                       ) : (
                         <p className="text-center text-gray-400 text-xs mt-3">

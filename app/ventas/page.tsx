@@ -240,13 +240,17 @@ const nonPizzaPrices: Record<string, number> = {
 
 const sizeLabels = ['8 Pzas.', '12 Pzas.', '16 Pzas.'];
 
-const initialTables: TableOrder[] = Array.from({ length: 10 }, () => ({
+const initialTables: TableOrder[] = Array.from({ length: 11 }, () => ({
   items: [],
   status: 'libre',
   customerName: '',
 }));
 const DELIVERY_INDEX = 9;
-const tableName = (i: number) => i === DELIVERY_INDEX ? 'DELIVERY' : `Mesa ${i + 1}`;
+const TOGO_INDEX = 10;
+const tableName = (i: number) =>
+  i === DELIVERY_INDEX ? 'DELIVERY' :
+  i === TOGO_INDEX ? 'TO GO' :
+  `Mesa ${i + 1}`;
 
 function nowStr() {
   const d = new Date();
@@ -362,9 +366,9 @@ export default function Ventas() {
   const { user, loading: authLoading } = useAuth();
   const [tables, setTables] = useState<TableOrder[]>(() => {
     const stored = loadFromStorage<TableOrder[]>(STORAGE_KEY, initialTables);
-    if (stored.length < 10) {
+    if (stored.length < 11) {
       const padded = [...stored];
-      while (padded.length < 10) padded.push({ items: [], status: 'libre', customerName: '' });
+      while (padded.length < 11) padded.push({ items: [], status: 'libre', customerName: '' });
       return padded;
     }
     return stored;
@@ -428,7 +432,7 @@ export default function Ventas() {
         .onSnapshot((snap: any) => {
           if (!snap.exists) return;
           const data = snap.data();
-          if (data.tables && Array.isArray(data.tables) && data.tables.length >= 10) {
+          if (data.tables && Array.isArray(data.tables) && data.tables.length >= 11) {
             setTables(prev => {
               const incoming = JSON.stringify(data.tables);
               const current = JSON.stringify(prev);

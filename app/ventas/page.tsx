@@ -398,6 +398,7 @@ export default function Ventas() {
   const [recipeIngredients, setRecipeIngredients] = useState<Record<string, RecipeIngredient[]>>({});
   const [subIngredients, setSubIngredients] = useState<Record<string, RecipeIngredient[]>>({});
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
+  const tablesWriteRef = useRef<Promise<void> | null>(null);
 
   useEffect(() => {
     if (!authLoading && !user) router.replace("/login");
@@ -440,6 +441,7 @@ export default function Ventas() {
           const data = snap.data();
           if (data.tables && Array.isArray(data.tables) && data.tables.length >= 11) {
             setTables(prev => {
+              if (tablesWriteRef.current) return prev;
               const incoming = JSON.stringify(data.tables);
               const current = JSON.stringify(prev);
               return incoming === current ? prev : data.tables;
@@ -512,7 +514,9 @@ export default function Ventas() {
 
   useEffect(() => {
     saveToStorage(STORAGE_KEY, tables);
-    syncToFirestore({ tables });
+    const write = syncToFirestore({ tables });
+    tablesWriteRef.current = write;
+    write.then(() => { tablesWriteRef.current = null; }).catch(() => { tablesWriteRef.current = null; });
   }, [tables]);
 
   const isFirstPaymentSync = useRef(true);

@@ -290,8 +290,13 @@ async function syncToFirestore(data: Record<string, unknown>, retries = 3) {
     try {
       await db.collection('config').doc('ventas').set(cleaned, { merge: true });
       return;
-    } catch (e) {
+    } catch (e: any) {
       console.error(`Firestore sync error (intento ${attempt}/${retries}):`, e);
+      if (e?.code === 'permission-denied') {
+        // Show visible error - user needs to re-login
+        const evt = new CustomEvent('masa-sync-error', { detail: 'Error de permisos: cierra sesión y vuelve a iniciarla' });
+        globalThis.dispatchEvent(evt);
+      }
       if (attempt < retries) await new Promise(r => setTimeout(r, 1000 * attempt));
     }
   }
@@ -396,6 +401,7 @@ export default function Ventas() {
   const [showHistory, setShowHistory] = useState(false);
   const [historyDate, setHistoryDate] = useState('');
   const [syncedMessage, setSyncedMessage] = useState('');
+  const [syncError, setSyncError] = useState('');
   const [paymentsHistory, setPaymentsHistory] = useState<PaymentData[]>(() => loadFromStorage(PAYMENTS_KEY, []));
   const [recipes, setRecipes] = useState(defaultRecipes);
   const [subRecipes, setSubRecipes] = useState(defaultSubRecipes);
@@ -524,6 +530,17 @@ export default function Ventas() {
         syncToFirestore({ payments: merged });
       }
     })();
+  }, []);
+
+  // Listen for sync errors
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      setSyncError(detail);
+      setTimeout(() => setSyncError(''), 8000);
+    };
+    globalThis.addEventListener('masa-sync-error', handler);
+    return () => globalThis.removeEventListener('masa-sync-error', handler);
   }, []);
 
   useEffect(() => {
@@ -787,6 +804,11 @@ export default function Ventas() {
         {syncedMessage && (
           <div className="mb-2 text-sm text-green-700 bg-green-100 border border-green-200 rounded px-3 py-1.5 text-center">
             {syncedMessage}
+          </div>
+        )}
+        {syncError && (
+          <div className="mb-2 text-sm text-red-700 bg-red-100 border border-red-200 rounded px-3 py-1.5 text-center font-semibold">
+            ⚠ {syncError}
           </div>
         )}
 

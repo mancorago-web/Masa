@@ -91,7 +91,6 @@ export default function Cocina() {
   const [historyFromFirestore, setHistoryFromFirestore] = useState<Record<string, KitchenTable[]>>({});
   const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set());
   const prevTablesRef = useRef<string>("");
-  const firstLoad = useRef(true);
   const notifId = useRef(0);
   const tablesRef = useRef<KitchenTable[]>([]);
   tablesRef.current = tables;
@@ -147,125 +146,77 @@ export default function Cocina() {
 
         const currentStr = JSON.stringify(data.tables);
         if (currentStr === prevTablesRef.current) return;
-        const prevStr = prevTablesRef.current;
         prevTablesRef.current = currentStr;
 
-        if (firstLoad.current) {
-          firstLoad.current = false;
-          return;
-        }
-        if (!prevStr) return;
-
         try {
-          const prevTables: TableOrder[] = JSON.parse(prevStr);
           const curTables: TableOrder[] = data.tables;
           const now = new Date().toISOString();
-          let hasNew = false;
 
           setTables((prev) => {
-            const updated = [...prev];
+            const updated = prev.map((t) => ({ ...t, items: [...t.items] }));
+            let hasNew = false;
             const notifs: string[] = [];
 
             for (let i = 0; i < curTables.length; i++) {
-              const prevStatus = prevTables[i]?.status;
-              const curStatus = curTables[i].status;
-              const prevTotal =
-                prevTables[i]?.items.reduce((s, it) => s + it.quantity, 0) || 0;
-              const curTotal = curTables[i].items.reduce(
-                (s, it) => s + it.quantity,
-                0
-              );
+              if (curTables[i].status !== "ocupado") continue;
+              const tableNum = i + 1;
 
-              // Skip if no change or table is not occupied
-              if (curTotal <= prevTotal || curStatus !== "ocupado")
-                continue;
+              // Collect existing item IDs already in kitchen view for this table
+              const existingIds = new Set<string>();
+              for (const kt of updated) {
+                if (kt.tableNumber === tableNum) {
+                  for (const ki of kt.items) existingIds.add(ki.id);
+                }
+              }
 
-              // Detect if this is a new round (table was libre → now ocupado)
-              const isNewRound = prevStatus === "libre" || !prevTables[i];
-
+              // Find items in Ventas not yet in kitchen view
               const newItems: KitchenItem[] = [];
-              for (const cur of curTables[i].items) {
-                const prev = prevTables[i]?.items.find(
-                  (p) => p.id === cur.id
-                );
-                if (!prev) {
+              for (const item of curTables[i].items) {
+                if (!existingIds.has(item.id)) {
                   newItems.push({
-                    id: cur.id,
-                    name: cur.name,
-                    quantity: cur.quantity,
+                    id: item.id,
+                    name: item.name,
+                    quantity: item.quantity,
                     completed: false,
-                    createdByName: (cur as any).createdByName,
-                  });
-                } else if (cur.quantity > prev.quantity) {
-                  newItems.push({
-                    id: `${cur.id}-${Math.random().toString(36).slice(2, 4)}`,
-                    name: cur.name,
-                    quantity: cur.quantity - prev.quantity,
-                    completed: false,
-                    createdByName: (cur as any).createdByName,
+                    createdByName: (item as any).createdByName,
                   });
                 }
               }
 
-              if (newItems.length > 0) {
-                hasNew = true;
-                const tableNum = i + 1;
+              if (newItems.length === 0) continue;
+              hasNew = true;
 
-                let roundNumber: number;
-
-                if (isNewRound) {
-                  const existingRounds = updated
-                    .filter((t) => t.tableNumber === tableNum)
-                    .map((t) => t.round || 1);
-                  const newRound =
-                    existingRounds.length > 0
-                      ? Math.max(...existingRounds) + 1
-                      : 1;
-                  roundNumber = newRound;
-                  updated.push({
-                    id: `${tableNum}-${newRound}-${Date.now()}`,
-                    tableNumber: tableNum,
-                    round: newRound,
-                    items: newItems,
-                    updatedAt: now,
-                  });
-                } else {
-                  const existing = updated
-                    .filter((t) => t.tableNumber === tableNum)
-                    .sort((a, b) => (b.round || 1) - (a.round || 1))[0];
-                  if (existing) {
-                    roundNumber = existing.round;
-                    existing.items.push(...newItems);
-                    existing.updatedAt = now;
-                  } else {
-                    roundNumber = 1;
-                    updated.push({
-                      id: `${tableNum}-1-${Date.now()}`,
-                      tableNumber: tableNum,
-                      round: 1,
-                      items: newItems,
-                      updatedAt: now,
-                    });
-                  }
-                }
-
-                const creator = newItems[0]?.createdByName ? ` (${newItems[0].createdByName})` : "";
-                notifs.push(
-                  `${tableName(tableNum)}${creator}: ${newItems
-                    .map((it) => `${it.name} x${it.quantity}`)
-                    .join(", ")}`
-                );
+              // Add to existing kitchen table or create new one
+              const existingKT = updated.find((kt) => kt.tableNumber === tableNum);
+              if (existingKT) {
+                existingKT.items.push(...newItems);
+                existingKT.updatedAt = now;
+              } else {
+                const existingRounds = updated
+                  .filter((kt) => kt.tableNumber === tableNum)
+                  .map((kt) => kt.round || 1);
+                const newRound = existingRounds.length > 0 ? Math.max(...existingRounds) + 1 : 1;
+                updated.push({
+                  id: `${tableNum}-${newRound}-${Date.now()}`,
+                  tableNumber: tableNum,
+                  round: newRound,
+                  items: newItems,
+                  updatedAt: now,
+                });
               }
+
+              const creator = newItems[0]?.createdByName ? ` (${newItems[0].createdByName})` : "";
+              notifs.push(
+                `${tableName(tableNum)}${creator}: ${newItems
+                  .map((it) => `${it.name} x${it.quantity}`)
+                  .join(", ")}`
+              );
             }
 
             if (hasNew) {
-              // Show notifications
               for (const text of notifs) {
                 const id = ++notifId.current;
-                setNotifications((n) => [
-                  { id, text },
-                  ...n.slice(0, 4),
-                ]);
+                setNotifications((n) => [{ id, text }, ...n.slice(0, 4)]);
                 setTimeout(() => {
                   setNotifications((n) => n.filter((x) => x.id !== id));
                 }, 5000);

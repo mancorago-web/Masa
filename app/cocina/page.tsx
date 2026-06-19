@@ -146,6 +146,7 @@ export default function Cocina() {
 
         const currentStr = JSON.stringify(data.tables);
         if (currentStr === prevTablesRef.current) return;
+        const prevStr = prevTablesRef.current;
         prevTablesRef.current = currentStr;
 
         try {
@@ -157,22 +158,23 @@ export default function Cocina() {
             let hasNew = false;
             const notifs: string[] = [];
 
+            // Build a map: tableNum → existing item IDs
+            const existingByTable = new Map<number, Set<string>>();
+            for (const kt of updated) {
+              const s = existingByTable.get(kt.tableNumber) ?? new Set();
+              for (const ki of kt.items) s.add(ki.id);
+              existingByTable.set(kt.tableNumber, s);
+            }
+
             for (let i = 0; i < curTables.length; i++) {
               if (curTables[i].status !== "ocupado") continue;
               const tableNum = i + 1;
+              const existingIds = existingByTable.get(tableNum) ?? new Set();
 
-              // Collect existing item IDs already in kitchen view for this table
-              const existingIds = new Set<string>();
-              for (const kt of updated) {
-                if (kt.tableNumber === tableNum) {
-                  for (const ki of kt.items) existingIds.add(ki.id);
-                }
-              }
-
-              // Find items in Ventas not yet in kitchen view
               const newItems: KitchenItem[] = [];
               for (const item of curTables[i].items) {
                 if (!existingIds.has(item.id)) {
+                  existingIds.add(item.id);
                   newItems.push({
                     id: item.id,
                     name: item.name,
@@ -186,7 +188,6 @@ export default function Cocina() {
               if (newItems.length === 0) continue;
               hasNew = true;
 
-              // Add to existing kitchen table or create new one
               const existingKT = updated.find((kt) => kt.tableNumber === tableNum);
               if (existingKT) {
                 existingKT.items.push(...newItems);
@@ -228,9 +229,71 @@ export default function Cocina() {
         } catch {}
       });
 
+    // Fallback: periodically check for new items in Ventas (catches missed snapshots)
+    const fallbackInterval = setInterval(async () => {
+      try {
+        const snap = await db.collection("config").doc("ventas").get();
+        if (!snap.exists) return;
+        const data = snap.data();
+        if (!data.tables || !Array.isArray(data.tables)) return;
+        const curStr = JSON.stringify(data.tables);
+        if (curStr === prevTablesRef.current) return;
+        prevTablesRef.current = curStr;
+        const curTables: TableOrder[] = data.tables;
+        const now = new Date().toISOString();
+        setTables((prev) => {
+          const updated = prev.map((t) => ({ ...t, items: [...t.items] }));
+          const existingByTable = new Map<number, Set<string>>();
+          for (const kt of updated) {
+            const s = existingByTable.get(kt.tableNumber) ?? new Set();
+            for (const ki of kt.items) s.add(ki.id);
+            existingByTable.set(kt.tableNumber, s);
+          }
+          let hasNew = false;
+          for (let i = 0; i < curTables.length; i++) {
+            if (curTables[i].status !== "ocupado") continue;
+            const tableNum = i + 1;
+            const existingIds = existingByTable.get(tableNum) ?? new Set();
+            const newItems: KitchenItem[] = [];
+            for (const item of curTables[i].items) {
+              if (!existingIds.has(item.id)) {
+                existingIds.add(item.id);
+                newItems.push({
+                  id: item.id,
+                  name: item.name,
+                  quantity: item.quantity,
+                  completed: false,
+                  createdByName: (item as any).createdByName,
+                });
+              }
+            }
+            if (newItems.length === 0) continue;
+            hasNew = true;
+            const existingKT = updated.find((kt) => kt.tableNumber === tableNum);
+            if (existingKT) {
+              existingKT.items.push(...newItems);
+              existingKT.updatedAt = now;
+            } else {
+              const existingRounds = updated.filter((kt) => kt.tableNumber === tableNum).map((kt) => kt.round || 1);
+              const newRound = existingRounds.length > 0 ? Math.max(...existingRounds) + 1 : 1;
+              updated.push({
+                id: `${tableNum}-${newRound}-${Date.now()}`,
+                tableNumber: tableNum,
+                round: newRound,
+                items: newItems,
+                updatedAt: now,
+              });
+            }
+          }
+          return hasNew ? updated : prev;
+        });
+      } catch {}
+    }, 4000);
+
     return () => {
       unsubKitchen();
       unsubVentas();
+      clearInterval(fallbackInterval);
     };
   }, []);
 
@@ -410,6 +473,13 @@ export default function Cocina() {
             className="text-sm bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700"
           >
             Historial
+          </button>
+          <button
+            onClick={() => window.location.reload()}
+            className="text-sm bg-gray-600 text-white px-3 py-1 rounded hover:bg-gray-700"
+            title="Forzar recarga de pedidos"
+          >
+            ↻
           </button>
         </div>
       </header>

@@ -449,11 +449,21 @@ export default function Ventas() {
           }
           if (data.payments && Array.isArray(data.payments)) {
             setPaymentsHistory(prev => {
-              // Don't overwrite with stale data (shorter array = older snapshot)
-              if (data.payments.length < prev.length) return prev;
               const incoming = JSON.stringify(data.payments);
               const current = JSON.stringify(prev);
-              return incoming === current ? prev : data.payments;
+              if (incoming === current) return prev;
+              // Merge: remote es fuente de verdad, más pagos locales no sincronizados
+              const remoteMap = new Map(data.payments.map((p: PaymentData) => [p.id, p]));
+              const merged: PaymentData[] = data.payments.slice();
+              let added = false;
+              for (const p of prev) {
+                if (!remoteMap.has(p.id)) {
+                  merged.push(p);
+                  added = true;
+                }
+              }
+              if (!added) return data.payments;
+              return merged.sort((a, b) => b.date.localeCompare(a.date));
             });
           }
         });

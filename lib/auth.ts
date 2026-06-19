@@ -34,6 +34,8 @@ const PAGE_PERMISSIONS: Record<UserRole, string[]> = {
   togo: ["ventas", "facturas"],
 };
 
+const FIREBASE_API_KEY = "AIzaSyD0s9ZYjr_ZRJLkv7LZt-9KhOAvGsl-WoY";
+
 function getAuth() {
   // @ts-ignore
   const firebase = globalThis.firebase;
@@ -43,14 +45,27 @@ function getAuth() {
   return app.auth();
 }
 
+function fbPassword(password: string): string {
+  return password.length < 6 ? password + 'x'.repeat(6 - password.length) : password;
+}
+
 async function createFirebaseUser(id: string, password: string): Promise<boolean> {
   try {
-    const auth = getAuth();
-    if (!auth) return false;
-    await auth.createUserWithEmailAndPassword(`${id}@masa.app`, password);
-    return true;
-  } catch (e: any) {
-    if (e.code === 'auth/email-already-in-use') return true;
+    const res = await fetch(
+      `https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${FIREBASE_API_KEY}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: `${id}@masa.app`,
+          password: fbPassword(password),
+          returnSecureToken: true,
+        }),
+      }
+    );
+    const data = await res.json();
+    return !data.error || data.error.message === "EMAIL_EXISTS";
+  } catch {
     return false;
   }
 }
@@ -80,8 +95,7 @@ export async function login(id: string, password: string): Promise<AppUser | nul
   const auth = getAuth();
   if (auth) {
     try {
-      await auth.signInWithEmailAndPassword(`${id}@masa.app`, password);
-      // Firebase Auth success — read user data from Firestore
+      await auth.signInWithEmailAndPassword(`${id}@masa.app`, fbPassword(password));
       const db = getDb();
       if (db) {
         const doc = await db.collection(USERS_COLLECTION).doc(id).get();
@@ -118,9 +132,7 @@ export async function login(id: string, password: string): Promise<AppUser | nul
   }
 
   // Old auth succeeded — create Firebase Auth account for future logins
-  if (auth) {
-    await createFirebaseUser(id, password).catch(() => {});
-  }
+  await createFirebaseUser(id, password).catch(() => {});
 
   const session: AppUser = { id: user.id, name: user.name, role: user.role };
   localStorage.setItem(SESSION_KEY, JSON.stringify(session));

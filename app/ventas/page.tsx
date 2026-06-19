@@ -564,7 +564,7 @@ export default function Ventas() {
       if (existing) {
         order.items = order.items.map(i => i.name === name ? { ...i, quantity: i.quantity + 1 } : i);
       } else {
-        order.items = [...order.items, { id: Date.now().toString(), name, quantity: 1, unitPrice: price }];
+        order.items = [...order.items, { id: Date.now().toString(), name, quantity: 1, unitPrice: price, createdByName: user?.name ?? "" }];
       }
       order.status = 'ocupado';
       updated[activeTable] = order;

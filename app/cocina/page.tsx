@@ -11,6 +11,7 @@ interface KitchenItem {
   name: string;
   quantity: number;
   completed: boolean;
+  createdByName?: string;
 }
 
 interface KitchenTable {
@@ -193,6 +194,7 @@ export default function Cocina() {
                     name: cur.name,
                     quantity: cur.quantity,
                     completed: false,
+                    createdByName: (cur as any).createdByName,
                   });
                 } else if (cur.quantity > prev.quantity) {
                   newItems.push({
@@ -200,6 +202,7 @@ export default function Cocina() {
                     name: cur.name,
                     quantity: cur.quantity - prev.quantity,
                     completed: false,
+                    createdByName: (cur as any).createdByName,
                   });
                 }
               }
@@ -246,8 +249,9 @@ export default function Cocina() {
                   }
                 }
 
+                const creator = newItems[0]?.createdByName ? ` (${newItems[0].createdByName})` : "";
                 notifs.push(
-                  `${tableName(tableNum)}: ${newItems
+                  `${tableName(tableNum)}${creator}: ${newItems
                     .map((it) => `${it.name} x${it.quantity}`)
                     .join(", ")}`
                 );
@@ -526,13 +530,20 @@ export default function Cocina() {
                           </span>
                         )}
                       </h2>
+                      {!isCollapsed && table.items[0]?.createdByName && (
+                        <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">
+                          {table.items[0].createdByName}
+                        </span>
+                      )}
                       {isCollapsed && (
                         <span className="text-green-600 text-sm font-semibold">✅ Listo</span>
                       )}
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="text-xs text-gray-400">
-                        {new Date(table.updatedAt).toLocaleTimeString([], {
+                        {new Date(table.updatedAt).toLocaleDateString([], {
+                          day: "2-digit", month: "2-digit"
+                        })} {new Date(table.updatedAt).toLocaleTimeString([], {
                           hour: "2-digit",
                           minute: "2-digit",
                         })}

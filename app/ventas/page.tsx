@@ -281,15 +281,19 @@ function loadFromStorage<T>(key: string, fallback: T): T {
   return fallback;
 }
 
-async function syncToFirestore(data: Record<string, unknown>) {
+async function syncToFirestore(data: Record<string, unknown>, retries = 3) {
   const db = getDb();
   if (!db) return;
   const cleaned = JSON.parse(JSON.stringify(data));
   if (Object.keys(cleaned).length === 0) return;
-  try {
-    await db.collection('config').doc('ventas').set(cleaned, { merge: true });
-  } catch (e) {
-    console.error('Firestore sync error:', e);
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      await db.collection('config').doc('ventas').set(cleaned, { merge: true });
+      return;
+    } catch (e) {
+      console.error(`Firestore sync error (intento ${attempt}/${retries}):`, e);
+      if (attempt < retries) await new Promise(r => setTimeout(r, 1000 * attempt));
+    }
   }
 }
 
@@ -620,6 +624,11 @@ export default function Ventas() {
       ...(paymentMethod === 'efectivo' ? { amountPaid: paid, change: paid - subtotal } : {}),
       date: nowStr(),
     };
+
+    // Guardar inmediatamente en localStorage (antes de cualquier estado o async)
+    const prevPayments = loadFromStorage<PaymentData[]>(PAYMENTS_KEY, []);
+    saveToStorage(PAYMENTS_KEY, [payment, ...prevPayments]);
+
     setPaymentsHistory(prev => {
       return [payment, ...prev];
     });

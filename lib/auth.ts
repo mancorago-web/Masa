@@ -34,6 +34,29 @@ const PAGE_PERMISSIONS: Record<UserRole, string[]> = {
   togo: ["ventas", "facturas"],
 };
 
+function getAuth() {
+  // @ts-ignore
+  const firebase = globalThis.firebase;
+  if (!firebase || !firebase.auth) return null;
+  const app = firebase.apps.length > 0 ? firebase.apps[0] : null;
+  if (!app) return null;
+  return app.auth();
+}
+
+async function createFirebaseUser(id: string, password: string): Promise<boolean> {
+  try {
+    const auth = getAuth();
+    if (!auth) return false;
+    await auth.createUserWithEmailAndPassword(`${id}@masa.app`, password);
+    return true;
+  } catch (e: any) {
+    if (e.code === 'auth/email-already-in-use') return true;
+    return false;
+  }
+}
+
+export { createFirebaseUser };
+
 export async function hashPassword(password: string): Promise<string> {
   // Fallback if crypto.subtle is not available (e.g. insecure context)
   if (typeof crypto === "undefined" || !crypto.subtle) {
@@ -53,34 +76,55 @@ export async function hashPassword(password: string): Promise<string> {
 }
 
 export async function login(id: string, password: string): Promise<AppUser | null> {
-  try {
-    const db = getDb();
-    if (!db) return null;
-    const doc = await db.collection(USERS_COLLECTION).doc(id).get();
-    if (!doc.exists) return null;
-    const user = doc.data() as StoredUser;
-    if (!user.active) return null;
-    const hash = await hashPassword(password);
-    if (hash !== user.passwordHash) {
-      // Try the other hash method (for cross-browser compatibility)
-      if (typeof crypto !== "undefined" && crypto.subtle) {
-        const encoder = new TextEncoder();
-        const data = encoder.encode(password);
-        const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-        const hashArray = Array.from(new Uint8Array(hashBuffer));
-        const sha256 = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
-        if (sha256 !== user.passwordHash) return null;
-      } else {
-        return null;
+  // Try Firebase Auth first
+  const auth = getAuth();
+  if (auth) {
+    try {
+      await auth.signInWithEmailAndPassword(`${id}@masa.app`, password);
+      // Firebase Auth success — read user data from Firestore
+      const db = getDb();
+      if (db) {
+        const doc = await db.collection(USERS_COLLECTION).doc(id).get();
+        if (doc.exists) {
+          const user = doc.data() as StoredUser;
+          if (!user.active) return null;
+          const session: AppUser = { id: user.id, name: user.name, role: user.role };
+          localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+          return session;
+        }
       }
-    }
-    const session: AppUser = { id: user.id, name: user.name, role: user.role };
-    localStorage.setItem(SESSION_KEY, JSON.stringify(session));
-    return session;
-  } catch (e) {
-    console.error("Login error:", e);
-    return null;
+    } catch {}
   }
+
+  // Fall back to old custom auth
+  const db = getDb();
+  if (!db) return null;
+  const doc = await db.collection(USERS_COLLECTION).doc(id).get();
+  if (!doc.exists) return null;
+  const user = doc.data() as StoredUser;
+  if (!user.active) return null;
+  const hash = await hashPassword(password);
+  if (hash !== user.passwordHash) {
+    if (typeof crypto !== "undefined" && crypto.subtle) {
+      const encoder = new TextEncoder();
+      const data = encoder.encode(password);
+      const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      const sha256 = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+      if (sha256 !== user.passwordHash) return null;
+    } else {
+      return null;
+    }
+  }
+
+  // Old auth succeeded — create Firebase Auth account for future logins
+  if (auth) {
+    await createFirebaseUser(id, password).catch(() => {});
+  }
+
+  const session: AppUser = { id: user.id, name: user.name, role: user.role };
+  localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+  return session;
 }
 
 export function logout() {
@@ -105,9 +149,17 @@ export async function ensureDefaultAdmin(): Promise<boolean> {
   try {
     const db = getDb();
     if (!db) return false;
-    const snap = await db.collection(USERS_COLLECTION).limit(1).get();
-    if (!snap.empty) return false;
-    const hash = await hashPassword("admin");
+    // Try to read existing users — if it fails (security rules), assume admin exists
+    let exists = false;
+    try {
+      const snap = await db.collection(USERS_COLLECTION).limit(1).get();
+      exists = !snap.empty;
+    } catch {
+      return false; // Can't read, admin presumably exists
+    }
+    if (exists) return false;
+    const password = "admin";
+    const hash = await hashPassword(password);
     await db.collection(USERS_COLLECTION).doc("admin").set({
       id: "admin",
       name: "Administrador",
@@ -116,6 +168,8 @@ export async function ensureDefaultAdmin(): Promise<boolean> {
       passwordHash: hash,
       createdAt: new Date().toISOString(),
     });
+    // Also create Firebase Auth account
+    await createFirebaseUser("admin", password).catch(() => {});
     return true;
   } catch (e) {
     console.error("Error creating default admin:", e);
@@ -143,6 +197,8 @@ export async function createUser(
       createdAt: new Date().toISOString(),
       createdBy,
     });
+    // Also create Firebase Auth account
+    await createFirebaseUser(id, password).catch(() => {});
     return true;
   } catch (e) {
     console.error("Error creating user:", e);

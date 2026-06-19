@@ -44,6 +44,7 @@ export default function RootLayout({
         <meta http-equiv="Expires" content="0" />
         <script src="https://www.gstatic.com/firebasejs/12.13.0/firebase-app-compat.js" async></script>
         <script src="https://www.gstatic.com/firebasejs/12.13.0/firebase-firestore-compat.js" async></script>
+        <script src="https://www.gstatic.com/firebasejs/12.13.0/firebase-auth-compat.js" async></script>
         <script dangerouslySetInnerHTML={{ __html: `
           if ('serviceWorker' in navigator) {
             navigator.serviceWorker.getRegistrations().then(function(regs) {

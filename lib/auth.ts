@@ -90,7 +90,38 @@ export async function hashPassword(password: string): Promise<string> {
   return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
+function waitForSdk(maxMs = 5000): Promise<boolean> {
+  return new Promise((resolve) => {
+    if (typeof window === "undefined") return resolve(false);
+    const check = () => {
+      // @ts-ignore
+      if (globalThis.firebase && globalThis.firebase.auth) resolve(true);
+    };
+    check();
+    const start = Date.now();
+    const interval = setInterval(() => {
+      check();
+      if (Date.now() - start > maxMs) { clearInterval(interval); resolve(false); }
+    }, 200);
+  });
+}
+
 export async function login(id: string, password: string): Promise<AppUser | null> {
+  // Ensure Firebase SDK is loaded and app initialized
+  await waitForSdk(5000);
+  // @ts-ignore
+  const firebase = globalThis.firebase;
+  if (firebase && firebase.auth && firebase.apps.length === 0) {
+    firebase.initializeApp({
+      apiKey: "AIzaSyD0s9ZYjr_ZRJLkv7LZt-9KhOAvGsl-WoY",
+      authDomain: "masa-9ec4d.firebaseapp.com",
+      projectId: "masa-9ec4d",
+      storageBucket: "masa-9ec4d.firebasestorage.app",
+      messagingSenderId: "353087520263",
+      appId: "1:353087520263:web:904fe978ce28673715b4a2",
+      measurementId: "G-4EYL82XD7X",
+    });
+  }
   // Try Firebase Auth first
   const auth = getAuth();
   if (auth) {
@@ -141,6 +172,13 @@ export async function login(id: string, password: string): Promise<AppUser | nul
 
 export function logout() {
   localStorage.removeItem(SESSION_KEY);
+  try {
+    // @ts-ignore
+    const firebase = globalThis.firebase;
+    if (firebase && firebase.auth && firebase.apps.length > 0) {
+      firebase.apps[0].auth().signOut();
+    }
+  } catch {}
 }
 
 export function getCurrentUser(): AppUser | null {

@@ -17,7 +17,7 @@ interface KitchenItem {
 interface KitchenTable {
   id: string;
   tableNumber: number;
-  round: number;
+  orderNumber: number;
   items: KitchenItem[];
   updatedAt: string;
 }
@@ -36,8 +36,6 @@ interface TableOrder {
 }
 
 const STORAGE_KEY = "masa-kitchen-tables";
-const FIRESTORE_DOC = "config";
-const FIRESTORE_FIELD = "cocina";
 const DELIVERY_NUMBER = 10;
 const TOGO_NUMBER = 11;
 const tableName = (n: number) =>
@@ -59,19 +57,6 @@ function saveTablesToStorage(tables: KitchenTable[]) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(tables));
 }
 
-async function syncToFirestore(tables: KitchenTable[]) {
-  const db = getDb();
-  if (!db) return;
-  try {
-    await db
-      .collection(FIRESTORE_DOC)
-      .doc(FIRESTORE_FIELD)
-      .set({ tables }, { merge: true });
-  } catch (e) {
-    console.error("Firestore sync error (cocina):", e);
-  }
-}
-
 function todayStr() {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -83,7 +68,7 @@ function isSameDay(a: string, b: string) {
 
 function isItemFromToday(itemId: string): boolean {
   const ts = parseInt(itemId, 10);
-  if (isNaN(ts)) return true; // if id is not a timestamp, process it
+  if (isNaN(ts)) return true;
   const d = new Date(ts);
   const today = new Date();
   return d.getFullYear() === today.getFullYear() &&
@@ -117,39 +102,10 @@ export default function Cocina() {
     const db = getDb();
     if (!db) return;
 
-    // Listen for kitchen table changes from other devices
-    const unsubKitchen = db
-      .collection(FIRESTORE_DOC)
-      .doc(FIRESTORE_FIELD)
-      .onSnapshot((snap: any) => {
-        if (!snap.exists) return;
-        const data = snap.data();
-        if (!data.tables || !Array.isArray(data.tables)) return;
-            setTables((prev) => {
-              if (data.tables.length < prev.length) return prev;
-              const incoming = JSON.stringify(data.tables);
-              const current = JSON.stringify(prev);
-              if (incoming === current) return prev;
-              // Merge: prefer remote (Firestore is source of truth), keep new local-only items
-              const prevMap = new Map(prev.map((t) => [t.id ?? `${t.tableNumber}-1`, t]));
-              const merged = data.tables.map((t: KitchenTable) => {
-                const key = t.id ?? `${t.tableNumber}-1`;
-                const local = prevMap.get(key);
-                if (!local) return { ...t, round: t.round ?? 1, id: t.id ?? `${t.tableNumber}-${t.round ?? 1}` };
-                const remoteItems = new Map(t.items.map((i) => [i.id, i]));
-                // Keep local items not in remote (e.g., toggling loading state), but prefer remote for overlapping
-                const mergedItems = local.items.map((item) => remoteItems.get(item.id) ?? item);
-                return { ...t, items: mergedItems };
-              });
-              return merged;
-            });
-      });
-
     function processVentasTables(curTables: TableOrder[], prev: KitchenTable[]): KitchenTable[] {
       const updated = prev.map((t) => ({ ...t, items: [...t.items] }));
       const now = new Date().toISOString();
 
-      // Build a map: tableNum → existing item IDs
       const existingByTable = new Map<number, Set<string>>();
       for (const kt of updated) {
         const s = existingByTable.get(kt.tableNumber) ?? new Set();
@@ -159,6 +115,7 @@ export default function Cocina() {
 
       const notifs: string[] = [];
       let hasNew = false;
+      let orderCounter = prev.filter(t => isSameDay(t.updatedAt, todayStr())).length;
 
       for (let i = 0; i < curTables.length; i++) {
         if (curTables[i].status !== "ocupado") continue;
@@ -181,14 +138,12 @@ export default function Cocina() {
 
         if (newItems.length === 0) continue;
         hasNew = true;
+        orderCounter++;
 
-        // Always create a new round (separate card) for each batch of new items
-        const existingRounds = updated.filter((kt) => kt.tableNumber === tableNum).map((kt) => kt.round || 1);
-        const newRound = existingRounds.length > 0 ? Math.max(...existingRounds) + 1 : 1;
         updated.push({
-          id: `${tableNum}-${newRound}-${Date.now()}`,
+          id: `${tableNum}-${orderCounter}-${Date.now()}`,
           tableNumber: tableNum,
-          round: newRound,
+          orderNumber: orderCounter,
           items: newItems,
           updatedAt: now,
         });
@@ -245,7 +200,6 @@ export default function Cocina() {
     }, 4000);
 
     return () => {
-      unsubKitchen();
       unsubVentas();
       clearInterval(fallbackInterval);
     };
@@ -257,7 +211,6 @@ export default function Cocina() {
     if (firstSyncRef.current) { firstSyncRef.current = false; return; }
     if (tables.length > 0) {
       saveTablesToStorage(tables);
-      syncToFirestore(tables);
     }
   }, [tables]);
 
@@ -275,7 +228,6 @@ export default function Cocina() {
   }, []);
 
   // Archive completed tables from previous days into Firestore history
-  // (runs only when tables change and we detect past-date tables)
   const lastArchiveDate = useRef('');
   useEffect(() => {
     if (firstSyncRef.current) return;
@@ -298,24 +250,21 @@ export default function Cocina() {
     }
   }, [tables]);
 
-  // Load history: for dates before today, check Firestore history first,
-  // then fall back to filtering the live tables array
+  // Load history
   const historyTables = useMemo(() => {
     if (!historyDate) return [];
     const today = todayStr();
     if (historyDate !== today) {
-      // For past dates, check Firestore history first
       const archived = historyFromFirestore[historyDate];
       if (archived) return archived;
     }
-    // Fall back to filtering live tables by date
     return tables.filter(t => isSameDay(t.updatedAt, historyDate));
   }, [historyDate, historyFromFirestore, tables]);
 
   const toggleItem = (tableId: string, itemId: string) => {
     setTables((prev) =>
       prev.map((t) => {
-        const tid = t.id ?? `${t.tableNumber}-${t.round ?? 1}`;
+        const tid = t.id ?? `${t.tableNumber}-${t.orderNumber}`;
         if (tid !== tableId) return t;
         return {
           ...t,
@@ -337,19 +286,18 @@ export default function Cocina() {
     });
   };
 
-  // Auto-collapse tables when they become fully completed (but don't override manual expand)
+  // Auto-collapse tables when they become fully completed
   const prevAllDoneRef = useRef<Set<string>>(new Set());
   useEffect(() => {
     const currentAllDone = new Set<string>();
     for (const t of tables) {
-      const id = t.id ?? `${t.tableNumber}-${t.round ?? 1}`;
+      const id = t.id ?? `${t.tableNumber}-${t.orderNumber}`;
       if (t.items.every(i => i.completed)) {
         currentAllDone.add(id);
       }
     }
     setCollapsedIds(prev => {
       const next = new Set(prev);
-      // Only auto-collapse newly completed tables (not already tracked)
       for (const id of currentAllDone) {
         if (!prevAllDoneRef.current.has(id)) {
           next.add(id);
@@ -378,19 +326,13 @@ export default function Cocina() {
     );
   }
 
-  // Only show today's orders on main screen; past orders go to historial
-  const todayTables = tables.filter(t => {
-    const d = new Date(t.updatedAt);
-    const localDate = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-    return isSameDay(localDate, todayStr());
-  });
+  // Only show today's orders on main screen
+  const todayTables = tables.filter(t => isSameDay(t.updatedAt, todayStr()));
 
-  // Sort tables: pending first, then completed, collapsed to bottom
+  // Sort: pending first, then completed, collapsed to bottom
   const sorted = [...todayTables].sort((a, b) => {
-    const aId = a.id ?? `${a.tableNumber}-${a.round ?? 1}`;
-    const bId = b.id ?? `${b.tableNumber}-${b.round ?? 1}`;
-    const aCollapsed = collapsedIds.has(aId);
-    const bCollapsed = collapsedIds.has(bId);
+    const aCollapsed = collapsedIds.has(a.id);
+    const bCollapsed = collapsedIds.has(b.id);
     const aAllDone = a.items.every((i) => i.completed);
     const bAllDone = b.items.every((i) => i.completed);
     if (aCollapsed && !bCollapsed) return 1;
@@ -427,13 +369,6 @@ export default function Cocina() {
             className="text-sm bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700"
           >
             Historial
-          </button>
-          <button
-            onClick={() => window.location.reload()}
-            className="text-sm bg-gray-600 text-white px-3 py-1 rounded hover:bg-gray-700"
-            title="Forzar recarga de pedidos"
-          >
-            ↻
           </button>
         </div>
       </header>
@@ -476,11 +411,10 @@ export default function Cocina() {
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
             {sorted.map((table) => {
               const allDone = table.items.every((i) => i.completed);
-              const tableId = table.id ?? `${table.tableNumber}-${table.round ?? 1}`;
-              const isCollapsed = collapsedIds.has(tableId);
+              const isCollapsed = collapsedIds.has(table.id);
               return (
                 <div
-                  key={tableId}
+                  key={table.id}
                   className={`rounded-xl shadow-md transition-colors ${
                     isCollapsed
                       ? "bg-green-50 border border-green-300"
@@ -491,7 +425,7 @@ export default function Cocina() {
                 >
                   {/* Clickable header */}
                   <div
-                    onClick={() => isCollapsed ? toggleCollapse(tableId) : undefined}
+                    onClick={() => isCollapsed ? toggleCollapse(table.id) : undefined}
                     className={`flex items-center justify-between cursor-pointer ${
                       isCollapsed ? "p-3" : "p-4 pb-0"
                     }`}
@@ -499,11 +433,9 @@ export default function Cocina() {
                     <div className="flex items-center gap-2">
                       <h2 className={`font-bold ${isCollapsed ? "text-base" : "text-xl"}`}>
                         {tableName(table.tableNumber)}
-                        {table.round && table.round > 1 && (
-                          <span className={`font-normal text-gray-500 ml-2 ${isCollapsed ? "text-sm" : "text-base"}`}>
-                            Pedido {table.round}
-                          </span>
-                        )}
+                        <span className="font-normal text-gray-500 ml-2">
+                          Pedido #{table.orderNumber}
+                        </span>
                       </h2>
                       {!isCollapsed && table.items[0]?.createdByName && (
                         <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">
@@ -530,12 +462,11 @@ export default function Cocina() {
                   {/* Expandable details */}
                   {!isCollapsed && (
                     <div className="p-4">
-                      {/* Items */}
                       <ul className="space-y-2">
                         {table.items.map((item) => (
                           <li key={item.id}>
                             <button
-                              onClick={() => toggleItem(tableId, item.id)}
+                              onClick={() => toggleItem(table.id, item.id)}
                               className={`w-full text-left px-3 py-2.5 rounded-lg flex items-center justify-between transition-all ${
                                 item.completed
                                   ? "bg-green-200 text-green-800"
@@ -566,7 +497,6 @@ export default function Cocina() {
                         ))}
                       </ul>
 
-                      {/* Table status */}
                       {allDone ? (
                         <p className="text-center text-green-600 text-sm font-semibold mt-3">
                           {table.tableNumber === DELIVERY_NUMBER ? "✅ Delivery listo" : table.tableNumber === TOGO_NUMBER ? "✅ To Go listo" : "✅ Mesa completa"}
@@ -620,7 +550,7 @@ export default function Cocina() {
                 <div className="space-y-3">
                   {historyTables.map((table) => (
                     <div
-                      key={table.id ?? `${table.tableNumber}-${table.round ?? 1}`}
+                      key={table.id ?? `${table.tableNumber}-${table.orderNumber}`}
                       className={`rounded-lg border p-3 ${
                         table.items.every((i) => i.completed)
                           ? "bg-green-50 border-green-200"
@@ -629,11 +559,9 @@ export default function Cocina() {
                     >
                       <div className="font-bold mb-2">
                         {tableName(table.tableNumber)}
-                        {table.round && table.round > 1 && (
-                          <span className="font-normal text-gray-500 ml-1">
-                            Pedido {table.round}
-                          </span>
-                        )}
+                        <span className="font-normal text-gray-500 ml-1">
+                          Pedido #{table.orderNumber}
+                        </span>
                       </div>
                       <div className="flex flex-wrap gap-2">
                         {table.items.map((item) => (

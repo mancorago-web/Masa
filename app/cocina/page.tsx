@@ -573,13 +573,23 @@ export default function Cocina() {
                           : "bg-white border-gray-200"
                       }`}
                     >
-                      <div className="font-bold mb-2">
-                        {tableName(table.tableNumber)}
-                        <span className="font-normal text-gray-500 ml-1">
-                          Pedido #{table.orderNumber}
-                        </span>
+                      <div className="flex items-center justify-between mb-1">
+                        <div className="font-bold">
+                          {tableName(table.tableNumber)}
+                          <span className="font-normal text-gray-500 ml-1">
+                            Pedido #{table.orderNumber}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 text-xs text-gray-500">
+                          {table.items[0]?.createdByName && (
+                            <span className="bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded font-medium">
+                              {table.items[0].createdByName}
+                            </span>
+                          )}
+                          <span>{new Date(table.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                        </div>
                       </div>
-                      <div className="flex flex-wrap gap-2">
+                      <div className="flex flex-wrap gap-2 mt-2">
                         {table.items.map((item) => (
                           <span
                             key={item.id}

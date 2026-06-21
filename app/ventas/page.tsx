@@ -302,7 +302,7 @@ async function syncToFirestore(data: Record<string, unknown>, retries = 3) {
   }
 }
 
-function buildMenu(recipes: { id: string; category: string; name: string }[], subRecipes: { id: string; parentId: string; name: string }[]): MenuCategory[] {
+function buildMenu(recipes: { id: string; category: string; name: string }[], subRecipes: { id: string; parentId: string; name: string }[], includeSlice = false): MenuCategory[] {
   const categories: MenuCategory[] = [];
   const pizzaCatSet = new Set(['PIZZAS CLÁSICAS', 'PIZZAS VEGETARIANAS', 'PIZZAS ESPECIALES']);
 
@@ -323,6 +323,9 @@ function buildMenu(recipes: { id: string; category: string; name: string }[], su
         const recipeSubs = subRecipes.filter(s => s.parentId === recipe.id);
         if (recipeSubs.length > 0) {
           const sizesList: SizeOption[] = [];
+          if (includeSlice && catName === 'PIZZAS CLÁSICAS') {
+            sizesList.push({ label: 'Slice', price: 9 });
+          }
           for (const sub of recipeSubs) {
             const sizeName = sub.name.includes('8 Pzas.') ? '8 Pzas.' : sub.name.includes('12 Pzas.') ? '12 Pzas.' : sub.name.includes('16 Pzas.') ? '16 Pzas.' : '';
             const price = sizes[sizeName];
@@ -507,7 +510,7 @@ export default function Ventas() {
     }
   }, []);
 
-  const productCategories = useMemo(() => buildMenu(recipes, subRecipes), [recipes, subRecipes]);
+  const productCategories = useMemo(() => buildMenu(recipes, subRecipes, user?.role === 'togo'), [recipes, subRecipes, user]);
 
   // On mount: merge local + remote payments and sync to Firestore
   useEffect(() => {
@@ -845,7 +848,7 @@ export default function Ventas() {
                   Cobrar
                 </button>
               )}
-              {activeOrder.status === 'ocupado' && activeOrder.items.length > 0 && (
+              {user?.role !== 'togo' && activeOrder.status === 'ocupado' && activeOrder.items.length > 0 && (
                 <button
                   onClick={() => shareReceipt({
                     tableName: tableName(activeTable),
@@ -856,7 +859,7 @@ export default function Ventas() {
                   Imprimir
                 </button>
               )}
-              {activeOrder.status === 'ocupado' && activeOrder.items.length > 0 && (
+              {user?.role !== 'togo' && activeOrder.status === 'ocupado' && activeOrder.items.length > 0 && (
                 <button
                   onClick={() => shareTicket({
                     tableName: tableName(activeTable),

@@ -199,18 +199,34 @@ export default function Cocina() {
       } catch {}
     }, 4000);
 
+    // Explicit initial load to ensure all existing Ventas orders are picked up
+    // (even if onSnapshot fires with stale cached data)
+    const initialLoad = async () => {
+      try {
+        const snap = await db.collection("config").doc("ventas").get();
+        if (!snap.exists) return;
+        const data = snap.data();
+        if (!data.tables || !Array.isArray(data.tables)) return;
+        const curStr = JSON.stringify(data.tables);
+        if (curStr === prevTablesRef.current) return;
+        prevTablesRef.current = curStr;
+        setTables((prev) => processVentasTables(data.tables, prev));
+      } catch {}
+    };
+    initialLoad();
+
     return () => {
       unsubVentas();
       clearInterval(fallbackInterval);
     };
   }, []);
 
-  // Auto-save on change (skip first render to avoid overwrite)
-  const firstSyncRef = useRef(true);
+  // Auto-save on change (save immediately on first meaningful data)
+  const hasSavedRef = useRef(false);
   useEffect(() => {
-    if (firstSyncRef.current) { firstSyncRef.current = false; return; }
     if (tables.length > 0) {
       saveTablesToStorage(tables);
+      hasSavedRef.current = true;
     }
   }, [tables]);
 
@@ -230,7 +246,7 @@ export default function Cocina() {
   // Archive completed tables from previous days into Firestore history
   const lastArchiveDate = useRef('');
   useEffect(() => {
-    if (firstSyncRef.current) return;
+    if (!hasSavedRef.current) return;
     const today = todayStr();
     if (lastArchiveDate.current === today) return;
     const pastTables = tables.filter(t => !isSameDay(t.updatedAt, today) && t.items.every(i => i.completed));

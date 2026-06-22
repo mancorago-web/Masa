@@ -1147,46 +1147,66 @@ export default function Ventas() {
                         </button>
                         {expandedCategory === cat.name && (
                           <div className="divide-y divide-gray-100">
-                            {cat.type === 'pizza' ? cat.pizzas.map(pizza => (
-                              <div key={pizza.name}>
-                                <button
-                                  onClick={() => setExpandedPizza(expandedPizza === pizza.name ? null : pizza.name)}
-                                  className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-gray-50 text-left"
-                                >
-                                  <span className="text-gray-800 font-medium text-sm">{pizza.name}</span>
-                                  <span className="text-gray-400 text-xs">{expandedPizza === pizza.name ? '▼' : '▶'}</span>
-                                </button>
-                                {expandedPizza === pizza.name && (
-                                  <div className="bg-gray-50 border-t border-gray-100">
-                                    {pizza.sizes.map(size => (
+                            {cat.type === 'pizza' ? <>
+                              {cat.pizzas.map(pizza => (
+                                <div key={pizza.name}>
+                                  <button
+                                    onClick={() => setExpandedPizza(expandedPizza === pizza.name ? null : pizza.name)}
+                                    className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-gray-50 text-left"
+                                  >
+                                    <span className="text-gray-800 font-medium text-sm">{pizza.name}</span>
+                                    <span className="text-gray-400 text-xs">{expandedPizza === pizza.name ? '▼' : '▶'}</span>
+                                  </button>
+                                  {expandedPizza === pizza.name && (
+                                    <div className="bg-gray-50 border-t border-gray-100">
+                                      {pizza.sizes.map(size => (
+                                        <button
+                                          key={size.label}
+                                          onClick={() => addItem(`${pizza.name} ${size.label}`, size.price)}
+                                          className="w-full flex items-center justify-between px-6 py-2.5 hover:bg-green-50 transition text-left text-sm"
+                                        >
+                                          <span className="text-gray-700">{size.label}</span>
+                                          <span className="text-green-700 font-bold">{formatCurrency(size.price)}</span>
+                                        </button>
+                                      ))}
                                       <button
-                                        key={size.label}
-                                        onClick={() => addItem(`${pizza.name} ${size.label}`, size.price)}
-                                        className="w-full flex items-center justify-between px-6 py-2.5 hover:bg-green-50 transition text-left text-sm"
+                                      onClick={() => {
+                                        const allPizzas = productCategories
+                                          .filter(c => c.type === 'pizza')
+                                          .flatMap(c => c.pizzas);
+                                        setHalfPizza1(pizza.name);
+                                        setHalfPizza2('');
+                                        setHalfSizeLabel('');
+                                        setHalfCategoryPizzas(allPizzas);
+                                        setShowHalfPicker(true);
+                                      }}
+                                        className="w-full flex items-center justify-center px-6 py-2.5 hover:bg-yellow-50 transition text-sm border-t border-gray-100 text-yellow-700 font-semibold"
                                       >
-                                        <span className="text-gray-700">{size.label}</span>
-                                        <span className="text-green-700 font-bold">{formatCurrency(size.price)}</span>
+                                        🎱 Mitad y mitad
                                       </button>
-                                    ))}
-                                    <button
-                                    onClick={() => {
-                                      const allPizzas = productCategories
-                                        .filter(c => c.type === 'pizza')
-                                        .flatMap(c => c.pizzas);
-                                      setHalfPizza1(pizza.name);
-                                      setHalfPizza2('');
-                                      setHalfSizeLabel('');
-                                      setHalfCategoryPizzas(allPizzas);
-                                      setShowHalfPicker(true);
-                                    }}
-                                      className="w-full flex items-center justify-center px-6 py-2.5 hover:bg-yellow-50 transition text-sm border-t border-gray-100 text-yellow-700 font-semibold"
-                                    >
-                                      🎱 Mitad y mitad
-                                    </button>
-                                  </div>
-                                )}
-                              </div>
-                            )) : cat.type === 'grouped' && cat.groups ? cat.groups.map(group => (
+                                    </div>
+                                  )}
+                                </div>
+                              ))}
+                              <button
+                                onClick={() => {
+                                  const allPizzas = productCategories
+                                    .filter(c => c.type === 'pizza')
+                                    .flatMap(c => c.pizzas);
+                                  const firstPizza = cat.pizzas[0];
+                                  if (firstPizza) {
+                                    setHalfPizza1(firstPizza.name);
+                                    setHalfPizza2('');
+                                    setHalfSizeLabel('');
+                                    setHalfCategoryPizzas(allPizzas);
+                                    setShowHalfPicker(true);
+                                  }
+                                }}
+                                className="w-full flex items-center justify-center px-4 py-3 hover:bg-yellow-50 transition text-sm border-t border-gray-200 text-yellow-700 font-bold"
+                              >
+                                🎱 Mitad y mitad — escoge dos pizzas diferentes
+                              </button>
+                            </> : cat.type === 'grouped' && cat.groups ? cat.groups.map(group => (
                               <div key={group.name}>
                                 <div className="px-4 py-1.5 bg-gray-100 text-xs font-bold text-gray-500 uppercase tracking-wider">{group.name}</div>
                                 {group.items.map(item => (

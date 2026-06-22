@@ -35,27 +35,12 @@ interface TableOrder {
   customerName: string;
 }
 
-const STORAGE_KEY = "masa-kitchen-tables";
 const DELIVERY_NUMBER = 10;
 const TOGO_NUMBER = 11;
 const tableName = (n: number) =>
   n === DELIVERY_NUMBER ? 'DELIVERY' :
   n === TOGO_NUMBER ? 'TO GO' :
   `Mesa ${n}`;
-
-function loadTables(): KitchenTable[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) return JSON.parse(saved);
-  } catch {}
-  return [];
-}
-
-function saveTablesToStorage(tables: KitchenTable[]) {
-  if (typeof window === 'undefined') return;
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(tables));
-}
 
 function todayStr() {
   const d = new Date();
@@ -122,11 +107,11 @@ export default function Cocina() {
 
   // Load + listeners
   useEffect(() => {
-    const cached = loadTables().filter(t => isSameDay(t.updatedAt, todayStr()));
-    if (cached.length > 0) setTables(cached);
-
     const db = getDb();
     if (!db) return;
+
+    let firestoreLoaded = false;
+    let disposed = false;
 
     function processVentasTables(curTables: TableOrder[], prev: KitchenTable[]): KitchenTable[] {
       const updated = prev.map((t) => ({ ...t, items: [...t.items] }));
@@ -191,12 +176,37 @@ export default function Cocina() {
       return hasNew ? updated : prev;
     }
 
-    // Listen for new orders from Ventas
+    // 1. Load tables from Firestore first
+    db.collection("config").doc("cocinaTables").get().then((snap: any) => {
+      if (disposed) return;
+      if (snap.exists) {
+        const data = snap.data();
+        if (data?.tables) {
+          tablesLastSavedRef.current = JSON.stringify(data.tables);
+          setTables(data.tables);
+        }
+      }
+      firestoreLoaded = true;
+
+      // 2. Now do the Ventas initial load (picks up items not yet in Firestore tables)
+      db.collection("config").doc("ventas").get().then((ventasSnap: any) => {
+        if (disposed || !ventasSnap.exists) return;
+        const data = ventasSnap.data();
+        const curTables = tablesFromData(data);
+        if (!curTables) return;
+        const curStr = JSON.stringify(curTables);
+        if (curStr === prevTablesRef.current) return;
+        prevTablesRef.current = curStr;
+        setTables((prev) => processVentasTables(curTables, prev));
+      }).catch(() => {});
+    }).catch(() => { firestoreLoaded = true; });
+
+    // 3. Listen for new orders from Ventas
     const unsubVentas = db
       .collection("config")
       .doc("ventas")
       .onSnapshot((snap: any) => {
-        if (!snap.exists) return;
+        if (!firestoreLoaded || !snap.exists) return;
         const data = snap.data();
         const curTables = tablesFromData(data);
         if (!curTables) return;
@@ -210,8 +220,23 @@ export default function Cocina() {
         } catch {}
       });
 
-    // Fallback: periodically check for new items in Ventas (catches missed snapshots)
+    // 4. Listen for cross-device table sync
+    const unsubTables = db
+      .collection("config")
+      .doc("cocinaTables")
+      .onSnapshot((snap: any) => {
+        if (!snap.exists) return;
+        const data = snap.data();
+        if (!data?.tables) return;
+        const str = JSON.stringify(data.tables);
+        if (str === tablesLastSavedRef.current) return;
+        tablesLastSavedRef.current = str;
+        setTables(data.tables as KitchenTable[]);
+      });
+
+    // 5. Fallback: periodically check for new items in Ventas (catches missed snapshots)
     const fallbackInterval = setInterval(async () => {
+      if (!firestoreLoaded) return;
       try {
         const snap = await db.collection("config").doc("ventas").get();
         if (!snap.exists) return;
@@ -225,36 +250,27 @@ export default function Cocina() {
       } catch {}
     }, 4000);
 
-    // Explicit initial load to ensure all existing Ventas orders are picked up
-    // (even if onSnapshot fires with stale cached data)
-    const initialLoad = async () => {
-      try {
-        const snap = await db.collection("config").doc("ventas").get();
-        if (!snap.exists) return;
-        const data = snap.data();
-        const curTables = tablesFromData(data);
-        if (!curTables) return;
-        const curStr = JSON.stringify(curTables);
-        if (curStr === prevTablesRef.current) return;
-        prevTablesRef.current = curStr;
-        setTables((prev) => processVentasTables(curTables, prev));
-      } catch {}
-    };
-    initialLoad();
-
     return () => {
+      disposed = true;
       unsubVentas();
+      unsubTables();
       clearInterval(fallbackInterval);
     };
   }, []);
 
-  // Auto-save on change (save immediately on first meaningful data)
-  const hasSavedRef = useRef(false);
+  // 6. Save tables to Firestore on every change (debounced)
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  const tablesLastSavedRef = useRef("");
   useEffect(() => {
-    if (tables.length > 0) {
-      saveTablesToStorage(tables);
-      hasSavedRef.current = true;
-    }
+    if (tables.length === 0) return;
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => {
+      const db = getDb();
+      if (!db) return;
+      const str = JSON.stringify(tables);
+      tablesLastSavedRef.current = str;
+      db.collection("config").doc("cocinaTables").set({ tables }, { merge: true }).catch(() => {});
+    }, 300);
   }, [tables]);
 
   // Real-time listener for Firestore history (tables archived from past days)
@@ -273,7 +289,7 @@ export default function Cocina() {
   // Archive completed tables from previous days into Firestore history
   const lastArchiveDate = useRef('');
   useEffect(() => {
-    if (!hasSavedRef.current) return;
+    if (tables.length === 0) return;
     const today = todayStr();
     if (lastArchiveDate.current === today) return;
     const pastTables = tables.filter(t => !isSameDay(t.updatedAt, today) && t.items.every(i => i.completed));

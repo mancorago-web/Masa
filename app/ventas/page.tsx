@@ -374,6 +374,88 @@ function buildMenu(recipes: { id: string; category: string; name: string }[], su
   return categories;
 }
 
+const fmt = (n: number) => `S/${n.toFixed(2)}`;
+
+function Mix2x1Picker({ onAdd, onBack }: { onAdd: (name: string, price: number) => void; onBack: () => void }) {
+  const [pizza1, setPizza1] = useState('');
+  const [pizza2, setPizza2] = useState('');
+
+  const classicPizzas = defaultRecipes
+    .filter(r => r.category === 'PIZZAS CLÁSICAS')
+    .map(r => ({ name: r.name, price: pizzaPrices[r.name]?.['8 Pzas.'] }))
+    .filter(p => p.price != null);
+
+  return (
+    <div className="flex-1 overflow-y-auto p-4">
+      <div className="mb-4">
+        <button onClick={onBack} className="text-sm text-gray-500 hover:text-gray-700 mb-3">
+          ← Volver al menú
+        </button>
+        <h3 className="text-lg font-bold text-gray-800 mb-1">2x1 Mixto</h3>
+        <p className="text-sm text-gray-500 mb-4">Elige dos pizzas clásicas diferentes</p>
+
+        <p className="text-sm font-medium text-gray-700 mb-2">Primera pizza</p>
+        <div className="grid grid-cols-2 gap-2 mb-4">
+          {classicPizzas.map(p => (
+            <button
+              key={p.name}
+              onClick={() => { setPizza1(p.name); if (pizza2 === p.name) setPizza2(''); }}
+              className={`px-3 py-2.5 rounded-lg border text-sm font-medium text-left transition ${
+                pizza1 === p.name
+                  ? 'border-blue-500 bg-blue-50 text-blue-700'
+                  : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              {p.name}
+              <span className="block text-xs text-gray-500">{fmt(p.price)}</span>
+            </button>
+          ))}
+        </div>
+
+        {pizza1 && (
+          <>
+            <p className="text-sm font-medium text-gray-700 mb-2">Segunda pizza</p>
+            <div className="grid grid-cols-2 gap-2 mb-4">
+              {classicPizzas.filter(p => p.name !== pizza1).map(p => (
+                <button
+                  key={p.name}
+                  onClick={() => setPizza2(p.name)}
+                  className={`px-3 py-2.5 rounded-lg border text-sm font-medium text-left transition ${
+                    pizza2 === p.name
+                      ? 'border-blue-500 bg-blue-50 text-blue-700'
+                      : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
+                  }`}
+                >
+                  {p.name}
+                  <span className="block text-xs text-gray-500">{fmt(p.price)}</span>
+                </button>
+              ))}
+            </div>
+          </>
+        )}
+
+        {pizza1 && pizza2 && (
+          <button
+            onClick={() => {
+              const p1 = classicPizzas.find(p => p.name === pizza1)!;
+              const p2 = classicPizzas.find(p => p.name === pizza2)!;
+              const price = Math.max(p1.price, p2.price);
+              onAdd(`2x1 Mixto: ${pizza1} + ${pizza2} (8 Pzas.)`, price);
+              onBack();
+            }}
+            className="w-full py-3 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 transition"
+          >
+            Agregar — {fmt(Math.max(
+              classicPizzas.find(p => p.name === pizza1)?.price ?? 40,
+              classicPizzas.find(p => p.name === pizza2)?.price ?? 40,
+            ))}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function Ventas() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
@@ -1040,89 +1122,10 @@ export default function Ventas() {
                     </div>
                   </div>
                 ) : showMix2x1 ? (
-                  <div className="flex-1 overflow-y-auto p-4">
-                    <div className="mb-4">
-                      <button
-                        onClick={() => setShowMix2x1(false)}
-                        className="text-sm text-gray-500 hover:text-gray-700 mb-3"
-                      >
-                        ← Volver al menú
-                      </button>
-                      <h3 className="text-lg font-bold text-gray-800 mb-1">2x1 Mixto</h3>
-                      <p className="text-sm text-gray-500 mb-4">Elige dos pizzas clásicas diferentes</p>
-
-                      <p className="text-sm font-medium text-gray-700 mb-2">Primera pizza</p>
-                      <div className="grid grid-cols-2 gap-2 mb-4">
-                        {(() => {
-                          const classics = productCategories
-                            .filter(c => c.type === 'pizza')
-                            .flatMap(c => c.pizzas)
-                            .filter(p => pizzaPrices[p.name]?.['8 Pzas.']);
-                          return classics.map(p => (
-                            <button
-                              key={p.name}
-                              onClick={() => { setMixPizza1(p.name); if (mixPizza2 === p.name) setMixPizza2(''); }}
-                              className={`px-3 py-2.5 rounded-lg border text-sm font-medium text-left transition ${
-                                mixPizza1 === p.name
-                                  ? 'border-blue-500 bg-blue-50 text-blue-700'
-                                  : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
-                              }`}
-                            >
-                              {p.name}
-                              <span className="block text-xs text-gray-500">{formatCurrency(pizzaPrices[p.name]?.['8 Pzas.'])}</span>
-                            </button>
-                          ));
-                        })()}
-                      </div>
-
-                      {mixPizza1 && (
-                        <>
-                          <p className="text-sm font-medium text-gray-700 mb-2">Segunda pizza</p>
-                          <div className="grid grid-cols-2 gap-2 mb-4">
-                            {(() => {
-                              const classics = productCategories
-                                .filter(c => c.type === 'pizza')
-                                .flatMap(c => c.pizzas)
-                                .filter(p => pizzaPrices[p.name]?.['8 Pzas.'] && p.name !== mixPizza1);
-                              return classics.map(p => (
-                                <button
-                                  key={p.name}
-                                  onClick={() => setMixPizza2(p.name)}
-                                  className={`px-3 py-2.5 rounded-lg border text-sm font-medium text-left transition ${
-                                    mixPizza2 === p.name
-                                      ? 'border-blue-500 bg-blue-50 text-blue-700'
-                                      : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
-                                  }`}
-                                >
-                                  {p.name}
-                                  <span className="block text-xs text-gray-500">{formatCurrency(pizzaPrices[p.name]?.['8 Pzas.'])}</span>
-                                </button>
-                              ));
-                            })()}
-                          </div>
-                        </>
-                      )}
-
-                      {mixPizza1 && mixPizza2 && (
-                        <button
-                          onClick={() => {
-                            const price = Math.max(
-                              pizzaPrices[mixPizza1]?.['8 Pzas.'] || 40,
-                              pizzaPrices[mixPizza2]?.['8 Pzas.'] || 40,
-                            );
-                            addItem(`2x1 Mixto: ${mixPizza1} + ${mixPizza2} (8 Pzas.)`, price);
-                            setShowMix2x1(false);
-                          }}
-                          className="w-full py-3 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 transition"
-                        >
-                          Agregar — {formatCurrency(Math.max(
-                            pizzaPrices[mixPizza1]?.['8 Pzas.'] || 40,
-                            pizzaPrices[mixPizza2]?.['8 Pzas.'] || 40,
-                          ))}
-                        </button>
-                      )}
-                    </div>
-                  </div>
+                  <Mix2x1Picker
+                    onAdd={(name, price) => addItem(name, price)}
+                    onBack={() => setShowMix2x1(false)}
+                  />
                 ) : (
                   <div className="flex-1 overflow-y-auto p-4 space-y-2">
                     {productCategories.map(cat => (

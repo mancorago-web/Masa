@@ -113,24 +113,7 @@ const initialInventory: InventoryItem[] = [
 export default function Inventario() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
-  const [inventory, setInventory] = useState<InventoryItem[]>(() => {
-    if (typeof window === 'undefined') return initialInventory;
-    try {
-      const saved = localStorage.getItem('masa-inventory');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        const base = [...initialInventory];
-        const baseIds = new Set(base.map(i => i.id));
-        for (const item of parsed) {
-          const idx = base.findIndex(i => i.id === item.id);
-          if (idx >= 0) base[idx] = item;
-          else if (!baseIds.has(item.id)) { base.push(item); baseIds.add(item.id); }
-        }
-        return base;
-      }
-    } catch {}
-    return initialInventory;
-  });
+  const [inventory, setInventory] = useState<InventoryItem[]>(initialInventory);
   const inventoryRef = useRef(inventory);
   inventoryRef.current = inventory;
   const [loading, setLoading] = useState(true);
@@ -147,13 +130,7 @@ export default function Inventario() {
   const [showDatosSaved, setShowDatosSaved] = useState(false);
   const [isEditingDatos, setIsEditingDatos] = useState(false);
   const [expandedSubRecipeDetails, setExpandedSubRecipeDetails] = useState<string[]>([]);
-  const [purchaseHistory, setPurchaseHistory] = useState<PurchaseEntry[]>(() => {
-    if (typeof window === 'undefined') return [];
-    try {
-      const saved = localStorage.getItem('masa-compras-history');
-      return saved ? JSON.parse(saved) : [];
-    } catch { return []; }
-  });
+  const [purchaseHistory, setPurchaseHistory] = useState<PurchaseEntry[]>([]);
   const purchaseHistoryRef = useRef(purchaseHistory);
   purchaseHistoryRef.current = purchaseHistory;
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);
@@ -161,9 +138,8 @@ export default function Inventario() {
   const [dateFilterStart, setDateFilterStart] = useState('');
   const [dateFilterEnd, setDateFilterEnd] = useState('');
 
-  // Auto-save purchase history
+  // Auto-save purchase history to Firestore
   useEffect(() => {
-    localStorage.setItem('masa-compras-history', JSON.stringify(purchaseHistory));
     syncToFirestore({ comprasHistory: purchaseHistory });
   }, [purchaseHistory]);
 
@@ -767,21 +743,6 @@ export default function Inventario() {
             else if (!baseIds.has(item.id)) { base.push(item); baseIds.add(item.id); }
           }
           setInventory(base);
-        } else {
-          const saved = localStorage.getItem('masa-inventory');
-          if (saved) {
-            try {
-              const parsed = JSON.parse(saved);
-              const base = [...initialInventory];
-              const baseIds = new Set(base.map(i => i.id));
-              for (const item of parsed) {
-                const idx = base.findIndex(i => i.id === item.id);
-                if (idx >= 0) base[idx] = item;
-                else if (!baseIds.has(item.id)) { base.push(item); baseIds.add(item.id); }
-              }
-              setInventory(base);
-            } catch {}
-          }
         }
         if (data) {
           recetasFromFirestoreData(data);
@@ -789,28 +750,12 @@ export default function Inventario() {
       }, (err) => {
         console.error('Firestore snapshot error:', err);
         setLoading(false);
-        const saved = localStorage.getItem('masa-inventory');
-        if (saved) {
-          try {
-            const parsed = JSON.parse(saved);
-            const base = [...initialInventory];
-            const baseIds = new Set(base.map(i => i.id));
-            for (const item of parsed) {
-              const idx = base.findIndex(i => i.id === item.id);
-              if (idx >= 0) base[idx] = item;
-              else if (!baseIds.has(item.id)) { base.push(item); baseIds.add(item.id); }
-            }
-            setInventory(base);
-          } catch {}
-        }
-        loadRecetasFromLocalStorage();
       });
     })();
     return () => { if (unsub) unsub(); };
   }, []);
 
   const saveInventory = () => {
-    localStorage.setItem('masa-inventory', JSON.stringify(inventory));
     syncToFirestore({ inventory });
     setShowSaved(true);
     setTimeout(() => setShowSaved(false), 2000);
@@ -818,13 +763,6 @@ export default function Inventario() {
 
   const saveRecetas = () => {
     try {
-      localStorage.setItem('masa-recipes', JSON.stringify(recipesRef.current));
-      localStorage.setItem('masa-recipeIngredients', JSON.stringify(recipeIngredientsRef.current));
-      localStorage.setItem('masa-subRecipes', JSON.stringify(subRecipes));
-      localStorage.setItem('masa-subIngredients', JSON.stringify(subRecipeIngredients));
-      localStorage.setItem('masa-nextRecipeId', JSON.stringify(nextRecipeId.current));
-      localStorage.setItem('masa-deletedRecipes', JSON.stringify(Array.from(deletedRecipeIds.current)));
-      localStorage.setItem('masa-deletedSubIngredientKeys', JSON.stringify(Array.from(deletedSubIngredientKeys.current)));
       syncToFirestore({
         recipes: recipesRef.current,
         recipeIngredients: recipeIngredientsRef.current,
@@ -844,7 +782,6 @@ export default function Inventario() {
   };
 
   const saveDatos = () => {
-    localStorage.setItem('masa-inventory', JSON.stringify(inventory));
     syncToFirestore({ inventory });
     setShowDatosSaved(true);
     setIsEditingDatos(false);
@@ -900,77 +837,6 @@ export default function Inventario() {
     });
   };
 
-
-  const loadRecetasFromLocalStorage = () => {
-    try {
-      const savedRecipes = localStorage.getItem('masa-recipes');
-      if (savedRecipes) {
-        const parsed = JSON.parse(savedRecipes);
-        if (Array.isArray(parsed)) {
-          const savedById = new Map(parsed.map((r: any) => [r.id, r]));
-          const merged = defaultRecipes
-            .filter(def => !deletedRecipeIds.current.has(def.id))
-            .map(def => savedById.has(def.id) ? { ...savedById.get(def.id) } : def);
-          const mergedIds = new Set(merged.map((r: any) => r.id));
-          for (const item of parsed) {
-            if (!mergedIds.has(item.id)) { merged.push(item); mergedIds.add(item.id); }
-          }
-          setRecipes(merged);
-          recipesRef.current = merged;
-        }
-      }
-    } catch (e) { console.error('Error loading recipes:', e); }
-    try {
-      const savedIngredients = localStorage.getItem('masa-recipeIngredients');
-      if (savedIngredients) {
-        const parsed = JSON.parse(savedIngredients);
-        if (typeof parsed === 'object') {
-          const merged = { ...defaultRecipeIngredients, ...parsed };
-          setRecipeIngredients(merged);
-          recipeIngredientsRef.current = merged;
-        }
-      }
-    } catch (e) { console.error('Error loading recipeIngredients:', e); }
-    try {
-      const savedSubs = localStorage.getItem('masa-subRecipes');
-      if (savedSubs) {
-        const parsed = JSON.parse(savedSubs);
-        if (Array.isArray(parsed)) {
-          setSubRecipes(parsed);
-        }
-      }
-    } catch (e) { console.error('Error loading subRecipes:', e); }
-    forceSubRecipes();
-    try {
-      const savedSubIngredients = localStorage.getItem('masa-subIngredients');
-      if (savedSubIngredients) {
-        const parsed = JSON.parse(savedSubIngredients);
-        if (typeof parsed === 'object') {
-          mergeSubIngredients(parsed);
-        }
-      }
-    } catch (e) { console.error('Error loading subIngredients:', e); }
-    try {
-      const savedNextId = localStorage.getItem('masa-nextRecipeId');
-      if (savedNextId) {
-        nextRecipeId.current = parseInt(savedNextId);
-      }
-    } catch (e) { console.error('Error loading nextRecipeId:', e); }
-    try {
-      const savedDeleted = localStorage.getItem('masa-deletedRecipes');
-      if (savedDeleted) {
-        const parsed = JSON.parse(savedDeleted);
-        if (Array.isArray(parsed)) parsed.forEach(id => deletedRecipeIds.current.add(id));
-      }
-    } catch (e) { console.error('Error loading deletedRecipes:', e); }
-    try {
-      const saved = localStorage.getItem('masa-deletedSubIngredientKeys');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) parsed.forEach(k => deletedSubIngredientKeys.current.add(k));
-      }
-    } catch (e) { console.error('Error loading deletedSubIngredientKeys:', e); }
-  };
 
   const recetasFromFirestoreData = (data: Record<string, unknown>) => {
     if (data.deletedRecipes && Array.isArray(data.deletedRecipes)) {
@@ -1101,7 +967,6 @@ export default function Inventario() {
       return item;
     });
     setInventory(updated);
-    localStorage.setItem('masa-inventory', JSON.stringify(updated));
     syncToFirestore({ inventory: updated });
     setPurchaseHistory(prev => [...entries, ...prev]);
     setShowPurchaseModal(false);

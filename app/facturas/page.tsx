@@ -19,22 +19,6 @@ interface Invoice {
   deleted?: boolean;
 }
 
-const STORAGE_KEY = "masa-facturas";
-
-function loadFromStorage<T>(key: string, fallback: T): T {
-  if (typeof window === "undefined") return fallback;
-  try {
-    const saved = localStorage.getItem(key);
-    if (saved) return JSON.parse(saved);
-  } catch {}
-  return fallback;
-}
-
-function saveToStorage(key: string, data: unknown) {
-  if (typeof window === 'undefined') return;
-  localStorage.setItem(key, JSON.stringify(data));
-}
-
 async function syncToFirestore(data: Record<string, unknown>) {
   const db = getDb();
   if (!db) return;
@@ -64,9 +48,7 @@ const emptyForm = {
 export default function Facturas() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
-  const [invoices, setInvoices] = useState<Invoice[]>(
-    () => loadFromStorage<Invoice[]>(STORAGE_KEY, [])
-  );
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [filterDate, setFilterDate] = useState('');
   const [form, setForm] = useState(emptyForm);
@@ -81,27 +63,9 @@ export default function Facturas() {
   // Load from Firestore on mount + real-time listener
   useEffect(() => {
     setFilterDate(todayStr());
-    const cached = loadFromStorage<Invoice[]>(STORAGE_KEY, []);
-    if (cached.length > 0) setInvoices(cached);
 
     const db = getDb();
     if (!db) return;
-
-    // On mount: merge local + remote by ID (like Ventas), write to Firestore if needed
-    (async () => {
-      const local = loadFromStorage<Invoice[]>(STORAGE_KEY, []);
-      if (local.length === 0) return;
-      let remote: Invoice[] = [];
-      try {
-        const snap = await db.collection('config').doc('facturas').get();
-        if (snap.exists) { const d = snap.data(); if (d.invoices && Array.isArray(d.invoices)) remote = d.invoices; }
-      } catch (_) {}
-      const remoteMap = new Map(remote.map(p => [p.id, p]));
-      const merged = [...remote, ...local.filter(p => !remoteMap.has(p.id))];
-      if (merged.length !== remote.length) {
-        syncToFirestore({ invoices: merged });
-      }
-    })();
 
     const unsub = db
       .collection("config")
@@ -120,11 +84,10 @@ export default function Facturas() {
     return () => unsub();
   }, []);
 
-  // Auto-save to localStorage + Firestore (skip first render to avoid overwrite)
+  // Auto-save to Firestore (skip first render to avoid overwrite)
   const isFirstInvoiceSync = useRef(true);
   useEffect(() => {
     if (isFirstInvoiceSync.current) { isFirstInvoiceSync.current = false; return; }
-    saveToStorage(STORAGE_KEY, invoices);
     syncToFirestore({ invoices });
   }, [invoices]);
 

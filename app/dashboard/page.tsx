@@ -75,20 +75,6 @@ interface DailySnapshot {
   soldItems: SoldItem[];
 }
 
-function loadFromStorage<T>(key: string, fallback: T): T {
-  if (typeof window === 'undefined') return fallback;
-  try {
-    const saved = localStorage.getItem(key);
-    if (saved) return JSON.parse(saved);
-  } catch {}
-  return fallback;
-}
-
-function saveToStorage(key: string, data: unknown) {
-  if (typeof window === 'undefined') return;
-  try { localStorage.setItem(key, JSON.stringify(data)); } catch {}
-}
-
 function todayStr() {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -105,7 +91,6 @@ function parsePaymentDate(dateStr: string) {
 }
 
 const formatCurrency = (n: number) => `S/${n.toFixed(2)}`;
-const SNAPSHOT_PREFIX = 'masa-dashboard-daily-';
 
 function computeSoldItems(
   payments: PaymentData[],
@@ -273,12 +258,6 @@ export default function Dashboard() {
     const today = todayStr();
     setSelectedDate(today);
     lastSavedDate.current = today;
-    setPayments(loadFromStorage<PaymentData[]>('masa-ventas-payments', []));
-    setRecipes(loadFromStorage<{ id: string; category: string; name: string }[]>('masa-recipes', []));
-    setSubRecipes(loadFromStorage<{ id: string; parentId: string; name: string }[]>('masa-subRecipes', []));
-    setRecipeIngredients(loadFromStorage<Record<string, RecipeIngredient[]>>('masa-recipeIngredients', {}));
-    setSubIngredients(loadFromStorage<Record<string, RecipeIngredient[]>>('masa-subIngredients', {}));
-    setInventory(loadFromStorage<InventoryItem[]>('masa-inventory', []));
 
     // Real-time Firestore listener for payments cross-device sync
     const db = getDb();
@@ -368,12 +347,6 @@ export default function Dashboard() {
       if (p.length === 0) return;
       const computedSold = computeSoldItems(p, recipes, subRecipes, recipeIngredients, subIngredients, inventory);
       const computedTotals = computeTotals(p, computedSold);
-      const snapshot: DailySnapshot = {
-        date: today,
-        totals: computedTotals,
-        soldItems: computedSold,
-      };
-      saveToStorage(SNAPSHOT_PREFIX + today, snapshot);
     };
 
     // Save immediately on mount

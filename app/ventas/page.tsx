@@ -264,23 +264,6 @@ function nowStr() {
   return `${y}-${m}-${dd}, ${hh}:${mi}:${ss}`;
 }
 
-const STORAGE_KEY = 'masa-ventas-tables';
-const PAYMENTS_KEY = 'masa-ventas-payments';
-
-function saveToStorage(key: string, data: unknown) {
-  if (typeof window === 'undefined') return;
-  localStorage.setItem(key, JSON.stringify(data));
-}
-
-function loadFromStorage<T>(key: string, fallback: T): T {
-  if (typeof window === 'undefined') return fallback;
-  try {
-    const saved = localStorage.getItem(key);
-    if (saved) return JSON.parse(saved);
-  } catch {}
-  return fallback;
-}
-
 async function syncToFirestore(data: Record<string, unknown>, retries = 3) {
   const db = getDb();
   if (!db) return;
@@ -460,13 +443,9 @@ export default function Ventas() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
   const [tables, setTables] = useState<TableOrder[]>(() => {
-    const stored = loadFromStorage<TableOrder[]>(STORAGE_KEY, initialTables);
-    if (stored.length < 11) {
-      const padded = [...stored];
-      while (padded.length < 11) padded.push({ items: [], status: 'libre', customerName: '' });
-      return padded;
-    }
-    return stored;
+    const padded = [...initialTables];
+    while (padded.length < 11) padded.push({ items: [], status: 'libre', customerName: '' });
+    return padded;
   });
   const [activeTable, setActiveTable] = useState(0);
   const [showProductMenu, setShowProductMenu] = useState(false);
@@ -490,7 +469,7 @@ export default function Ventas() {
   const [historyDate, setHistoryDate] = useState('');
   const [syncedMessage, setSyncedMessage] = useState('');
   const [syncError, setSyncError] = useState('');
-  const [paymentsHistory, setPaymentsHistory] = useState<PaymentData[]>(() => loadFromStorage(PAYMENTS_KEY, []));
+  const [paymentsHistory, setPaymentsHistory] = useState<PaymentData[]>([]);
   const [recipes, setRecipes] = useState(defaultRecipes);
   const [subRecipes, setSubRecipes] = useState(defaultSubRecipes);
   const [recipeIngredients, setRecipeIngredients] = useState<Record<string, RecipeIngredient[]>>({});
@@ -510,27 +489,8 @@ export default function Ventas() {
   if (authLoading) return <main className="min-h-screen bg-gray-100 flex items-center justify-center"><p className="text-gray-400">Cargando...</p></main>;
   if (!user) return null;
 
-  // Load recipes & sub-recipes from localStorage (shared with inventario)
+  // Real-time Firestore listener for cross-device sync
   useEffect(() => {
-    const savedRecipes = loadFromStorage<{ id: string; category: string; name: string }[] | null>('masa-recipes', null);
-    if (savedRecipes && Array.isArray(savedRecipes)) {
-      const savedById = new Map(savedRecipes.map(r => [r.id, r]));
-      const merged = defaultRecipes.map(def => savedById.has(def.id) ? { ...savedById.get(def.id) } : def);
-      const mergedIds = new Set(merged.map(r => r.id));
-      for (const item of savedRecipes) {
-        if (!mergedIds.has(item.id)) { merged.push(item); mergedIds.add(item.id); }
-      }
-      setRecipes(merged);
-    }
-    const savedSubs = loadFromStorage<{ id: string; parentId: string; name: string }[] | null>('masa-subRecipes', null);
-    if (savedSubs && Array.isArray(savedSubs)) {
-      setSubRecipes(savedSubs);
-    }
-    setRecipeIngredients(loadFromStorage<Record<string, RecipeIngredient[]>>('masa-recipeIngredients', {}));
-    setSubIngredients(loadFromStorage<Record<string, RecipeIngredient[]>>('masa-subIngredients', {}));
-    setInventory(loadFromStorage<InventoryItem[]>('masa-inventory', []));
-
-    // Real-time Firestore listener for cross-device sync
     const db = getDb();
     if (db) {
       const unsub1 = db.collection('config').doc('ventas')
@@ -589,26 +549,20 @@ export default function Ventas() {
 
   const productCategories = useMemo(() => buildMenu(recipes, subRecipes, user?.role === 'togo'), [recipes, subRecipes, user]);
 
-  // On mount: merge local + remote payments and sync to Firestore
+  // On mount: load payments from Firestore
   useEffect(() => {
     (async () => {
-      const local = loadFromStorage<PaymentData[]>(PAYMENTS_KEY, []);
       const db = getDb();
-      let remote: PaymentData[] = [];
-      if (db) {
-        try {
-          const snap = await db.collection('config').doc('ventas').get();
-          if (snap.exists) { const d = snap.data(); if (d.payments && Array.isArray(d.payments)) remote = d.payments; }
-        } catch (_) {}
-      }
-      // Always merge both: prefer remote (Firestore is source of truth),
-      // then add any local-only payments (unsynced)
-      const remoteMap = new Map(remote.map(p => [p.id, p]));
-      const merged = [...remote, ...local.filter(p => !remoteMap.has(p.id))];
-      // Only write if there's new local data to add
-      if (merged.length !== remote.length) {
-        syncToFirestore({ payments: merged });
-      }
+      if (!db) return;
+      try {
+        const snap = await db.collection('config').doc('ventas').get();
+        if (snap.exists) {
+          const d = snap.data();
+          if (d.payments && Array.isArray(d.payments)) {
+            setPaymentsHistory(d.payments);
+          }
+        }
+      } catch (_) {}
     })();
   }, []);
 
@@ -624,7 +578,6 @@ export default function Ventas() {
   }, []);
 
   useEffect(() => {
-    saveToStorage(STORAGE_KEY, tables);
     const tableFields: Record<string, unknown> = {};
     tables.forEach((t, i) => { tableFields[`table_${i}`] = t; });
     tableFields.tables = tables;
@@ -636,7 +589,6 @@ export default function Ventas() {
   const isFirstPaymentSync = useRef(true);
   useEffect(() => {
     if (isFirstPaymentSync.current) { isFirstPaymentSync.current = false; return; }
-    saveToStorage(PAYMENTS_KEY, paymentsHistory);
     syncToFirestore({ payments: paymentsHistory });
   }, [paymentsHistory]);
 
@@ -726,10 +678,6 @@ export default function Ventas() {
       date: nowStr(),
     };
 
-    // Guardar inmediatamente en localStorage (antes de cualquier estado o async)
-    const prevPayments = loadFromStorage<PaymentData[]>(PAYMENTS_KEY, []);
-    saveToStorage(PAYMENTS_KEY, [payment, ...prevPayments]);
-
     setPaymentsHistory(prev => {
       return [payment, ...prev];
     });
@@ -742,8 +690,7 @@ export default function Ventas() {
     // Register cash movements in Caja Chica
     if (paymentMethod === 'efectivo') {
       const now = nowStr();
-      const cajaKey = 'masa-caja-chica';
-      const cajaData = loadFromStorage<{ initialAmount: number; transactions: { id: string; type: string; description: string; amount: number; date: string }[] } | null>(cajaKey, null) || { initialAmount: 200, transactions: [] };
+      const cajaData: { initialAmount: number; transactions: { id: string; type: string; description: string; amount: number; date: string }[] } = { initialAmount: 200, transactions: [] };
       // Ingreso: el efectivo recibido del cliente
       cajaData.transactions.push({
         id: Date.now().toString() + Math.random().toString(36).slice(2, 6),
@@ -763,8 +710,6 @@ export default function Ventas() {
           date: now,
         });
       }
-      saveToStorage(cajaKey, cajaData);
-      // Sync to Firestore
       const db = getDb();
       if (db) {
         db.collection('config').doc('cajaChica').set(cajaData, { merge: true }).catch(() => {});
@@ -775,7 +720,6 @@ export default function Ventas() {
     const updatedInventory = deductInventoryForItems(payment.items, recipeIngredients, subIngredients, inventory);
     if (updatedInventory.some((item, i) => item.currentStock !== inventory[i]?.currentStock)) {
       setInventory(updatedInventory);
-      saveToStorage('masa-inventory', updatedInventory);
       const db = getDb();
       if (db) {
         db.collection('masa').doc('data').set({ inventory: updatedInventory }, { merge: true }).catch(() => {});
@@ -846,20 +790,9 @@ export default function Ventas() {
   };
 
   const handleResync = async () => {
-    const local = loadFromStorage<PaymentData[]>(PAYMENTS_KEY, []);
-    if (local.length === 0) { setSyncedMessage('No hay pagos locales'); setTimeout(() => setSyncedMessage(''), 2000); return; }
-    const db = getDb();
-    let remote: PaymentData[] = [];
-    if (db) {
-      try {
-        const snap = await db.collection('config').doc('ventas').get();
-        if (snap.exists) { const d = snap.data(); if (d.payments && Array.isArray(d.payments)) remote = d.payments; }
-      } catch (_) {}
-    }
-    const remoteMap = new Map(remote.map(p => [p.id, p]));
-    const merged = [...remote, ...local.filter(p => !remoteMap.has(p.id))];
-    await syncToFirestore({ payments: merged });
-    setSyncedMessage(`Sincronizados ${merged.length} pago(s)`);
+    if (paymentsHistory.length === 0) { setSyncedMessage('No hay pagos'); setTimeout(() => setSyncedMessage(''), 2000); return; }
+    await syncToFirestore({ payments: paymentsHistory });
+    setSyncedMessage(`Sincronizados ${paymentsHistory.length} pago(s)`);
     setTimeout(() => setSyncedMessage(''), 3000);
   };
 

@@ -23,9 +23,6 @@ interface DailyRecord {
   finalBalance: number;
 }
 
-const STORAGE_KEY = 'masa-caja-chica';
-const DAILY_RECORDS_KEY = 'masa-caja-chica-daily';
-
 function todayStr() {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -39,34 +36,6 @@ function nowStr() {
   const mi = String(d.getMinutes()).padStart(2, '0');
   const ss = String(d.getSeconds()).padStart(2, '0');
   return `${y}-${m}-${dd}, ${hh}:${mi}:${ss}`;
-}
-
-function loadFromStorage() {
-  if (typeof window === 'undefined') return null;
-  try {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) return JSON.parse(saved);
-  } catch {}
-  return null;
-}
-
-function saveToStorage(data: unknown) {
-  if (typeof window === 'undefined') return;
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-}
-
-function loadDailyRecordsFromStorage(): Record<string, DailyRecord> {
-  if (typeof window === 'undefined') return {};
-  try {
-    const saved = localStorage.getItem(DAILY_RECORDS_KEY);
-    if (saved) return JSON.parse(saved);
-  } catch {}
-  return {};
-}
-
-function saveDailyRecordsToStorage(records: Record<string, DailyRecord>) {
-  if (typeof window === 'undefined') return;
-  localStorage.setItem(DAILY_RECORDS_KEY, JSON.stringify(records));
 }
 
 async function syncToFirestore(data: Record<string, unknown>) {
@@ -148,119 +117,53 @@ export default function CajaChica() {
       finalBalance: init + totalIngresos - activeTotal,
     };
     dailyRecordsRef.current = { ...dailyRecordsRef.current, [date]: record };
-    saveDailyRecordsToStorage(dailyRecordsRef.current);
     saveDailyRecordToFirestore(record);
     setAvailableDates(Object.keys(dailyRecordsRef.current).sort().reverse());
   }).current;
 
   useEffect(() => {
-    // Load cached daily records first
-    const cached = loadDailyRecordsFromStorage();
-    dailyRecordsRef.current = cached;
-    setAvailableDates(Object.keys(cached).sort().reverse());
-
-    const saved = loadFromStorage();
     const today = todayStr();
     todayRef.current = today;
-    if (saved) {
-      const init = saved.initialAmount ?? defaultInitialAmount;
-      const txns: Transaction[] = saved.transactions ?? [];
-      // Migrate old DD/MM/YYYY dates to YYYY-MM-DD
-      for (const t of txns) {
-        if (t.date) {
-          const parts = t.date.split(',');
-          const dp = parts[0].trim();
-          if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(dp)) {
-            const [dd, mm, yyyy] = dp.split('/');
-            const tp = parts.slice(1).join(',').trim();
-            t.date = `${yyyy}-${mm.padStart(2, '0')}-${dd.padStart(2, '0')}${tp ? ', ' + tp : ''}`;
-          }
-        }
+
+    const db = getDb();
+    if (!db) { setAvailableDates(Object.keys(dailyRecordsRef.current).sort().reverse()); return; }
+
+    // Load from Firestore
+    db.collection('config').doc('cajaChica').get().then((snap: any) => {
+      if (snap.exists) {
+        const saved = snap.data();
+        const init = saved.initialAmount ?? defaultInitialAmount;
+        const txns: Transaction[] = (saved.transactions ?? []).filter((t: Transaction) => {
+          const tDay = t.date ? t.date.split(',')[0].trim() : '';
+          return !tDay || tDay === today;
+        });
+        setInitialAmount(init);
+        setTransactions(txns);
+      } else {
+        setInitialAmount(defaultInitialAmount);
+        setTransactions([]);
+        syncToFirestore({ initialAmount: defaultInitialAmount, transactions: [] });
       }
-      // Archive transactions from previous days
-      const todayTxns = txns.filter((t: Transaction) => {
-        const tDay = t.date ? t.date.split(',')[0].trim() : '';
-        return !tDay || tDay === today;
-      });
-      const olderTxns = txns.filter((t: Transaction) => {
-        const tDay = t.date ? t.date.split(',')[0].trim() : '';
-        return tDay && tDay !== today;
-      });
-      // Save older transactions as daily records grouped by date
-      const byDate: Record<string, Transaction[]> = {};
-      for (const t of olderTxns) {
-        const tDay = t.date ? t.date.split(',')[0].trim() : '';
-        if (tDay) {
-          if (!byDate[tDay]) byDate[tDay] = [];
-          byDate[tDay].push(t);
-        }
-      }
-      let updatedRecords = { ...dailyRecordsRef.current };
-      for (const [date, dayTxns] of Object.entries(byDate)) {
-        const dayInit = defaultInitialAmount;
-        const dayIngresos = dayTxns.reduce((sum, t) => t.deleted || t.type !== 'INGRESO' ? sum : sum + t.amount, 0);
-        const dayExpenses = dayTxns.reduce((sum, t) => t.deleted || t.type === 'INGRESO' ? sum : sum + t.amount, 0);
-        updatedRecords[date] = {
-          date,
-          initialAmount: dayInit,
-          transactions: dayTxns,
-          totalExpenses: dayExpenses,
-          finalBalance: dayInit + dayIngresos - dayExpenses,
+    }).catch(() => {});
+
+    loadDailyRecordsFromFirestore().then(records => {
+      const byDate: Record<string, DailyRecord> = {};
+      for (const r of records) byDate[r.date] = r;
+      dailyRecordsRef.current = byDate;
+      if (!byDate[today]) {
+        const emptyRecord: DailyRecord = {
+          date: today,
+          initialAmount: defaultInitialAmount,
+          transactions: [],
+          totalExpenses: 0,
+          finalBalance: defaultInitialAmount,
         };
-        saveDailyRecordToFirestore(updatedRecords[date]);
+        byDate[today] = emptyRecord;
+        saveDailyRecordToFirestore(emptyRecord);
       }
-      dailyRecordsRef.current = updatedRecords;
-      saveDailyRecordsToStorage(updatedRecords);
-      setAvailableDates(Object.keys(updatedRecords).sort().reverse());
-
-      setInitialAmount(init);
-      setTransactions(todayTxns);
-      // If there were old transactions, update storage
-      if (olderTxns.length > 0) {
-        const newData = { initialAmount: init, transactions: todayTxns };
-        saveToStorage(newData);
-        syncToFirestore(newData);
-      }
-      // Ensure today's record exists
-      const hoyIngresos = todayTxns.reduce((sum, t) => t.deleted || t.type !== 'INGRESO' ? sum : sum + t.amount, 0);
-      const hoyExpenses = todayTxns.reduce((sum, t) => t.deleted || t.type === 'INGRESO' ? sum : sum + t.amount, 0);
-      const todayRecord: DailyRecord = {
-        date: today,
-        initialAmount: init,
-        transactions: todayTxns,
-        totalExpenses: hoyExpenses,
-        finalBalance: init + hoyIngresos - hoyExpenses,
-      };
-      dailyRecordsRef.current[today] = todayRecord;
-      saveDailyRecordsToStorage(dailyRecordsRef.current);
-      saveDailyRecordToFirestore(todayRecord);
-      setAvailableDates(Object.keys(dailyRecordsRef.current).sort().reverse());
-    } else {
-      // No saved data — save today's empty record
-      const emptyRecord: DailyRecord = {
-        date: today,
-        initialAmount: defaultInitialAmount,
-        transactions: [],
-        totalExpenses: 0,
-        finalBalance: defaultInitialAmount,
-      };
-      dailyRecordsRef.current[today] = emptyRecord;
-      saveDailyRecordsToStorage(dailyRecordsRef.current);
-      saveDailyRecordToFirestore(emptyRecord);
-      setAvailableDates(Object.keys(dailyRecordsRef.current).sort().reverse());
-    }
+      setAvailableDates(Object.keys(byDate).sort().reverse());
+    }).catch(() => {});
   }, [saveDailySnapshot]);
-
-  // Reload data when localStorage changes from another tab
-  useEffect(() => {
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === STORAGE_KEY) {
-        window.location.reload();
-      }
-    };
-    window.addEventListener('storage', onStorage);
-    return () => window.removeEventListener('storage', onStorage);
-  }, []);
 
   // Midnight auto-close: check every 30s if the date changed
   useEffect(() => {
@@ -277,7 +180,6 @@ export default function CajaChica() {
         setTransactions([]);
         setInitialAmount(prevInit);
         const newData = { initialAmount: prevInit, transactions: [] };
-        saveToStorage(newData);
         syncToFirestore(newData);
         saveDailySnapshot(now, prevInit, []);
       }
@@ -291,7 +193,6 @@ export default function CajaChica() {
       return;
     }
     const data = { initialAmount, transactions };
-    saveToStorage(data);
     syncToFirestore(data);
     // Auto-save today's daily record
     saveDailySnapshot(todayRef.current, initialAmount, transactions);
@@ -353,18 +254,26 @@ export default function CajaChica() {
     setLoadingRecords(true);
     setRegistroDate(todayStr());
     setRegistroRecord(null);
-    // Try to load from Firestore for fresh data
+    // Refresh from Firestore
     const firestoreRecords = await loadDailyRecordsFromFirestore();
     if (firestoreRecords.length > 0) {
       const merged: Record<string, DailyRecord> = {};
       for (const r of firestoreRecords) {
         merged[r.date] = r;
       }
-      // Merge with localStorage cache (local takes precedence for today)
-      const cached = loadDailyRecordsFromStorage();
-      dailyRecordsRef.current = { ...merged, ...cached };
-    } else {
-      dailyRecordsRef.current = loadDailyRecordsFromStorage();
+      dailyRecordsRef.current = merged;
+    }
+    // Ensure today's record exists
+    const today = todayStr();
+    if (!dailyRecordsRef.current[today]) {
+      const emptyRecord: DailyRecord = {
+        date: today,
+        initialAmount,
+        transactions,
+        totalExpenses: 0,
+        finalBalance: initialAmount,
+      };
+      dailyRecordsRef.current[today] = emptyRecord;
     }
     setAvailableDates(Object.keys(dailyRecordsRef.current).sort().reverse());
     setShowRegistro(true);

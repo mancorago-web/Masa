@@ -100,6 +100,7 @@ export default function Cocina() {
   const notifId = useRef(0);
   const tablesRef = useRef<KitchenTable[]>([]);
   tablesRef.current = tables;
+  const initialLoadDoneRef = useRef(false);
 
   useEffect(() => {
     if (!authLoading && !user) router.replace("/login");
@@ -187,6 +188,7 @@ export default function Cocina() {
         }
       }
       firestoreLoaded = true;
+      initialLoadDoneRef.current = true;
 
       // 2. Now do the Ventas initial load (picks up items not yet in Firestore tables)
       db.collection("config").doc("ventas").get().then((ventasSnap: any) => {
@@ -231,7 +233,20 @@ export default function Cocina() {
         const str = JSON.stringify(data.tables);
         if (str === tablesLastSavedRef.current) return;
         tablesLastSavedRef.current = str;
-        setTables(data.tables as KitchenTable[]);
+        setTables(prev => {
+          if (prev.length === 0) return data.tables;
+          // Merge: keep prev entries not in incoming (preserves items added by processVentasTables)
+          const incomingMap = new Map(data.tables.map((t: KitchenTable) => [t.id, t]));
+          const merged = data.tables.slice();
+          let changed = false;
+          for (const t of prev) {
+            if (!incomingMap.has(t.id)) {
+              merged.push(t);
+              changed = true;
+            }
+          }
+          return changed ? merged : data.tables;
+        });
       });
 
     // 5. Fallback: periodically check for new items in Ventas (catches missed snapshots)
@@ -262,7 +277,7 @@ export default function Cocina() {
   const saveTimerRef = useRef<ReturnType<typeof setTimeout>>();
   const tablesLastSavedRef = useRef("");
   useEffect(() => {
-    if (tables.length === 0) return;
+    if (!initialLoadDoneRef.current && tables.length === 0) return;
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     saveTimerRef.current = setTimeout(() => {
       const db = getDb();
@@ -271,6 +286,7 @@ export default function Cocina() {
       tablesLastSavedRef.current = str;
       db.collection("config").doc("cocinaTables").set({ tables }, { merge: true }).catch(() => {});
     }, 300);
+    return () => { if (saveTimerRef.current) clearTimeout(saveTimerRef.current); };
   }, [tables]);
 
   // Real-time listener for Firestore history (tables archived from past days)
@@ -286,27 +302,34 @@ export default function Cocina() {
     return () => unsub();
   }, []);
 
-  // Archive completed tables from previous days into Firestore history
-  const lastArchiveDate = useRef('');
+  // Archive fully-completed tables to history and remove from active list
+  const archivedIdsRef = useRef<Set<string>>(new Set());
   useEffect(() => {
+    if (!initialLoadDoneRef.current) return;
     if (tables.length === 0) return;
-    const today = todayStr();
-    if (lastArchiveDate.current === today) return;
-    const pastTables = tables.filter(t => !isSameDay(t.updatedAt, today) && t.items.every(i => i.completed));
-    if (pastTables.length === 0) return;
-    lastArchiveDate.current = today;
     const byDate: Record<string, KitchenTable[]> = {};
-    for (const t of pastTables) {
-      const d = t.updatedAt.slice(0, 10);
-      if (!byDate[d]) byDate[d] = [];
-      byDate[d].push(t);
+    const remaining: KitchenTable[] = [];
+    let hasNewArchive = false;
+    for (const t of tables) {
+      const id = t.id ?? `${t.tableNumber}-${t.orderNumber}`;
+      if (t.items.every(i => i.completed) && !archivedIdsRef.current.has(id)) {
+        const d = t.updatedAt.slice(0, 10);
+        if (!byDate[d]) byDate[d] = [];
+        byDate[d].push(t);
+        archivedIdsRef.current.add(id);
+        hasNewArchive = true;
+      } else {
+        remaining.push(t);
+      }
     }
+    if (!hasNewArchive) return;
     const db = getDb();
-    if (!db) return;
+    if (!db) { archivedIdsRef.current = new Set(); return; }
     for (const [date, dateTables] of Object.entries(byDate)) {
       db.collection('config').doc('cocinaHistory').set({ [date]: dateTables }, { merge: true })
         .catch(() => {});
     }
+    setTables(remaining);
   }, [tables]);
 
   // Load history

@@ -62,8 +62,34 @@ function todayStr() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
+function localNow() {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  const hh = String(d.getHours()).padStart(2, '0');
+  const mi = String(d.getMinutes()).padStart(2, '0');
+  const ss = String(d.getSeconds()).padStart(2, '0');
+  return `${y}-${m}-${day}T${hh}:${mi}:${ss}`;
+}
+
 function isSameDay(a: string, b: string) {
   return a.slice(0, 10) === b.slice(0, 10);
+}
+
+function tablesFromData(data: Record<string, unknown>): TableOrder[] | null {
+  // New format: per-table fields (table_0 ... table_10)
+  const fields: TableOrder[] = [];
+  let allFieldsExist = true;
+  for (let i = 0; i < 11; i++) {
+    const t = data[`table_${i}`] as TableOrder | undefined;
+    if (!t) { allFieldsExist = false; break; }
+    fields.push(t);
+  }
+  if (allFieldsExist) return fields;
+  // Fallback: old format with single tables array
+  if (Array.isArray(data.tables)) return data.tables as TableOrder[];
+  return null;
 }
 
 function isItemFromToday(itemId: string): boolean {
@@ -104,7 +130,7 @@ export default function Cocina() {
 
     function processVentasTables(curTables: TableOrder[], prev: KitchenTable[]): KitchenTable[] {
       const updated = prev.map((t) => ({ ...t, items: [...t.items] }));
-      const now = new Date().toISOString();
+      const now = localNow();
 
       const existingByTable = new Map<number, Set<string>>();
       for (const kt of updated) {
@@ -172,14 +198,14 @@ export default function Cocina() {
       .onSnapshot((snap: any) => {
         if (!snap.exists) return;
         const data = snap.data();
-        if (!data.tables || !Array.isArray(data.tables)) return;
+        const curTables = tablesFromData(data);
+        if (!curTables) return;
 
-        const currentStr = JSON.stringify(data.tables);
+        const currentStr = JSON.stringify(curTables);
         if (currentStr === prevTablesRef.current) return;
         prevTablesRef.current = currentStr;
 
         try {
-          const curTables: TableOrder[] = data.tables;
           setTables((prev) => processVentasTables(curTables, prev));
         } catch {}
       });
@@ -190,11 +216,11 @@ export default function Cocina() {
         const snap = await db.collection("config").doc("ventas").get();
         if (!snap.exists) return;
         const data = snap.data();
-        if (!data.tables || !Array.isArray(data.tables)) return;
-        const curStr = JSON.stringify(data.tables);
+        const curTables = tablesFromData(data);
+        if (!curTables) return;
+        const curStr = JSON.stringify(curTables);
         if (curStr === prevTablesRef.current) return;
         prevTablesRef.current = curStr;
-        const curTables: TableOrder[] = data.tables;
         setTables((prev) => processVentasTables(curTables, prev));
       } catch {}
     }, 4000);
@@ -206,11 +232,12 @@ export default function Cocina() {
         const snap = await db.collection("config").doc("ventas").get();
         if (!snap.exists) return;
         const data = snap.data();
-        if (!data.tables || !Array.isArray(data.tables)) return;
-        const curStr = JSON.stringify(data.tables);
+        const curTables = tablesFromData(data);
+        if (!curTables) return;
+        const curStr = JSON.stringify(curTables);
         if (curStr === prevTablesRef.current) return;
         prevTablesRef.current = curStr;
-        setTables((prev) => processVentasTables(data.tables, prev));
+        setTables((prev) => processVentasTables(curTables, prev));
       } catch {}
     };
     initialLoad();

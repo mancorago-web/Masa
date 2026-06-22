@@ -396,6 +396,9 @@ export default function Ventas() {
   const [halfPizza2, setHalfPizza2] = useState('');
   const [halfSizeLabel, setHalfSizeLabel] = useState('');
   const [halfCategoryPizzas, setHalfCategoryPizzas] = useState<{ name: string; sizes: { label: string; price: number }[] }[]>([]);
+  const [showMix2x1, setShowMix2x1] = useState(false);
+  const [mixPizza1, setMixPizza1] = useState('');
+  const [mixPizza2, setMixPizza2] = useState('');
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<'efectivo' | 'yape' | 'pos' | null>(null);
   const [cashAmount, setCashAmount] = useState('');
@@ -452,14 +455,6 @@ export default function Ventas() {
         .onSnapshot((snap: any) => {
           if (!snap.exists) return;
           const data = snap.data();
-          if (data.tables && Array.isArray(data.tables) && data.tables.length >= 11) {
-            setTables(prev => {
-              if (tablesWriteRef.current) return prev;
-              const incoming = JSON.stringify(data.tables);
-              const current = JSON.stringify(prev);
-              return incoming === current ? prev : data.tables;
-            });
-          }
           if (data.payments && Array.isArray(data.payments)) {
             setPaymentsHistory(prev => {
               const incoming = JSON.stringify(data.payments);
@@ -548,7 +543,10 @@ export default function Ventas() {
 
   useEffect(() => {
     saveToStorage(STORAGE_KEY, tables);
-    const write = syncToFirestore({ tables });
+    const tableFields: Record<string, unknown> = {};
+    tables.forEach((t, i) => { tableFields[`table_${i}`] = t; });
+    tableFields.tables = tables;
+    const write = syncToFirestore(tableFields);
     tablesWriteRef.current = write;
     write.then(() => { tablesWriteRef.current = null; }).catch(() => { tablesWriteRef.current = null; });
   }, [tables]);
@@ -1041,6 +1039,90 @@ export default function Ventas() {
                       )}
                     </div>
                   </div>
+                ) : showMix2x1 ? (
+                  <div className="flex-1 overflow-y-auto p-4">
+                    <div className="mb-4">
+                      <button
+                        onClick={() => setShowMix2x1(false)}
+                        className="text-sm text-gray-500 hover:text-gray-700 mb-3"
+                      >
+                        ← Volver al menú
+                      </button>
+                      <h3 className="text-lg font-bold text-gray-800 mb-1">2x1 Mixto</h3>
+                      <p className="text-sm text-gray-500 mb-4">Elige dos pizzas clásicas diferentes</p>
+
+                      <p className="text-sm font-medium text-gray-700 mb-2">Primera pizza</p>
+                      <div className="grid grid-cols-2 gap-2 mb-4">
+                        {(() => {
+                          const classics = productCategories
+                            .filter(c => c.type === 'pizza')
+                            .flatMap(c => c.pizzas)
+                            .filter(p => pizzaPrices[p.name]?.['8 Pzas.']);
+                          return classics.map(p => (
+                            <button
+                              key={p.name}
+                              onClick={() => { setMixPizza1(p.name); if (mixPizza2 === p.name) setMixPizza2(''); }}
+                              className={`px-3 py-2.5 rounded-lg border text-sm font-medium text-left transition ${
+                                mixPizza1 === p.name
+                                  ? 'border-blue-500 bg-blue-50 text-blue-700'
+                                  : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
+                              }`}
+                            >
+                              {p.name}
+                              <span className="block text-xs text-gray-500">{formatCurrency(pizzaPrices[p.name]?.['8 Pzas.'])}</span>
+                            </button>
+                          ));
+                        })()}
+                      </div>
+
+                      {mixPizza1 && (
+                        <>
+                          <p className="text-sm font-medium text-gray-700 mb-2">Segunda pizza</p>
+                          <div className="grid grid-cols-2 gap-2 mb-4">
+                            {(() => {
+                              const classics = productCategories
+                                .filter(c => c.type === 'pizza')
+                                .flatMap(c => c.pizzas)
+                                .filter(p => pizzaPrices[p.name]?.['8 Pzas.'] && p.name !== mixPizza1);
+                              return classics.map(p => (
+                                <button
+                                  key={p.name}
+                                  onClick={() => setMixPizza2(p.name)}
+                                  className={`px-3 py-2.5 rounded-lg border text-sm font-medium text-left transition ${
+                                    mixPizza2 === p.name
+                                      ? 'border-blue-500 bg-blue-50 text-blue-700'
+                                      : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
+                                  }`}
+                                >
+                                  {p.name}
+                                  <span className="block text-xs text-gray-500">{formatCurrency(pizzaPrices[p.name]?.['8 Pzas.'])}</span>
+                                </button>
+                              ));
+                            })()}
+                          </div>
+                        </>
+                      )}
+
+                      {mixPizza1 && mixPizza2 && (
+                        <button
+                          onClick={() => {
+                            const price = Math.max(
+                              pizzaPrices[mixPizza1]?.['8 Pzas.'] || 40,
+                              pizzaPrices[mixPizza2]?.['8 Pzas.'] || 40,
+                            );
+                            addItem(`2x1 Mixto: ${mixPizza1} + ${mixPizza2} (8 Pzas.)`, price);
+                            setShowMix2x1(false);
+                          }}
+                          className="w-full py-3 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 transition"
+                        >
+                          Agregar — {formatCurrency(Math.max(
+                            pizzaPrices[mixPizza1]?.['8 Pzas.'] || 40,
+                            pizzaPrices[mixPizza2]?.['8 Pzas.'] || 40,
+                          ))}
+                        </button>
+                      )}
+                    </div>
+                  </div>
                 ) : (
                   <div className="flex-1 overflow-y-auto p-4 space-y-2">
                     {productCategories.map(cat => (
@@ -1114,6 +1196,22 @@ export default function Ventas() {
                                     <span className="text-green-700 font-bold text-sm">{formatCurrency(item.price)}</span>
                                   </button>
                                 ))}
+                                {group.name === 'Pizzas 2x1 (8 Pzas.)' && (
+                                  <button
+                                    onClick={() => {
+                                      const classicPizzas = productCategories
+                                        .filter(c => c.type === 'pizza')
+                                        .flatMap(c => c.pizzas)
+                                        .filter(p => pizzaPrices[p.name]?.['8 Pzas.']);
+                                      setMixPizza1('');
+                                      setMixPizza2('');
+                                      setShowMix2x1(true);
+                                    }}
+                                    className="w-full flex items-center justify-center px-4 py-2.5 hover:bg-yellow-50 transition text-sm border-t border-gray-100 text-yellow-700 font-semibold"
+                                  >
+                                    🎱 2x1 Mixto
+                                  </button>
+                                )}
                               </div>
                             )) : cat.items.map(item => (
                               <button

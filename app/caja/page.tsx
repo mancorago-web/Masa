@@ -90,6 +90,7 @@ export default function CajaChica() {
   const [availableDates, setAvailableDates] = useState<string[]>([]);
   const [loadingRecords, setLoadingRecords] = useState(false);
   const dailyRecordsRef = useRef<Record<string, DailyRecord>>({});
+  const lastCajaSnapshotRef = useRef<string>('');
 
   useEffect(() => {
     if (!authLoading && !user) router.replace("/login");
@@ -124,9 +125,33 @@ export default function CajaChica() {
   useEffect(() => {
     const today = todayStr();
     todayRef.current = today;
+    let unsub: (() => void) | undefined;
 
     const db = getDb();
     if (!db) { setAvailableDates(Object.keys(dailyRecordsRef.current).sort().reverse()); return; }
+
+    // Real-time listener for cross-device sync (Ventas writes INGRESOs here)
+    unsub = db.collection('config').doc('cajaChica').onSnapshot((snap: any) => {
+      if (!snap.exists) return;
+      const data = snap.data();
+      const incomingTxns: Transaction[] = (data.transactions ?? []).filter((t: Transaction) => {
+        const tDay = t.date ? t.date.split(',')[0].trim() : '';
+        return !tDay || tDay === today;
+      });
+      const incomingInit = data.initialAmount ?? defaultInitialAmount;
+      const serialized = JSON.stringify({ initialAmount: incomingInit, transactions: incomingTxns });
+      if (serialized === lastCajaSnapshotRef.current) return;
+      lastCajaSnapshotRef.current = serialized;
+      setTransactions(prev => {
+        const remoteById = new Map(incomingTxns.map(t => [t.id, t]));
+        const merged = incomingTxns.slice();
+        for (const t of prev) {
+          if (!remoteById.has(t.id)) merged.push(t);
+        }
+        return JSON.stringify(prev) === JSON.stringify(merged) ? prev : merged;
+      });
+      setInitialAmount(prev => prev === incomingInit ? prev : incomingInit);
+    }, (err: any) => console.error('CajaChica snapshot error:', err));
 
     // Load from Firestore
     db.collection('config').doc('cajaChica').get().then((snap: any) => {
@@ -137,6 +162,7 @@ export default function CajaChica() {
           const tDay = t.date ? t.date.split(',')[0].trim() : '';
           return !tDay || tDay === today;
         });
+        lastCajaSnapshotRef.current = JSON.stringify({ initialAmount: init, transactions: txns });
         setInitialAmount(init);
         setTransactions(txns);
       } else {
@@ -163,6 +189,8 @@ export default function CajaChica() {
       }
       setAvailableDates(Object.keys(byDate).sort().reverse());
     }).catch(() => {});
+
+    return () => { if (unsub) unsub(); };
   }, [saveDailySnapshot]);
 
   // Midnight auto-close: check every 30s if the date changed
@@ -192,6 +220,8 @@ export default function CajaChica() {
       isFirstRender.current = false;
       return;
     }
+    const serialized = JSON.stringify({ initialAmount, transactions });
+    if (serialized === lastCajaSnapshotRef.current) return;
     const data = { initialAmount, transactions };
     syncToFirestore(data);
     // Auto-save today's daily record

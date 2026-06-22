@@ -476,6 +476,7 @@ export default function Ventas() {
   const [subIngredients, setSubIngredients] = useState<Record<string, RecipeIngredient[]>>({});
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const tablesWriteRef = useRef<Promise<void> | null>(null);
+  const lastTablesSnapshotRef = useRef<string>('');
 
   useEffect(() => {
     if (!authLoading && !user) router.replace("/login");
@@ -515,6 +516,27 @@ export default function Ventas() {
               if (!added) return data.payments;
               return merged.sort((a, b) => b.date.localeCompare(a.date));
             });
+          }
+          // Sync tables from other devices in real-time
+          if (data.tables && Array.isArray(data.tables) && data.tables.length > 0) {
+            const serialized = JSON.stringify(data.tables);
+            if (serialized !== lastTablesSnapshotRef.current) {
+              lastTablesSnapshotRef.current = serialized;
+              setTables(prev => {
+                if (JSON.stringify(prev) === serialized) return prev;
+                // Merge: remote is truth, keep local tables not yet in remote
+                const remoteByIndex = new Map(data.tables.map((t: any, i: number) => [i, t]));
+                const merged = data.tables.slice();
+                let changed = false;
+                for (let i = 0; i < prev.length; i++) {
+                  if (!remoteByIndex.has(i)) {
+                    merged.push(prev[i]);
+                    changed = true;
+                  }
+                }
+                return changed ? merged : data.tables;
+              });
+            }
           }
         });
       const unsub2 = db.collection('masa').doc('data')
@@ -578,6 +600,8 @@ export default function Ventas() {
   }, []);
 
   useEffect(() => {
+    const serialized = JSON.stringify(tables);
+    if (serialized === lastTablesSnapshotRef.current) return;
     const tableFields: Record<string, unknown> = {};
     tables.forEach((t, i) => { tableFields[`table_${i}`] = t; });
     tableFields.tables = tables;

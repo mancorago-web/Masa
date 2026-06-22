@@ -873,6 +873,9 @@ export default function Inventario() {
     if (data.deletedSubIngredientKeys && Array.isArray(data.deletedSubIngredientKeys)) {
       (data.deletedSubIngredientKeys as string[]).forEach(k => deletedSubIngredientKeys.current.add(k));
     }
+    if (data.comprasHistory && Array.isArray(data.comprasHistory)) {
+      setPurchaseHistory(data.comprasHistory as PurchaseEntry[]);
+    }
   };
 
 

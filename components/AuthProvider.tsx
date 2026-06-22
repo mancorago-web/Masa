@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from "react";
 import { AppUser, getCurrentUser, logout as authLogout, ensureDefaultAdmin } from "@/lib/auth";
+import { getDb } from "@/lib/firebase";
 
 function getAuth() {
   // @ts-ignore
@@ -114,6 +115,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       setUser(session);
       setLoading(false);
+
+      // Listen for user role/name changes in real-time
+      const db = getDb();
+      if (db && session) {
+        const unsubUser = db.collection('appUsers').doc(session.id)
+          .onSnapshot((snap: any) => {
+            if (!snap.exists) return;
+            const data = snap.data();
+            if (!data) return;
+            const updated: AppUser = { id: session.id, name: data.name, role: data.role };
+            setUser(prev => {
+              if (prev?.role === updated.role && prev?.name === updated.name) return prev;
+              try {
+                localStorage.setItem('masa-current-user', JSON.stringify(updated));
+              } catch {}
+              return updated;
+            });
+          }, (err: any) => console.error('User snapshot error:', err));
+        return () => {
+          cancelled = true;
+          clearTimeout(timeout);
+          unsubUser();
+        };
+      }
     };
     init();
     // Safety timeout: force loading=false after 10s no matter what (longer due to Firebase SDK loading)

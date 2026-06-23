@@ -181,7 +181,7 @@ export default function Cocina() {
         orderCounter++;
 
         updated.push({
-          id: `${tableNum}-${orderCounter}-${Date.now()}`,
+          id: `${tableNum}-${newItems.map(it => it.id).join('|')}`,
           tableNumber: tableNum,
           orderNumber: orderCounter,
           items: newItems,

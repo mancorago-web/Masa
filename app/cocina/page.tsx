@@ -91,28 +91,14 @@ function isSameDay(a: string, b: string) {
 }
 
 function tablesFromData(data: Record<string, unknown>): TableOrder[] | null {
-  // New format: per-table fields (table_0 ... table_10)
-  const fields: TableOrder[] = [];
-  let allFieldsExist = true;
-  for (let i = 0; i < 11; i++) {
-    const t = data[`table_${i}`] as TableOrder | undefined;
-    if (!t) { allFieldsExist = false; break; }
-    fields.push(t);
-  }
-  if (allFieldsExist) return fields;
-  // Fallback: old format with single tables array
   if (Array.isArray(data.tables)) return data.tables as TableOrder[];
-  return null;
-}
-
-function isItemFromToday(itemId: string): boolean {
-  const ts = parseInt(itemId, 10);
-  if (isNaN(ts)) return true;
-  const d = new Date(ts);
-  const today = new Date();
-  return d.getFullYear() === today.getFullYear() &&
-    d.getMonth() === today.getMonth() &&
-    d.getDate() === today.getDate();
+  const fields: TableOrder[] = [];
+  for (let i = 0; i < 11; i++) {
+    const t = data[`table_${i}`];
+    if (!t) return null;
+    fields.push(t as TableOrder);
+  }
+  return fields;
 }
 
 export default function Cocina() {
@@ -169,7 +155,7 @@ export default function Cocina() {
 
         const newItems: KitchenItem[] = [];
         for (const item of curTables[i].items) {
-          if (!existingIds.has(item.id) && !archivedItemIdsRef.current.has(item.id) && isItemFromToday(item.id)) {
+          if (!existingIds.has(item.id) && !archivedItemIdsRef.current.has(item.id)) {
             existingIds.add(item.id);
             newItems.push({
               id: item.id,

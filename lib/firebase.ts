@@ -5,7 +5,7 @@ export function getDb() {
   if (db) return db;
   // @ts-ignore
   const firebase = globalThis.firebase;
-  if (!firebase) {
+  if (!firebase || !firebase.firestore) {
     console.warn('Firebase not loaded');
     return null;
   }
@@ -20,7 +20,11 @@ export function getDb() {
         measurementId: "G-4EYL82XD7X"
       })
     : firebase.apps[0];
-  db = app.firestore();
+  try {
+    db = app.firestore();
+  } catch {
+    return null;
+  }
   // Notify any waiters
   waiting.forEach(fn => fn());
   waiting = [];

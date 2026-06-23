@@ -124,6 +124,7 @@ export default function Cocina() {
   const [historyDate, setHistoryDate] = useState('');
   const [historyFromFirestore, setHistoryFromFirestore] = useState<Record<string, KitchenTable[]>>({});
   const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set());
+  const [initKey, setInitKey] = useState(0);
   const prevTablesRef = useRef<string>("");
   const notifId = useRef(0);
   const tablesRef = useRef<KitchenTable[]>([]);
@@ -138,7 +139,10 @@ export default function Cocina() {
   useEffect(() => {
     if (authLoading) return;
     const db = getDb();
-    if (!db) return;
+    if (!db) {
+      const id = setTimeout(() => setInitKey(k => k + 1), 500);
+      return () => clearTimeout(id);
+    }
 
     let firestoreLoaded = false;
     let disposed = false;
@@ -323,7 +327,7 @@ export default function Cocina() {
       if (unsubTables) unsubTables();
       clearInterval(fallbackInterval);
     };
-  }, [authLoading]);
+  }, [authLoading, initKey]);
 
   // 6. Save tables to Firestore on every change (debounced)
   const saveTimerRef = useRef<ReturnType<typeof setTimeout>>();
@@ -346,7 +350,10 @@ export default function Cocina() {
   useEffect(() => {
     if (authLoading) return;
     const db = getDb();
-    if (!db) return;
+    if (!db) {
+      const id = setTimeout(() => setInitKey(k => k + 1), 500);
+      return () => clearTimeout(id);
+    }
     const unsub = db.collection('config').doc('cocinaHistory')
       .onSnapshot((snap: any) => {
         if (!snap.exists) return;
@@ -354,7 +361,7 @@ export default function Cocina() {
         if (data) setHistoryFromFirestore(data as Record<string, KitchenTable[]>);
       }, (err: any) => console.error('History snapshot error:', err));
     return () => unsub();
-  }, [authLoading]);
+  }, [authLoading, initKey]);
 
   // Merge history IDs into archivedItemIdsRef (preserves IDs added by archive effect during this session)
   useEffect(() => {

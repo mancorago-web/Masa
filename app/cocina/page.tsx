@@ -346,12 +346,11 @@ export default function Cocina() {
     if (ids.size > 0) archivedItemIdsRef.current = ids;
   }, [historyFromFirestore]);
 
-  // Archive completed tables to history for persistence; only remove past-day tables from active view
+  // Archive completed tables to history for persistence; remove from active view
   const archivedItemIdsRef = useRef<Set<string>>(new Set());
   useEffect(() => {
     if (!initialLoadDoneRef.current) return;
     if (tables.length === 0) return;
-    const today = todayStr();
     const byDate: Record<string, KitchenTable[]> = {};
     const remaining: KitchenTable[] = [];
     let hasNewArchive = false;
@@ -362,8 +361,6 @@ export default function Cocina() {
         byDate[d].push(t);
         for (const it of t.items) archivedItemIdsRef.current.add(it.id);
         hasNewArchive = true;
-        // Keep today's completed tables visible; remove past-day ones
-        if (d === today) remaining.push(t);
       } else {
         remaining.push(t);
       }

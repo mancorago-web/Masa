@@ -364,15 +364,18 @@ export default function Cocina() {
     if (changed) archivedItemIdsRef.current = new Set(ids);
   }, [historyFromFirestore]);
 
-  // Archive completed tables to history for persistence; remove from active view
+  // Archive completed tables from PREVIOUS days to history; today's cards stay visible
   const archivedItemIdsRef = useRef<Set<string>>(new Set());
   useEffect(() => {
     if (!initialLoadDoneRef.current) return;
     if (tables.length === 0) return;
+    const now = todayStr();
     const toArchive: KitchenTable[] = [];
     const remaining: KitchenTable[] = [];
     for (const t of tables) {
-      if (t.items.every(i => i.completed) && !t.items.every(it => archivedItemIdsRef.current.has(it.id))) {
+      if (isSameDay(t.updatedAt, now)) {
+        remaining.push(t);
+      } else if (t.items.every(i => i.completed) && !t.items.every(it => archivedItemIdsRef.current.has(it.id))) {
         toArchive.push(t);
       } else {
         remaining.push(t);

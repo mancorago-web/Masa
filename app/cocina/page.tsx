@@ -245,7 +245,7 @@ export default function Cocina() {
       .collection("config")
       .doc("ventas")
       .onSnapshot((snap: any) => {
-        if (!firestoreLoaded || !snap.exists) return;
+        if (!snap.exists) return;
         const data = snap.data();
         const curTables = tablesFromData(data);
         if (!curTables) return;
@@ -293,19 +293,15 @@ export default function Cocina() {
 
     // 5. Fallback: periodically check for new items in Ventas (catches missed snapshots)
     const fallbackInterval = setInterval(async () => {
-      if (!firestoreLoaded) return;
       try {
         const snap = await db.collection("config").doc("ventas").get();
         if (!snap.exists) return;
         const data = snap.data();
         const curTables = tablesFromData(data);
         if (!curTables) return;
-        const curStr = JSON.stringify(curTables);
-        if (curStr === prevTablesRef.current) return;
-        prevTablesRef.current = curStr;
         setTables((prev) => processVentasTables(curTables, prev));
       } catch {}
-    }, 4000);
+    }, 2000);
 
     return () => {
       disposed = true;

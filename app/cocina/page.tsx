@@ -369,28 +369,47 @@ export default function Cocina() {
   useEffect(() => {
     if (!initialLoadDoneRef.current) return;
     if (tables.length === 0) return;
-    const byDate: Record<string, KitchenTable[]> = {};
+    const toArchive: KitchenTable[] = [];
     const remaining: KitchenTable[] = [];
-    let hasNewArchive = false;
     for (const t of tables) {
       if (t.items.every(i => i.completed) && !t.items.every(it => archivedItemIdsRef.current.has(it.id))) {
-        const d = t.updatedAt.slice(0, 10);
-        if (!byDate[d]) byDate[d] = [];
-        byDate[d].push(t);
-        for (const it of t.items) archivedItemIdsRef.current.add(it.id);
-        hasNewArchive = true;
+        toArchive.push(t);
       } else {
         remaining.push(t);
       }
     }
-    if (!hasNewArchive) return;
+    if (toArchive.length === 0) return;
     const db = getDb();
-    if (!db) { archivedItemIdsRef.current = new Set(); return; }
-    for (const [date, dateTables] of Object.entries(byDate)) {
-      db.collection('config').doc('cocinaHistory').set({ [date]: dateTables }, { merge: true })
-        .catch(() => {});
+    if (!db) return;
+    const byDate: Record<string, KitchenTable[]> = {};
+    for (const t of toArchive) {
+      const d = t.updatedAt.slice(0, 10);
+      if (!byDate[d]) byDate[d] = [];
+      byDate[d].push(t);
     }
-    setTables(remaining);
+    // Save each date: read existing data, append new tables, write back
+    (async () => {
+      try {
+        const histSnap = await db.collection('config').doc('cocinaHistory').get();
+        const existingAll = histSnap.exists ? (histSnap.data() || {}) : {};
+        for (const [date, dateTables] of Object.entries(byDate)) {
+          const existing = (existingAll[date] || []) as KitchenTable[];
+          const existingIds = new Set(existing.map(t => t.id));
+          const merged = [...existing];
+          for (const t of dateTables) {
+            if (!existingIds.has(t.id)) { merged.push(t); existingIds.add(t.id); }
+          }
+          await db.collection('config').doc('cocinaHistory').set({ [date]: merged }, { merge: true });
+        }
+        // Only update state + ref after ALL saves succeed
+        for (const t of toArchive) {
+          for (const it of t.items) archivedItemIdsRef.current.add(it.id);
+        }
+        setTables(remaining);
+      } catch (e) {
+        console.error('Error al archivar en cocinaHistory:', e);
+      }
+    })();
   }, [tables]);
 
   // Load history

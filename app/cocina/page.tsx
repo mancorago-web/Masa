@@ -216,20 +216,38 @@ export default function Cocina() {
         }
       }
       firestoreLoaded = true;
-      initialLoadDoneRef.current = true;
 
-      // 2. Now do the Ventas initial load (picks up items not yet in Firestore tables)
-      db.collection("config").doc("ventas").get().then((ventasSnap: any) => {
-        if (disposed || !ventasSnap.exists) return;
-        const data = ventasSnap.data();
-        const curTables = tablesFromData(data);
-        if (!curTables) return;
-        const curStr = JSON.stringify(curTables);
-        if (curStr === prevTablesRef.current) return;
-        prevTablesRef.current = curStr;
-        setTables((prev) => processVentasTables(curTables, prev));
-      }).catch(() => {});
-    }).catch(() => { firestoreLoaded = true; });
+      // 2. Load history to populate archivedItemIdsRef BEFORE Ventas (prevents re-adding archived items)
+      db.collection("config").doc("cocinaHistory").get().then((histSnap: any) => {
+        if (disposed) return;
+        if (histSnap.exists) {
+          const hdata = histSnap.data();
+          if (hdata) {
+            const ids = new Set<string>();
+            for (const tables of Object.values(hdata)) {
+              for (const t of (tables as KitchenTable[])) {
+                for (const item of t.items) ids.add(item.id);
+              }
+            }
+            if (ids.size > 0) archivedItemIdsRef.current = ids;
+          }
+        }
+
+        initialLoadDoneRef.current = true;
+
+        // 3. Now do the Ventas initial load (archivedItemIdsRef is already populated)
+        db.collection("config").doc("ventas").get().then((ventasSnap: any) => {
+          if (disposed || !ventasSnap.exists) return;
+          const data = ventasSnap.data();
+          const curTables = tablesFromData(data);
+          if (!curTables) return;
+          const curStr = JSON.stringify(curTables);
+          if (curStr === prevTablesRef.current) return;
+          prevTablesRef.current = curStr;
+          setTables((prev) => processVentasTables(curTables, prev));
+        }).catch(() => {});
+      }).catch(() => { initialLoadDoneRef.current = true; });
+    }).catch(() => { firestoreLoaded = true; initialLoadDoneRef.current = true; });
 
     // 3. Listen for new orders from Ventas
     const unsubVentas = db
@@ -311,6 +329,7 @@ export default function Cocina() {
   const tablesLastSavedRef = useRef("");
   useEffect(() => {
     if (!initialLoadDoneRef.current && tables.length === 0) return;
+    if (tables.length === 0) return;
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     saveTimerRef.current = setTimeout(() => {
       const db = getDb();
@@ -335,15 +354,18 @@ export default function Cocina() {
     return () => unsub();
   }, []);
 
-  // Populate archivedItemIdsRef from history on load (prevents re-adding archived items after refresh)
+  // Merge history IDs into archivedItemIdsRef (preserves IDs added by archive effect during this session)
   useEffect(() => {
-    const ids = new Set<string>();
+    const ids = archivedItemIdsRef.current;
+    let changed = false;
     for (const tables of Object.values(historyFromFirestore)) {
       for (const t of tables) {
-        for (const item of t.items) ids.add(item.id);
+        for (const item of t.items) {
+          if (!ids.has(item.id)) { ids.add(item.id); changed = true; }
+        }
       }
     }
-    if (ids.size > 0) archivedItemIdsRef.current = ids;
+    if (changed) archivedItemIdsRef.current = new Set(ids);
   }, [historyFromFirestore]);
 
   // Archive completed tables to history for persistence; remove from active view

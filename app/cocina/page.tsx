@@ -6,6 +6,34 @@ import Link from "next/link";
 import { getDb } from "@/lib/firebase";
 import { useAuth } from "@/components/AuthProvider";
 
+function playNewOrderSound() {
+  try {
+    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(880, ctx.currentTime);
+    osc.frequency.setValueAtTime(1100, ctx.currentTime + 0.15);
+    gain.gain.setValueAtTime(0.3, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.4);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 0.4);
+    // Second chime
+    const osc2 = ctx.createOscillator();
+    const gain2 = ctx.createGain();
+    osc2.connect(gain2);
+    gain2.connect(ctx.destination);
+    osc2.type = 'sine';
+    osc2.frequency.setValueAtTime(1100, ctx.currentTime + 0.2);
+    gain2.gain.setValueAtTime(0.3, ctx.currentTime + 0.2);
+    gain2.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.6);
+    osc2.start(ctx.currentTime + 0.2);
+    osc2.stop(ctx.currentTime + 0.6);
+  } catch {}
+}
+
 interface KitchenItem {
   id: string;
   name: string;
@@ -313,11 +341,12 @@ export default function Cocina() {
     if (ids.size > 0) archivedItemIdsRef.current = ids;
   }, [historyFromFirestore]);
 
-  // Archive fully-completed tables to history and remove from active list
+  // Archive completed tables to history for persistence; only remove past-day tables from active view
   const archivedItemIdsRef = useRef<Set<string>>(new Set());
   useEffect(() => {
     if (!initialLoadDoneRef.current) return;
     if (tables.length === 0) return;
+    const today = todayStr();
     const byDate: Record<string, KitchenTable[]> = {};
     const remaining: KitchenTable[] = [];
     let hasNewArchive = false;
@@ -329,6 +358,8 @@ export default function Cocina() {
         byDate[d].push(t);
         for (const it of t.items) archivedItemIdsRef.current.add(it.id);
         hasNewArchive = true;
+        // Keep today's completed tables visible; remove past-day ones
+        if (d === today) remaining.push(t);
       } else {
         remaining.push(t);
       }
@@ -346,12 +377,12 @@ export default function Cocina() {
   // Load history
   const historyTables = useMemo(() => {
     if (!historyDate) return [];
-    const today = todayStr();
-    if (historyDate !== today) {
-      const archived = historyFromFirestore[historyDate];
-      if (archived) return archived;
-    }
-    return tables.filter(t => isSameDay(t.updatedAt, historyDate));
+    // Merge archived data + tables still in active view (covers all dates)
+    const archived = historyFromFirestore[historyDate] ?? [];
+    const todayFromTables = tables.filter(t => isSameDay(t.updatedAt, historyDate));
+    const archivedIds = new Set(archived.map(t => t.id ?? `${t.tableNumber}-${t.orderNumber}`));
+    const merged = [...archived, ...todayFromTables.filter(t => !archivedIds.has(t.id ?? `${t.tableNumber}-${t.orderNumber}`))];
+    return merged;
   }, [historyDate, historyFromFirestore, tables]);
 
   const toggleItem = (tableId: string, itemId: string) => {
@@ -400,6 +431,15 @@ export default function Cocina() {
       return next;
     });
   }, [tables]);
+
+  // Play sound when new notification arrives
+  const prevNotifLengthRef = useRef(0);
+  useEffect(() => {
+    if (notifications.length > prevNotifLengthRef.current) {
+      playNewOrderSound();
+    }
+    prevNotifLengthRef.current = notifications.length;
+  }, [notifications]);
 
   if (authLoading) {
     return (

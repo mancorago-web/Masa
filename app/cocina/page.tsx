@@ -263,12 +263,17 @@ export default function Cocina() {
         tablesLastSavedRef.current = str;
         setTables(prev => {
           if (prev.length === 0) return data.tables;
-          // Merge: keep prev entries not in incoming (preserves items added by processVentasTables)
-          const incomingMap = new Map(data.tables.map((t: KitchenTable) => [t.id, t]));
+          // Build set of ALL item IDs already present in incoming data
+          const incomingItemIds = new Set<string>();
+          for (const t of data.tables) {
+            for (const it of t.items) incomingItemIds.add(it.id);
+          }
           const merged = data.tables.slice();
           let changed = false;
           for (const t of prev) {
-            if (!incomingMap.has(t.id)) {
+            // Only add if at least one item isn't already in incoming data
+            const hasNewItem = t.items.some(it => !incomingItemIds.has(it.id));
+            if (hasNewItem) {
               merged.push(t);
               changed = true;
             }

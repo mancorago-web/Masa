@@ -111,6 +111,7 @@ export default function Cocina() {
   const [historyFromFirestore, setHistoryFromFirestore] = useState<Record<string, KitchenTable[]>>({});
   const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set());
   const [initKey, setInitKey] = useState(0);
+  const [debugInfo, setDebugInfo] = useState<string>('iniciando...');
   const prevTablesRef = useRef<string>("");
   const notifId = useRef(0);
   const tablesRef = useRef<KitchenTable[]>([]);
@@ -132,6 +133,8 @@ export default function Cocina() {
 
     let firestoreLoaded = false;
     let disposed = false;
+
+    setDebugInfo(`efecto iniciado db=${!!db}`);
 
     function processVentasTables(curTables: TableOrder[], prev: KitchenTable[]): KitchenTable[] {
       const updated = prev.map((t) => ({ ...t, items: [...t.items] }));
@@ -245,10 +248,11 @@ export default function Cocina() {
       .collection("config")
       .doc("ventas")
       .onSnapshot((snap: any) => {
-        if (!snap.exists) return;
+        if (!snap.exists) { setDebugInfo('snap ventas: doc no existe'); return; }
         const data = snap.data();
         const curTables = tablesFromData(data);
-        if (!curTables) return;
+        if (!curTables) { setDebugInfo(`snap ventas: tablesFromData null, keys=${Object.keys(data).join(',')}`); return; }
+        setDebugInfo(`snap ventas: ${curTables.length} mesas, total items=${curTables.reduce((s,t)=>s+t.items.length,0)}`);
 
         const currentStr = JSON.stringify(curTables);
         if (currentStr === prevTablesRef.current) return;
@@ -295,12 +299,13 @@ export default function Cocina() {
     const fallbackInterval = setInterval(async () => {
       try {
         const snap = await db.collection("config").doc("ventas").get();
-        if (!snap.exists) return;
+        if (!snap.exists) { setDebugInfo('fallback: doc no existe'); return; }
         const data = snap.data();
         const curTables = tablesFromData(data);
-        if (!curTables) return;
+        if (!curTables) { setDebugInfo(`fallback: tablesFromData null, keys=${Object.keys(data).join(',')}`); return; }
+        setDebugInfo(`fallback ok: ${curTables.length} mesas`);
         setTables((prev) => processVentasTables(curTables, prev));
-      } catch {}
+      } catch (e) { setDebugInfo(`fallback error: ${e}`); }
     }, 2000);
 
     return () => {
@@ -553,6 +558,7 @@ export default function Cocina() {
           <div className="text-center py-20">
             <p className="text-4xl mb-4">🍕</p>
             <p className="text-gray-400 text-lg">No hay pedidos</p>
+            <p className="text-xs text-gray-300 mt-2">Debug: {debugInfo}</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">

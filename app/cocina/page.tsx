@@ -356,8 +356,7 @@ export default function Cocina() {
     const remaining: KitchenTable[] = [];
     let hasNewArchive = false;
     for (const t of tables) {
-      const id = t.id ?? `${t.tableNumber}-${t.orderNumber}`;
-      if (t.items.every(i => i.completed) && !archivedItemIdsRef.current.has(id)) {
+      if (t.items.every(i => i.completed) && !t.items.every(it => archivedItemIdsRef.current.has(it.id))) {
         const d = t.updatedAt.slice(0, 10);
         if (!byDate[d]) byDate[d] = [];
         byDate[d].push(t);

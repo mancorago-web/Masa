@@ -136,7 +136,7 @@ export default function Cocina() {
 
         const newItems: KitchenItem[] = [];
         for (const item of curTables[i].items) {
-          if (!existingIds.has(item.id) && isItemFromToday(item.id)) {
+          if (!existingIds.has(item.id) && !archivedItemIdsRef.current.has(item.id) && isItemFromToday(item.id)) {
             existingIds.add(item.id);
             newItems.push({
               id: item.id,
@@ -302,8 +302,19 @@ export default function Cocina() {
     return () => unsub();
   }, []);
 
+  // Populate archivedItemIdsRef from history on load (prevents re-adding archived items after refresh)
+  useEffect(() => {
+    const ids = new Set<string>();
+    for (const tables of Object.values(historyFromFirestore)) {
+      for (const t of tables) {
+        for (const item of t.items) ids.add(item.id);
+      }
+    }
+    if (ids.size > 0) archivedItemIdsRef.current = ids;
+  }, [historyFromFirestore]);
+
   // Archive fully-completed tables to history and remove from active list
-  const archivedIdsRef = useRef<Set<string>>(new Set());
+  const archivedItemIdsRef = useRef<Set<string>>(new Set());
   useEffect(() => {
     if (!initialLoadDoneRef.current) return;
     if (tables.length === 0) return;
@@ -312,11 +323,11 @@ export default function Cocina() {
     let hasNewArchive = false;
     for (const t of tables) {
       const id = t.id ?? `${t.tableNumber}-${t.orderNumber}`;
-      if (t.items.every(i => i.completed) && !archivedIdsRef.current.has(id)) {
+      if (t.items.every(i => i.completed) && !archivedItemIdsRef.current.has(id)) {
         const d = t.updatedAt.slice(0, 10);
         if (!byDate[d]) byDate[d] = [];
         byDate[d].push(t);
-        archivedIdsRef.current.add(id);
+        for (const it of t.items) archivedItemIdsRef.current.add(it.id);
         hasNewArchive = true;
       } else {
         remaining.push(t);
@@ -324,7 +335,7 @@ export default function Cocina() {
     }
     if (!hasNewArchive) return;
     const db = getDb();
-    if (!db) { archivedIdsRef.current = new Set(); return; }
+    if (!db) { archivedItemIdsRef.current = new Set(); return; }
     for (const [date, dateTables] of Object.entries(byDate)) {
       db.collection('config').doc('cocinaHistory').set({ [date]: dateTables }, { merge: true })
         .catch(() => {});

@@ -9,6 +9,7 @@ import { useAuth } from "@/components/AuthProvider";
 function playNewOrderSound() {
   try {
     const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    if (ctx.state === 'suspended') ctx.resume();
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.connect(gain);
@@ -20,7 +21,6 @@ function playNewOrderSound() {
     gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.4);
     osc.start(ctx.currentTime);
     osc.stop(ctx.currentTime + 0.4);
-    // Second chime
     const osc2 = ctx.createOscillator();
     const gain2 = ctx.createGain();
     osc2.connect(gain2);
@@ -437,12 +437,12 @@ export default function Cocina() {
   }, [tables]);
 
   // Play sound when new notification arrives
-  const prevNotifLengthRef = useRef(0);
+  const lastNotifIdRef = useRef(0);
   useEffect(() => {
-    if (notifications.length > prevNotifLengthRef.current) {
+    if (notifications.length > 0 && notifications[0].id > lastNotifIdRef.current) {
       playNewOrderSound();
+      lastNotifIdRef.current = notifications[0].id;
     }
-    prevNotifLengthRef.current = notifications.length;
   }, [notifications]);
 
   if (authLoading) {

@@ -181,7 +181,7 @@ export default function Cocina() {
         orderCounter++;
 
         updated.push({
-          id: `${tableNum}-${newItems.map(it => it.id).join('|')}`,
+          id: `${tableNum}-${newItems.map(it => it.id).join('|')}-${Date.now()}`,
           tableNumber: tableNum,
           orderNumber: orderCounter,
           items: newItems,
@@ -263,22 +263,22 @@ export default function Cocina() {
         tablesLastSavedRef.current = str;
         setTables(prev => {
           if (prev.length === 0) return data.tables;
-          // Build set of ALL item IDs already present in incoming data
-          const incomingItemIds = new Set<string>();
-          for (const t of data.tables) {
-            for (const it of t.items) incomingItemIds.add(it.id);
-          }
-          const merged = data.tables.slice();
-          let changed = false;
+          // Build set of item IDs already in prev
+          const prevItemIds = new Set<string>();
           for (const t of prev) {
-            // Only add if at least one item isn't already in incoming data
-            const hasNewItem = t.items.some(it => !incomingItemIds.has(it.id));
+            for (const it of t.items) prevItemIds.add(it.id);
+          }
+          const merged = prev.map(t => ({ ...t, items: [...t.items] }));
+          let changed = false;
+          for (const t of data.tables) {
+            // Only add incoming table if it has items not already in prev
+            const hasNewItem = t.items.some(it => !prevItemIds.has(it.id));
             if (hasNewItem) {
               merged.push(t);
               changed = true;
             }
           }
-          return changed ? merged : data.tables;
+          return changed ? merged : prev;
         });
       });
 

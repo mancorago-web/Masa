@@ -136,6 +136,7 @@ export default function Cocina() {
 
   // Load + listeners
   useEffect(() => {
+    if (authLoading) return;
     const db = getDb();
     if (!db) return;
 
@@ -266,7 +267,7 @@ export default function Cocina() {
         try {
           setTables((prev) => processVentasTables(curTables, prev));
         } catch {}
-      });
+      }, (err: any) => console.error('Ventas snapshot error:', err));
 
     // 4. Listen for cross-device table sync
     const unsubTables = db
@@ -298,7 +299,7 @@ export default function Cocina() {
           }
           return changed ? merged : prev;
         });
-      });
+      }, (err: any) => console.error('cocinaTables snapshot error:', err));
 
     // 5. Fallback: periodically check for new items in Ventas (catches missed snapshots)
     const fallbackInterval = setInterval(async () => {
@@ -318,11 +319,11 @@ export default function Cocina() {
 
     return () => {
       disposed = true;
-      unsubVentas();
-      unsubTables();
+      if (unsubVentas) unsubVentas();
+      if (unsubTables) unsubTables();
       clearInterval(fallbackInterval);
     };
-  }, []);
+  }, [authLoading]);
 
   // 6. Save tables to Firestore on every change (debounced)
   const saveTimerRef = useRef<ReturnType<typeof setTimeout>>();
@@ -343,6 +344,7 @@ export default function Cocina() {
 
   // Real-time listener for Firestore history (tables archived from past days)
   useEffect(() => {
+    if (authLoading) return;
     const db = getDb();
     if (!db) return;
     const unsub = db.collection('config').doc('cocinaHistory')
@@ -350,9 +352,9 @@ export default function Cocina() {
         if (!snap.exists) return;
         const data = snap.data();
         if (data) setHistoryFromFirestore(data as Record<string, KitchenTable[]>);
-      });
+      }, (err: any) => console.error('History snapshot error:', err));
     return () => unsub();
-  }, []);
+  }, [authLoading]);
 
   // Merge history IDs into archivedItemIdsRef (preserves IDs added by archive effect during this session)
   useEffect(() => {

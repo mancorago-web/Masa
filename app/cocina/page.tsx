@@ -172,15 +172,22 @@ export default function Cocina() {
 
         if (newItems.length === 0) continue;
         hasNew = true;
-        orderCounter++;
 
-        updated.push({
-          id: `${tableNum}-${newItems.map(it => it.id).join('|')}-${Date.now()}`,
-          tableNumber: tableNum,
-          orderNumber: orderCounter,
-          items: newItems,
-          updatedAt: now,
-        });
+        // Find existing non-completed KitchenTable for this table (same venta)
+        const existingKT = updated.findLast(kt => kt.tableNumber === tableNum && kt.items.some(it => !it.completed));
+        if (existingKT) {
+          existingKT.items.push(...newItems);
+          existingKT.updatedAt = now;
+        } else {
+          orderCounter++;
+          updated.push({
+            id: `${tableNum}-${newItems.map(it => it.id).join('|')}-${Date.now()}`,
+            tableNumber: tableNum,
+            orderNumber: orderCounter,
+            items: newItems,
+            updatedAt: now,
+          });
+        }
 
         const creator = newItems[0]?.createdByName ? ` (${newItems[0].createdByName})` : "";
         notifs.push(

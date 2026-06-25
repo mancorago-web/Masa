@@ -571,7 +571,7 @@ export default function Ventas() {
 
   const productCategories = useMemo(() => buildMenu(recipes, subRecipes, user?.role === 'togo'), [recipes, subRecipes, user]);
 
-  // On mount: load payments from Firestore
+  // On mount: load payments from Firestore (merge to avoid overwriting local payments)
   useEffect(() => {
     (async () => {
       const db = getDb();
@@ -581,7 +581,18 @@ export default function Ventas() {
         if (snap.exists) {
           const d = snap.data();
           if (d.payments && Array.isArray(d.payments)) {
-            setPaymentsHistory(d.payments);
+            setPaymentsHistory(prev => {
+              const incoming = JSON.stringify(d.payments);
+              const current = JSON.stringify(prev);
+              if (incoming === current) return prev;
+              const remoteMap = new Map(d.payments.map((p: PaymentData) => [p.id, p]));
+              const merged: PaymentData[] = d.payments.slice();
+              let added = false;
+              for (const p of prev) {
+                if (!remoteMap.has(p.id)) { merged.push(p); added = true; }
+              }
+              return added ? merged.sort((a, b) => b.date.localeCompare(a.date)) : d.payments;
+            });
           }
         }
       } catch (_) {}

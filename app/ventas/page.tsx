@@ -524,17 +524,23 @@ export default function Ventas() {
               lastTablesSnapshotRef.current = serialized;
               setTables(prev => {
                 if (JSON.stringify(prev) === serialized) return prev;
-                // Merge: remote is truth, keep local tables not yet in remote
-                const remoteByIndex = new Map(data.tables.map((t: any, i: number) => [i, t]));
-                const merged = data.tables.slice();
-                let changed = false;
-                for (let i = 0; i < prev.length; i++) {
-                  if (!remoteByIndex.has(i)) {
-                    merged.push(prev[i]);
-                    changed = true;
+                const merged = prev.map((t, i) => {
+                  const remote = data.tables[i];
+                  if (!remote) return { ...t, items: [...t.items] };
+                  if (t.status !== 'ocupado') {
+                    return { ...remote, items: [...remote.items] };
                   }
+                  const remoteIds = new Set((remote.items || []).map((it: any) => it.id));
+                  const localExtra = t.items.filter(it => !remoteIds.has(it.id));
+                  if (localExtra.length === 0) {
+                    return { ...remote, items: [...remote.items] };
+                  }
+                  return { ...remote, items: [...remote.items, ...localExtra] };
+                });
+                for (let i = data.tables.length; i < prev.length; i++) {
+                  merged.push({ ...prev[i], items: [...prev[i].items] });
                 }
-                return changed ? merged : data.tables;
+                return merged;
               });
             }
           }
@@ -613,12 +619,22 @@ export default function Ventas() {
   useEffect(() => {
     const serialized = JSON.stringify(tables);
     if (serialized === lastTablesSnapshotRef.current) return;
-    const tableFields: Record<string, unknown> = {};
-    tables.forEach((t, i) => { tableFields[`table_${i}`] = t; });
-    tableFields.tables = tables;
-    const write = syncToFirestore(tableFields);
-    tablesWriteRef.current = write;
-    write.then(() => { tablesWriteRef.current = null; }).catch(() => { tablesWriteRef.current = null; });
+    let cancelled = false;
+    (async () => {
+      if (tablesWriteRef.current) {
+        await tablesWriteRef.current.catch(() => {});
+      }
+      if (cancelled) return;
+      if (JSON.stringify(tables) === lastTablesSnapshotRef.current) return;
+      const tableFields: Record<string, unknown> = {};
+      tables.forEach((t, i) => { tableFields[`table_${i}`] = t; });
+      tableFields.tables = tables;
+      const write = syncToFirestore(tableFields);
+      tablesWriteRef.current = write;
+      await write.catch(() => {});
+      tablesWriteRef.current = null;
+    })();
+    return () => { cancelled = true; };
   }, [tables]);
 
   const isFirstPaymentSync = useRef(true);

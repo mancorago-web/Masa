@@ -155,6 +155,7 @@ export default function Cocina() {
         if (curTables[i].status !== "ocupado") continue;
         const tableNum = i + 1;
         const existingIds = existingByTable.get(tableNum) ?? new Set();
+        const oldItemIds = new Set(existingIds);
 
         const newItems: KitchenItem[] = [];
         for (const item of curTables[i].items) {
@@ -173,11 +174,26 @@ export default function Cocina() {
         if (newItems.length === 0) continue;
         hasNew = true;
 
-        // Find existing non-completed KitchenTable for this table (same venta)
-        const existingKT = updated.findLast(kt => kt.tableNumber === tableNum && kt.items.some(it => !it.completed));
+        // Reuse same KitchenTable if table still has old items (same venta, not yet paid).
+        // New card only when all old items were cleared from Ventas (payment happened).
+        const existingKT = updated.findLast(kt => kt.tableNumber === tableNum);
         if (existingKT) {
-          existingKT.items.push(...newItems);
-          existingKT.updatedAt = now;
+          const allOldCompleted = existingKT.items.every(it => it.completed);
+          const stillHasOldItems = curTables[i].items.some(it => oldItemIds.has(it.id));
+          if (allOldCompleted && !stillHasOldItems) {
+            // Table was paid and this is a new order
+            orderCounter++;
+            updated.push({
+              id: `${tableNum}-${newItems.map(it => it.id).join('|')}-${Date.now()}`,
+              tableNumber: tableNum,
+              orderNumber: orderCounter,
+              items: newItems,
+              updatedAt: now,
+            });
+          } else {
+            existingKT.items.push(...newItems);
+            existingKT.updatedAt = now;
+          }
         } else {
           orderCounter++;
           updated.push({

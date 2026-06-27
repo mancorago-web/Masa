@@ -481,6 +481,7 @@ export default function Ventas() {
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const tablesWriteRef = useRef<Promise<void> | null>(null);
   const lastTablesSnapshotRef = useRef<string>('');
+  const dirtyTablesRef = useRef<Set<number>>(new Set());
 
   useEffect(() => {
     if (!authLoading && !user) router.replace("/login");
@@ -522,31 +523,44 @@ export default function Ventas() {
             });
           }
           // Sync tables from other devices in real-time
-          if (data.tables && Array.isArray(data.tables) && data.tables.length > 0) {
-            const serialized = JSON.stringify(data.tables);
-            if (serialized !== lastTablesSnapshotRef.current) {
-              lastTablesSnapshotRef.current = serialized;
-              setTables(prev => {
-                if (JSON.stringify(prev) === serialized) return prev;
-                const merged = prev.map((t, i) => {
-                  const remote = data.tables[i];
-                  if (!remote) return { ...t, items: [...t.items] };
-                  if (t.status !== 'ocupado') {
-                    return { ...remote, items: [...remote.items] };
-                  }
-                  const remoteIds = new Set((remote.items || []).map((it: any) => it.id));
-                  const localExtra = t.items.filter(it => !remoteIds.has(it.id));
-                  if (localExtra.length === 0) {
-                    return { ...remote, items: [...remote.items] };
-                  }
-                  return { ...remote, items: [...remote.items, ...localExtra] };
-                });
-                for (let i = data.tables.length; i < prev.length; i++) {
-                  merged.push({ ...prev[i], items: [...prev[i].items] });
-                }
-                return merged;
-              });
+          const remoteTables: TableOrder[] = [];
+          const hasAnyTableField = ['table_0','table_1','table_2','table_3','table_4','table_5','table_6','table_7','table_8','table_9','table_10'].some(k => k in data);
+          if (hasAnyTableField) {
+            for (let i = 0; i < 11; i++) {
+              const t: TableOrder | undefined = data[`table_${i}`];
+              remoteTables.push(t ? { ...t, items: [...(t.items || [])] } : { items: [], status: 'libre', customerName: '' });
             }
+          } else if (data.tables && Array.isArray(data.tables) && data.tables.length > 0) {
+            for (let i = 0; i < 11; i++) {
+              const t = data.tables[i] as TableOrder | undefined;
+              remoteTables.push(t ? { ...t, items: [...(t.items || [])] } : { items: [], status: 'libre', customerName: '' });
+            }
+          } else {
+            return; // sin datos de mesas
+          }
+          const serialized = JSON.stringify(remoteTables);
+          if (serialized !== lastTablesSnapshotRef.current) {
+            lastTablesSnapshotRef.current = serialized;
+            setTables(prev => {
+              if (JSON.stringify(prev) === serialized) return prev;
+              const merged = prev.map((t, i) => {
+                const remote = remoteTables[i];
+                if (!remote) return { ...t, items: [...t.items] };
+                if (t.status !== 'ocupado') {
+                  return { ...remote, items: [...remote.items] };
+                }
+                const remoteIds = new Set((remote.items || []).map((it: any) => it.id));
+                const localExtra = t.items.filter(it => !remoteIds.has(it.id));
+                if (localExtra.length === 0) {
+                  return { ...remote, items: [...remote.items] };
+                }
+                return { ...remote, items: [...remote.items, ...localExtra] };
+              });
+              for (let i = remoteTables.length; i < prev.length; i++) {
+                merged.push({ ...prev[i], items: [...prev[i].items] });
+              }
+              return merged;
+            });
           }
         });
       const unsub2 = db.collection('masa').doc('data')
@@ -630,9 +644,12 @@ export default function Ventas() {
       }
       if (cancelled) return;
       if (JSON.stringify(tables) === lastTablesSnapshotRef.current) return;
+      if (dirtyTablesRef.current.size === 0) return;
       const tableFields: Record<string, unknown> = {};
-      tables.forEach((t, i) => { tableFields[`table_${i}`] = t; });
-      tableFields.tables = tables;
+      for (const i of dirtyTablesRef.current) {
+        tableFields[`table_${i}`] = tables[i];
+      }
+      dirtyTablesRef.current.clear();
       const write = syncToFirestore(tableFields);
       tablesWriteRef.current = write;
       await write.catch(() => {});
@@ -665,6 +682,7 @@ export default function Ventas() {
   const activeOrder = tables[activeTable];
 
   const addItem = (name: string, price: number) => {
+    dirtyTablesRef.current.add(activeTable);
     setTables(prev => {
       const updated = [...prev];
       const order = { ...updated[activeTable] };
@@ -681,6 +699,7 @@ export default function Ventas() {
   };
 
   const updateQuantity = (itemId: string, delta: number) => {
+    dirtyTablesRef.current.add(activeTable);
     setTables(prev => {
       const updated = [...prev];
       const order = { ...updated[activeTable] };
@@ -720,6 +739,7 @@ export default function Ventas() {
   };
 
   const confirmPayment = () => {
+    dirtyTablesRef.current.add(activeTable);
     const paid = paymentMethod === 'efectivo' ? parseFloat(cashAmount) : subtotal;
     const tip = parseFloat(tipAmount) || 0;
     const payment: PaymentData = {

@@ -91,14 +91,17 @@ function isSameDay(a: string, b: string) {
 }
 
 function tablesFromData(data: Record<string, unknown>): TableOrder[] | null {
-  if (Array.isArray(data.tables)) return data.tables as TableOrder[];
-  const fields: TableOrder[] = [];
-  for (let i = 0; i < 11; i++) {
-    const t = data[`table_${i}`];
-    if (!t) return null;
-    fields.push(t as TableOrder);
+  const hasTableFields = ['table_0','table_1','table_2','table_3','table_4','table_5','table_6','table_7','table_8','table_9','table_10'].some(k => k in data);
+  if (hasTableFields) {
+    const fields: TableOrder[] = [];
+    for (let i = 0; i < 11; i++) {
+      const t = data[`table_${i}`] as TableOrder | undefined;
+      fields.push(t ? { ...t, items: [...(t.items || [])] } : { items: [], status: 'libre', customerName: '' });
+    }
+    return fields;
   }
-  return fields;
+  if (Array.isArray(data.tables)) return data.tables as TableOrder[];
+  return null;
 }
 
 export default function Cocina() {

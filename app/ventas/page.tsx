@@ -105,8 +105,11 @@ const defaultRecipes: { id: string; category: string; name: string }[] = [
   { id: '37', category: 'PASTAS RELLENAS', name: 'Lasagna Boloñesa' },
   { id: '38', category: 'PASTAS RELLENAS', name: 'Lasagna Vegetariana' },
   { id: '39', category: 'PASTAS RELLENAS', name: 'Berenjena Parmesana' },
-  { id: '12', category: 'PASTAS', name: 'Spaghetti Carbonara' },
-  { id: '13', category: 'PASTAS', name: 'Fettuccine Alfredo' },
+  { id: '12', category: 'PASTAS', name: 'Boloñesa' },
+  { id: '13', category: 'PASTAS', name: 'Carbonara' },
+  { id: '14', category: 'PASTAS', name: 'Puttanesca' },
+  { id: '15', category: 'PASTAS', name: 'Amatriciana' },
+  { id: '16', category: 'PASTAS', name: 'Tomate' },
   { id: '56', category: 'PROMOCIONES', name: 'Lasagna 2x1' },
 ];
 
@@ -235,7 +238,7 @@ const bebidasGroups: MenuItemGroup[] = [
 
 const nonPizzaPrices: Record<string, number> = {
   'Pan al ajo': 15, 'Bruschetta': 20, 'Crostini misti': 30,
-  'Spaghetti Carbonara': 28, 'Fettuccine Alfredo': 28, 'Lasagna Boloñesa': 40, 'Lasagna Vegetariana': 40, 'Berenjena Parmesana': 40,
+  'Boloñesa': 40, 'Carbonara': 40, 'Puttanesca': 40, 'Amatriciana': 40, 'Tomate': 35, 'Lasagna Boloñesa': 40, 'Lasagna Vegetariana': 40, 'Berenjena Parmesana': 40,
   'Lasagna 2x1': 50,
 };
 
@@ -296,6 +299,7 @@ function buildMenu(recipes: { id: string; category: string; name: string }[], su
       : catName === 'PIZZAS VEGETARIANAS' ? 'Pizzas Vegetarianas'
       : catName === 'PIZZAS ESPECIALES' ? 'Pizzas Especiales'
       : catName === 'PASTAS RELLENAS' ? 'Pastas Rellenas'
+      : catName === 'PASTAS' ? 'Spaghetti/Rigatoni'
       : catName.charAt(0) + catName.slice(1).toLowerCase();
 
     if (pizzaCatSet.has(catName)) {

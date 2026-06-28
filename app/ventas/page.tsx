@@ -953,7 +953,7 @@ export default function Ventas() {
                   TICKET
                 </button>
               )}
-              {user?.role !== 'togo' && activeOrder.status === 'ocupado' && activeOrder.items.length > 0 && (
+              {activeOrder.status === 'ocupado' && activeOrder.items.length > 0 && (
                 <button
                   onClick={sendToCocina}
                   className="px-2.5 py-1.5 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700 text-xs md:text-sm whitespace-nowrap"

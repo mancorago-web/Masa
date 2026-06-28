@@ -481,7 +481,6 @@ export default function Ventas() {
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const tablesWriteRef = useRef<Promise<void> | null>(null);
   const lastTablesSnapshotRef = useRef<string>('');
-  const dirtyTablesRef = useRef<Set<number>>(new Set());
 
   useEffect(() => {
     if (!authLoading && !user) router.replace("/login");
@@ -634,29 +633,17 @@ export default function Ventas() {
     return () => globalThis.removeEventListener('masa-sync-error', handler);
   }, []);
 
-  useEffect(() => {
-    const serialized = JSON.stringify(tables);
-    if (serialized === lastTablesSnapshotRef.current) return;
-    let cancelled = false;
-    (async () => {
-      if (tablesWriteRef.current) {
-        await tablesWriteRef.current.catch(() => {});
-      }
-      if (cancelled) return;
-      if (JSON.stringify(tables) === lastTablesSnapshotRef.current) return;
-      if (dirtyTablesRef.current.size === 0) return;
-      const tableFields: Record<string, unknown> = {};
-      for (const i of dirtyTablesRef.current) {
-        tableFields[`table_${i}`] = tables[i];
-      }
-      dirtyTablesRef.current.clear();
-      const write = syncToFirestore(tableFields);
-      tablesWriteRef.current = write;
-      await write.catch(() => {});
-      tablesWriteRef.current = null;
-    })();
-    return () => { cancelled = true; };
-  }, [tables]);
+  const sendToCocina = async () => {
+    const tableFields: Record<string, unknown> = {};
+    tableFields[`table_${activeTable}`] = tables[activeTable];
+    if (tablesWriteRef.current) {
+      await tablesWriteRef.current.catch(() => {});
+    }
+    const write = syncToFirestore(tableFields);
+    tablesWriteRef.current = write;
+    await write.catch(() => {});
+    tablesWriteRef.current = null;
+  };
 
   const isFirstPaymentSync = useRef(true);
   useEffect(() => {
@@ -682,7 +669,6 @@ export default function Ventas() {
   const activeOrder = tables[activeTable];
 
   const addItem = (name: string, price: number) => {
-    dirtyTablesRef.current.add(activeTable);
     setTables(prev => {
       const updated = [...prev];
       const order = { ...updated[activeTable] };
@@ -699,7 +685,6 @@ export default function Ventas() {
   };
 
   const updateQuantity = (itemId: string, delta: number) => {
-    dirtyTablesRef.current.add(activeTable);
     setTables(prev => {
       const updated = [...prev];
       const order = { ...updated[activeTable] };
@@ -739,7 +724,6 @@ export default function Ventas() {
   };
 
   const confirmPayment = () => {
-    dirtyTablesRef.current.add(activeTable);
     const paid = paymentMethod === 'efectivo' ? parseFloat(cashAmount) : subtotal;
     const tip = parseFloat(tipAmount) || 0;
     const payment: PaymentData = {
@@ -761,6 +745,10 @@ export default function Ventas() {
       updated[activeTable] = { items: [], status: 'libre', customerName: '' };
       return updated;
     });
+
+    // Sync cleared table to Firestore so Cocina and other devices see it
+    const clearedTable: TableOrder = { items: [], status: 'libre', customerName: '' };
+    syncToFirestore({ [`table_${activeTable}`]: clearedTable });
 
     // Register cash movements in Caja Chica
     if (paymentMethod === 'efectivo') {
@@ -960,7 +948,15 @@ export default function Ventas() {
                   })}
                   className="px-4 py-2 bg-orange-600 text-white font-bold rounded-lg hover:bg-orange-700 text-sm"
                 >
-                  Cocina
+                  TICKET
+                </button>
+              )}
+              {user?.role !== 'togo' && activeOrder.status === 'ocupado' && activeOrder.items.length > 0 && (
+                <button
+                  onClick={sendToCocina}
+                  className="px-4 py-2 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700 text-sm"
+                >
+                  COCINA
                 </button>
               )}
             </div>

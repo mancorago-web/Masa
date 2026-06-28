@@ -477,14 +477,23 @@ export default function Cocina() {
     });
   };
 
-  // Auto-collapse tables when they become fully completed
+  // Auto-collapse when fully completed; auto-expand when new items arrive
   const prevAllDoneRef = useRef<Set<string>>(new Set());
+  const prevItemsPerCardRef = useRef<Map<string, Set<string>>>(new Map());
   useEffect(() => {
     const currentAllDone = new Set<string>();
+    const toExpand = new Set<string>();
+    const currentItems = new Map<string, Set<string>>();
     for (const t of tables) {
       const id = t.id ?? `${t.tableNumber}-${t.orderNumber}`;
+      const itemIds = new Set(t.items.map(i => i.id));
+      currentItems.set(id, itemIds);
       if (t.items.every(i => i.completed)) {
         currentAllDone.add(id);
+      }
+      const prevIds = prevItemsPerCardRef.current.get(id);
+      if (prevIds && t.items.some(i => !prevIds.has(i.id))) {
+        toExpand.add(id);
       }
     }
     setCollapsedIds(prev => {
@@ -494,9 +503,13 @@ export default function Cocina() {
           next.add(id);
         }
       }
+      for (const id of toExpand) {
+        next.delete(id);
+      }
       prevAllDoneRef.current = currentAllDone;
       return next;
     });
+    prevItemsPerCardRef.current = currentItems;
   }, [tables]);
 
   // Play sound when new notification arrives

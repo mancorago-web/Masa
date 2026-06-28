@@ -916,12 +916,12 @@ export default function Ventas() {
               <h2 className="text-lg md:text-xl font-bold">{tableName(activeTable)}</h2>
               <p className="text-sm text-gray-500">{activeOrder.status === 'ocupado' ? activeOrder.items.length + ' productos' : activeTable === DELIVERY_INDEX ? 'Delivery' : activeTable === TOGO_INDEX ? 'To Go' : 'Mesa libre'}</p>
             </div>
-            <div className="flex gap-2">
-              <button onClick={() => { setShowProductMenu(true); setModalTab('menu'); }} className="px-4 py-2 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 text-sm">
+            <div className="flex gap-1.5 flex-wrap">
+              <button onClick={() => { setShowProductMenu(true); setModalTab('menu'); }} className="px-2.5 py-1.5 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 text-xs md:text-sm whitespace-nowrap">
                 + Agregar Producto
               </button>
               {activeOrder.status === 'ocupado' && (
-                <button onClick={openPayment} className="px-4 py-2 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 text-sm">
+                <button onClick={openPayment} className="px-2.5 py-1.5 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 text-xs md:text-sm whitespace-nowrap">
                   Cobrar
                 </button>
               )}
@@ -931,7 +931,7 @@ export default function Ventas() {
                     tableName: tableName(activeTable),
                     items: activeOrder.items.map(i => ({ name: i.name, quantity: i.quantity, unitPrice: i.unitPrice })),
                   })}
-                  className="px-4 py-2 bg-gray-800 text-white font-bold rounded-lg hover:bg-gray-700 text-sm"
+                  className="px-2.5 py-1.5 bg-gray-800 text-white font-bold rounded-lg hover:bg-gray-700 text-xs md:text-sm whitespace-nowrap"
                 >
                   Imprimir
                 </button>
@@ -946,7 +946,7 @@ export default function Ventas() {
                       day: '2-digit', month: '2-digit', year: 'numeric',
                     }),
                   })}
-                  className="px-4 py-2 bg-orange-600 text-white font-bold rounded-lg hover:bg-orange-700 text-sm"
+                  className="px-2.5 py-1.5 bg-orange-600 text-white font-bold rounded-lg hover:bg-orange-700 text-xs md:text-sm whitespace-nowrap"
                 >
                   TICKET
                 </button>
@@ -954,7 +954,7 @@ export default function Ventas() {
               {user?.role !== 'togo' && activeOrder.status === 'ocupado' && activeOrder.items.length > 0 && (
                 <button
                   onClick={sendToCocina}
-                  className="px-4 py-2 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700 text-sm"
+                  className="px-2.5 py-1.5 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700 text-xs md:text-sm whitespace-nowrap"
                 >
                   COCINA
                 </button>

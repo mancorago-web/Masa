@@ -181,9 +181,8 @@ export default function Cocina() {
         // New card only when all old items were cleared from Ventas (payment happened).
         const existingKT = updated.findLast(kt => kt.tableNumber === tableNum);
         if (existingKT) {
-          const allOldCompleted = existingKT.items.every(it => it.completed);
           const stillHasOldItems = curTables[i].items.some(it => oldItemIds.has(it.id));
-          if (allOldCompleted && !stillHasOldItems) {
+          if (!stillHasOldItems) {
             // Table was paid and this is a new order
             orderCounter++;
             updated.push({

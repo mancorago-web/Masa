@@ -79,7 +79,7 @@ interface MenuCategory {
   groups?: MenuItemGroup[];
 }
 
-const SALES_CATEGORIES = ['ENTRADAS', 'PIZZAS CLÁSICAS', 'PIZZAS VEGETARIANAS', 'PIZZAS ESPECIALES', 'PASTAS RELLENAS', 'PASTAS', 'PROMOCIONES'];
+const SALES_CATEGORIES = ['ENTRADAS', 'PIZZAS CLÁSICAS', 'PIZZAS VEGETARIANAS', 'PIZZAS ESPECIALES', 'PASTAS RELLENAS', 'PASTAS', 'PASTAS_RIGATONI', 'PROMOCIONES'];
 
 const defaultRecipes: { id: string; category: string; name: string }[] = [
   { id: '20', category: 'ENTRADAS', name: 'Pan al ajo' },
@@ -110,6 +110,11 @@ const defaultRecipes: { id: string; category: string; name: string }[] = [
   { id: '14', category: 'PASTAS', name: 'Puttanesca' },
   { id: '15', category: 'PASTAS', name: 'Amatriciana' },
   { id: '16', category: 'PASTAS', name: 'Tomate' },
+  { id: '41', category: 'PASTAS_RIGATONI', name: 'Boloñesa' },
+  { id: '42', category: 'PASTAS_RIGATONI', name: 'Carbonara' },
+  { id: '43', category: 'PASTAS_RIGATONI', name: 'Puttanesca' },
+  { id: '44', category: 'PASTAS_RIGATONI', name: 'Amatriciana' },
+  { id: '45', category: 'PASTAS_RIGATONI', name: 'Tomate' },
   { id: '56', category: 'PROMOCIONES', name: 'Lasagna 2x1' },
 ];
 
@@ -299,7 +304,8 @@ function buildMenu(recipes: { id: string; category: string; name: string }[], su
       : catName === 'PIZZAS VEGETARIANAS' ? 'Pizzas Vegetarianas'
       : catName === 'PIZZAS ESPECIALES' ? 'Pizzas Especiales'
       : catName === 'PASTAS RELLENAS' ? 'Pastas Rellenas'
-      : catName === 'PASTAS' ? 'Spaghetti/Rigatoni'
+      : catName === 'PASTAS' ? 'Spaghetti'
+      : catName === 'PASTAS_RIGATONI' ? 'Rigatoni'
       : catName.charAt(0) + catName.slice(1).toLowerCase();
 
     if (pizzaCatSet.has(catName)) {

@@ -643,6 +643,8 @@ export default function Ventas() {
     tablesWriteRef.current = write;
     await write.catch(() => {});
     tablesWriteRef.current = null;
+    setSyncedMessage('Pedido enviado a cocina');
+    setTimeout(() => setSyncedMessage(''), 2500);
   };
 
   const isFirstPaymentSync = useRef(true);

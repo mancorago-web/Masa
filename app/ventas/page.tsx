@@ -693,12 +693,14 @@ export default function Ventas() {
   };
 
   const updateQuantity = (itemId: string, delta: number) => {
+    let removed = false;
     setTables(prev => {
       const updated = [...prev];
       const order = { ...updated[activeTable] };
       order.items = order.items.map(i => {
         if (i.id !== itemId) return i;
         const newQty = i.quantity + delta;
+        if (newQty <= 0) removed = true;
         return newQty <= 0 ? null : { ...i, quantity: newQty };
       }).filter(Boolean) as OrderItem[];
       if (order.items.length === 0) {
@@ -708,6 +710,20 @@ export default function Ventas() {
       updated[activeTable] = order;
       return updated;
     });
+    if (removed) {
+      const newItems = activeOrder.items.map(i => {
+        if (i.id !== itemId) return i;
+        const newQty = i.quantity + delta;
+        return newQty <= 0 ? null : { ...i, quantity: newQty };
+      }).filter(Boolean) as OrderItem[];
+      syncToFirestore({
+        [`table_${activeTable}`]: {
+          items: newItems,
+          status: newItems.length === 0 ? 'libre' : 'ocupado' as const,
+          customerName: newItems.length === 0 ? '' : activeOrder.customerName,
+        },
+      });
+    }
   };
 
   const subtotal = activeOrder.items.reduce((sum, i) => sum + i.quantity * i.unitPrice, 0);

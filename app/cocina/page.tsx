@@ -161,19 +161,36 @@ export default function Cocina() {
         const oldItemIds = new Set(existingIds);
 
         const newItems: KitchenItem[] = [];
+        let qtyChanged = false;
         for (const item of curTables[i].items) {
-          if (!existingIds.has(item.id) && !archivedItemIdsRef.current.has(item.id)) {
-            existingIds.add(item.id);
-            newItems.push({
-              id: item.id,
-              name: item.name,
-              quantity: item.quantity,
-              completed: false,
-              createdByName: (item as any).createdByName,
-            });
+          if (existingIds.has(item.id)) {
+            // Update quantity of existing item in Cocina
+            const kt = updated.findLast(kt => kt.tableNumber === tableNum);
+            if (kt) {
+              const existing = kt.items.find(ki => ki.id === item.id);
+              if (existing && existing.quantity !== item.quantity) {
+                existing.quantity = item.quantity;
+                qtyChanged = true;
+              }
+            }
+            continue;
           }
+          if (archivedItemIdsRef.current.has(item.id)) continue;
+          existingIds.add(item.id);
+          newItems.push({
+            id: item.id,
+            name: item.name,
+            quantity: item.quantity,
+            completed: false,
+            createdByName: (item as any).createdByName,
+          });
         }
 
+        if (newItems.length === 0 && !qtyChanged) continue;
+        if (qtyChanged) {
+          const kt = updated.findLast(kt => kt.tableNumber === tableNum);
+          if (kt) kt.updatedAt = now;
+        }
         if (newItems.length === 0) continue;
         hasNew = true;
 

@@ -115,7 +115,6 @@ export default function Cocina() {
   const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set());
   const [initKey, setInitKey] = useState(0);
   const [debugInfo, setDebugInfo] = useState<string>('iniciando...');
-  const prevTablesRef = useRef<string>("");
   const notifId = useRef(0);
   const tablesRef = useRef<KitchenTable[]>([]);
   tablesRef.current = tables;
@@ -161,7 +160,6 @@ export default function Cocina() {
         const oldItemIds = new Set(existingIds);
 
         const newItems: KitchenItem[] = [];
-        let qtyChanged = false;
         for (const item of curTables[i].items) {
           if (existingIds.has(item.id)) {
             // Update quantity of existing item in Cocina
@@ -170,7 +168,8 @@ export default function Cocina() {
               const existing = kt.items.find(ki => ki.id === item.id);
               if (existing && existing.quantity !== item.quantity) {
                 existing.quantity = item.quantity;
-                qtyChanged = true;
+                kt.updatedAt = now;
+                hasNew = true;
               }
             }
             continue;
@@ -186,11 +185,7 @@ export default function Cocina() {
           });
         }
 
-        if (newItems.length === 0 && !qtyChanged) continue;
-        if (qtyChanged) {
-          const kt = updated.findLast(kt => kt.tableNumber === tableNum);
-          if (kt) kt.updatedAt = now;
-        }
+        if (newItems.length === 0 && !hasNew) continue;
         if (newItems.length === 0) continue;
         hasNew = true;
 
@@ -277,9 +272,6 @@ export default function Cocina() {
           const data = ventasSnap.data();
           const curTables = tablesFromData(data);
           if (!curTables) return;
-          const curStr = JSON.stringify(curTables);
-          if (curStr === prevTablesRef.current) return;
-          prevTablesRef.current = curStr;
           setTables((prev) => processVentasTables(curTables, prev));
         }).catch(() => {});
       }).catch(() => { initialLoadDoneRef.current = true; });
@@ -295,10 +287,6 @@ export default function Cocina() {
         const curTables = tablesFromData(data);
         if (!curTables) { setDebugInfo(`snap ventas: tablesFromData null, keys=${Object.keys(data).join(',')}`); return; }
         setDebugInfo(`snap ventas: ${curTables.length} mesas, total items=${curTables.reduce((s,t)=>s+t.items.length,0)}`);
-
-        const currentStr = JSON.stringify(curTables);
-        if (currentStr === prevTablesRef.current) return;
-        prevTablesRef.current = currentStr;
 
         try {
           setTables((prev) => processVentasTables(curTables, prev));

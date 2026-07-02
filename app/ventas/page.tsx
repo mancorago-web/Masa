@@ -30,6 +30,7 @@ interface OrderItem {
   name: string;
   quantity: number;
   unitPrice: number;
+  cocinaReady?: boolean;
 }
 
 interface TableOrder {
@@ -357,7 +358,11 @@ function buildMenu(recipes: { id: string; category: string; name: string }[], su
       const seen = new Set<string>();
       for (const recipe of catRecipes) {
         const price = nonPizzaPrices[recipe.name];
-        if (price && !seen.has(recipe.name)) { items.push({ name: recipe.name, price }); seen.add(recipe.name); }
+        if (price && !seen.has(recipe.name)) {
+          const prefix = catName === 'PASTAS' ? 'Spaghetti ' : catName === 'PASTAS_RIGATONI' ? 'Rigatoni ' : '';
+          items.push({ name: prefix + recipe.name, price });
+          seen.add(recipe.name);
+        }
       }
       if (items.length > 0) categories.push({ name: displayName, type: 'simple', items, pizzas: [] });
     }
@@ -644,8 +649,16 @@ export default function Ventas() {
   }, []);
 
   const sendToCocina = async () => {
+    const table = tables[activeTable];
+    const updatedItems = table.items.map(i => ({ ...i, cocinaReady: true }));
+    const updatedTable = { ...table, items: updatedItems };
     const tableFields: Record<string, unknown> = {};
-    tableFields[`table_${activeTable}`] = tables[activeTable];
+    tableFields[`table_${activeTable}`] = updatedTable;
+    setTables(prev => {
+      const updated = [...prev];
+      updated[activeTable] = updatedTable;
+      return updated;
+    });
     if (tablesWriteRef.current) {
       await tablesWriteRef.current.catch(() => {});
     }
@@ -665,7 +678,8 @@ export default function Ventas() {
 
   const activeOrder = tables[activeTable];
 
-  const addItem = (name: string, price: number) => {
+  const addItem = async (name: string, price: number) => {
+    let tableForSync: TableOrder | null = null;
     setTables(prev => {
       const updated = [...prev];
       const order = { ...updated[activeTable] };
@@ -673,12 +687,20 @@ export default function Ventas() {
       if (existing) {
         order.items = order.items.map(i => i.name === name ? { ...i, quantity: i.quantity + 1 } : i);
       } else {
-        order.items = [...order.items, { id: Date.now().toString(), name, quantity: 1, unitPrice: price, createdByName: user?.name ?? "" }];
+        order.items = [...order.items, { id: Date.now().toString(), name, quantity: 1, unitPrice: price, createdByName: user?.name ?? "", cocinaReady: false }];
       }
       order.status = 'ocupado';
       updated[activeTable] = order;
+      tableForSync = order;
       return updated;
     });
+    if (tableForSync) {
+      if (tablesWriteRef.current) await tablesWriteRef.current.catch(() => {});
+      const write = syncToFirestore({ [`table_${activeTable}`]: tableForSync });
+      tablesWriteRef.current = write;
+      await write.catch(() => {});
+      tablesWriteRef.current = null;
+    }
   };
 
   const updateQuantity = async (itemId: string, delta: number) => {
@@ -696,17 +718,13 @@ export default function Ventas() {
         order.customerName = '';
       }
       updated[activeTable] = order;
-      const oldIds = new Set(prev[activeTable].items.map(i => i.id));
-      for (const i of order.items) oldIds.delete(i.id);
-      if (oldIds.size > 0) {
-        syncData = {
-          [`table_${activeTable}`]: {
-            items: order.items,
-            status: order.items.length === 0 ? 'libre' as const : 'ocupado' as const,
-            customerName: order.items.length === 0 ? '' : order.customerName,
-          },
-        };
-      }
+      syncData = {
+        [`table_${activeTable}`]: {
+          items: order.items,
+          status: order.items.length === 0 ? 'libre' as const : 'ocupado' as const,
+          customerName: order.items.length === 0 ? '' : order.customerName,
+        },
+      };
       return updated;
     });
     if (syncData) {
@@ -820,7 +838,7 @@ export default function Ventas() {
     const updated = inv.map(item => ({ ...item }));
 
     for (const sold of items) {
-      const nameLower = sold.name.toLowerCase();
+      const nameLower = sold.name.toLowerCase().replace(/^(spaghetti|rigatoni)\s+/i, '');
       let ingredients: RecipeIngredient[] = [];
 
       const subId = subRecipeByName.get(nameLower);

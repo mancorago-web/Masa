@@ -55,6 +55,7 @@ interface OrderItem {
   name: string;
   quantity: number;
   unitPrice: number;
+  cocinaReady?: boolean;
 }
 
 interface TableOrder {
@@ -161,6 +162,7 @@ export default function Cocina() {
 
         const newItems: KitchenItem[] = [];
         for (const item of curTables[i].items) {
+          if (!(item as any).cocinaReady) continue;
           if (existingIds.has(item.id)) {
             // Update quantity of existing item in Cocina
             const kt = updated.findLast(kt => kt.tableNumber === tableNum);

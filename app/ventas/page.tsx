@@ -554,12 +554,16 @@ export default function Ventas() {
                 if (t.status !== 'ocupado') {
                   return { ...remote, items: [...remote.items] };
                 }
-                const remoteIds = new Set((remote.items || []).map((it: any) => it.id));
-                const localExtra = t.items.filter(it => !remoteIds.has(it.id));
-                if (localExtra.length === 0) {
-                  return { ...remote, items: [...remote.items] };
+                // Merge: union of local and remote items (never remove local items)
+                const mergedItems = [...t.items];
+                const localIds = new Set(mergedItems.map(i => i.id));
+                for (const it of (remote.items || [])) {
+                  if (!localIds.has(it.id)) {
+                    mergedItems.push(it);
+                    localIds.add(it.id);
+                  }
                 }
-                return { ...remote, items: [...remote.items, ...localExtra] };
+                return { ...t, items: mergedItems };
               });
               for (let i = remoteTables.length; i < prev.length; i++) {
                 merged.push({ ...prev[i], items: [...prev[i].items] });
@@ -692,7 +696,7 @@ export default function Ventas() {
     });
   };
 
-  const updateQuantity = (itemId: string, delta: number) => {
+  const updateQuantity = async (itemId: string, delta: number) => {
     let syncData: Record<string, unknown> | null = null;
     setTables(prev => {
       const updated = [...prev];
@@ -707,7 +711,6 @@ export default function Ventas() {
         order.customerName = '';
       }
       updated[activeTable] = order;
-      // Check if any items were removed
       const oldIds = new Set(prev[activeTable].items.map(i => i.id));
       for (const i of order.items) oldIds.delete(i.id);
       if (oldIds.size > 0) {
@@ -722,14 +725,11 @@ export default function Ventas() {
       return updated;
     });
     if (syncData) {
-      const sync = async () => {
-        if (tablesWriteRef.current) await tablesWriteRef.current.catch(() => {});
-        const write = syncToFirestore(syncData!);
-        tablesWriteRef.current = write;
-        await write.catch(() => {});
-        tablesWriteRef.current = null;
-      };
-      sync();
+      if (tablesWriteRef.current) await tablesWriteRef.current.catch(() => {});
+      const write = syncToFirestore(syncData);
+      tablesWriteRef.current = write;
+      await write.catch(() => {});
+      tablesWriteRef.current = null;
     }
   };
 

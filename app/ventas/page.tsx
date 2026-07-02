@@ -395,7 +395,7 @@ function FamiliarPicker({ onAdd, onBack }: { onAdd: (name: string, price: number
         <button onClick={onBack} className="text-sm text-gray-500 hover:text-gray-700 mb-3">
           ← Volver al menú
         </button>
-        <h3 className="text-lg font-bold text-gray-800 mb-1">Pizza Familiar (4 Sabores)</h3>
+        <h3 className="text-lg font-bold text-gray-800 mb-1">Pizza Familiar (24 Pzas)</h3>
         <p className="text-sm text-gray-500 mb-4">Elige 4 sabores diferentes — S/100.00</p>
 
         <div className="grid grid-cols-2 gap-2 mb-4">
@@ -426,7 +426,7 @@ function FamiliarPicker({ onAdd, onBack }: { onAdd: (name: string, price: number
         {selected.length === 4 && (
           <button
             onClick={() => {
-              onAdd(`Pizza Familiar: ${selected.join(' + ')}`, 100);
+              onAdd(`Pizza Familiar (24 Pzas): ${selected.join(' + ')}`, 100);
               onBack();
             }}
             className="w-full py-3 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 transition"
@@ -1331,7 +1331,7 @@ export default function Ventas() {
                                     }}
                                     className="w-full flex items-center justify-center px-4 py-2.5 hover:bg-yellow-50 transition text-sm border-t border-gray-100 text-yellow-700 font-semibold"
                                   >
-                                    🍕 Pizza Familiar (4 Sabores)
+                                    🍕 Pizza Familiar (24 Pzas)
                                   </button>
                                 )}
                               </div>

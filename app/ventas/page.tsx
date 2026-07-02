@@ -693,14 +693,13 @@ export default function Ventas() {
   };
 
   const updateQuantity = (itemId: string, delta: number) => {
-    let removed = false;
+    let syncData: Record<string, unknown> | null = null;
     setTables(prev => {
       const updated = [...prev];
       const order = { ...updated[activeTable] };
       order.items = order.items.map(i => {
         if (i.id !== itemId) return i;
         const newQty = i.quantity + delta;
-        if (newQty <= 0) removed = true;
         return newQty <= 0 ? null : { ...i, quantity: newQty };
       }).filter(Boolean) as OrderItem[];
       if (order.items.length === 0) {
@@ -708,21 +707,29 @@ export default function Ventas() {
         order.customerName = '';
       }
       updated[activeTable] = order;
+      // Check if any items were removed
+      const oldIds = new Set(prev[activeTable].items.map(i => i.id));
+      for (const i of order.items) oldIds.delete(i.id);
+      if (oldIds.size > 0) {
+        syncData = {
+          [`table_${activeTable}`]: {
+            items: order.items,
+            status: order.items.length === 0 ? 'libre' as const : 'ocupado' as const,
+            customerName: order.items.length === 0 ? '' : order.customerName,
+          },
+        };
+      }
       return updated;
     });
-    if (removed) {
-      const newItems = activeOrder.items.map(i => {
-        if (i.id !== itemId) return i;
-        const newQty = i.quantity + delta;
-        return newQty <= 0 ? null : { ...i, quantity: newQty };
-      }).filter(Boolean) as OrderItem[];
-      syncToFirestore({
-        [`table_${activeTable}`]: {
-          items: newItems,
-          status: newItems.length === 0 ? 'libre' : 'ocupado' as const,
-          customerName: newItems.length === 0 ? '' : activeOrder.customerName,
-        },
-      });
+    if (syncData) {
+      const sync = async () => {
+        if (tablesWriteRef.current) await tablesWriteRef.current.catch(() => {});
+        const write = syncToFirestore(syncData!);
+        tablesWriteRef.current = write;
+        await write.catch(() => {});
+        tablesWriteRef.current = null;
+      };
+      sync();
     }
   };
 

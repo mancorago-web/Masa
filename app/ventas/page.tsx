@@ -396,7 +396,7 @@ function FamiliarPicker({ onAdd, onBack }: { onAdd: (name: string, price: number
           ← Volver al menú
         </button>
         <h3 className="text-lg font-bold text-gray-800 mb-1">Pizza Familiar (24 Pzas)</h3>
-        <p className="text-sm text-gray-500 mb-4">Elige 4 sabores diferentes — S/100.00</p>
+        <p className="text-sm text-gray-500 mb-4">Elige de 1 a 4 sabores — S/100.00</p>
 
         <div className="grid grid-cols-2 gap-2 mb-4">
           {allPizzas.map(name => (
@@ -415,7 +415,7 @@ function FamiliarPicker({ onAdd, onBack }: { onAdd: (name: string, price: number
         </div>
 
         <div className="text-sm text-gray-500 mb-4">
-          Seleccionados: {selected.length}/4
+          Seleccionados: {selected.length}
           {selected.length > 0 && (
             <span className="block mt-1 font-medium text-gray-700">
               {selected.join(' + ')}
@@ -423,7 +423,7 @@ function FamiliarPicker({ onAdd, onBack }: { onAdd: (name: string, price: number
           )}
         </div>
 
-        {selected.length === 4 && (
+        {selected.length >= 1 && (
           <button
             onClick={() => {
               onAdd(`Pizza Familiar (24 Pzas): ${selected.join(' + ')}`, 100);

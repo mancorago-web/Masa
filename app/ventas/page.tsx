@@ -556,6 +556,8 @@ export default function Ventas() {
   const [recipeIngredients, setRecipeIngredients] = useState<Record<string, RecipeIngredient[]>>({});
   const [subIngredients, setSubIngredients] = useState<Record<string, RecipeIngredient[]>>({});
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
+  const tablesRef = useRef(tables);
+  tablesRef.current = tables;
   const tablesWriteRef = useRef<Promise<void> | null>(null);
   const lastTablesSnapshotRef = useRef<string>('');
 
@@ -715,7 +717,7 @@ export default function Ventas() {
   }, []);
 
   const sendToCocina = async () => {
-    const table = tables[activeTable];
+    const table = tablesRef.current[activeTable];
     const updatedItems = table.items.map(i => ({ ...i, cocinaReady: true }));
     const updatedTable = { ...table, items: updatedItems };
     const tableFields: Record<string, unknown> = {};
